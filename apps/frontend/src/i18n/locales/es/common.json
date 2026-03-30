@@ -1,0 +1,208 @@
+{
+  "nav": {
+    "sections": {
+    "production": "Produccion",
+    "quality": "Calidad",
+    "maintenance": "Mantenimiento",
+    "warehouse": "Almacen",
+    "administration": "Administracion",
+    "warehouseBom": "BOM Explorer",
+"warehouseCtb": "Clear To Build",
+"warehouseDemand": "Demand"
+  },
+  "items": {
+    "productionDashboard": "Panel de Produccion",
+    "productionOrders": "Ordenes",
+    "productionEvents": "Eventos",
+    "qualityInspections": "Inspecciones",
+    "qualityDefects": "Defectos",
+    "maintenanceOrders": "Ordenes de Trabajo",
+    "maintenanceAssets": "Activos",
+    "warehouseInventory": "Inventario",
+    "warehouseMovements": "Movimientos",
+    "warehouseReceiving": "Recepcion",
+    "adminUsers": "Usuarios",
+    "adminRoles": "Roles",
+    "adminPlant": "Planta",
+    "warehouseBom": "BOM Explorer",
+    "warehouseCtb": "Clear To Build",
+    "warehouseDemand": "Demand"
+  }
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Ocurrio un error",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar"
+  },
+  "users": {
+    "title": "Gestion de Usuarios",
+    "newUser": "Nuevo Usuario",
+    "searchPlaceholder": "Buscar por nombre o numero...",
+    "allRoles": "Todos los roles",
+    "allStatuses": "Todos los estados",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "never": "Nunca",
+    "columns": {
+      "employee": "Empleado",
+      "name": "Nombre",
+      "role": "Rol",
+      "plant": "Planta",
+      "status": "Estado",
+      "lastAccess": "Ultimo acceso",
+      "actions": "Acciones"
+    },
+    "modal": {
+      "createTitle": "Crear Usuario",
+      "editTitle": "Editar Usuario",
+      "resetPasswordTitle": "Resetear Contrasena",
+      "employeeId": "Numero de Empleado",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "role": "Rol",
+      "plant": "Planta",
+      "email": "Correo Electronico",
+      "language": "Idioma Preferido",
+      "password": "Contrasena",
+      "newPassword": "Nueva Contrasena",
+      "confirmPassword": "Confirmar Contrasena",
+      "save": "Guardar",
+      "cancel": "Cancelar"
+    }
+  },
+  "profile": {
+    "editProfile": "Editar Perfil",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "lastAccess": "Ultimo acceso: hoy",
+    "sections": {
+      "personalInfo": "Informacion Personal",
+      "personalInfoSub": "Tus datos personales y de contacto",
+      "security": "Seguridad",
+      "securitySub": "Administra tu contrasena y sesiones",
+      "accountSettings": "Configuracion de Cuenta",
+      "accountSettingsSub": "Tus preferencias de visualizacion",
+      "systemInfo": "Informacion del Sistema",
+      "systemInfoSub": "Tu rol y permisos en la plataforma",
+      "lastAccessNever": "Nunca",
+      "lastAccessJustNow": "Ahora mismo",
+      "lastAccessYesterday": "Ayer"
+    },
+    "fields": {
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "employeeId": "Numero de Empleado",
+      "email": "Correo Electronico",
+      "language": "Idioma",
+      "theme": "Tema",
+      "timezone": "Zona Horaria",
+      "role": "Rol",
+      "accountStatus": "Estado de Cuenta",
+      "assignedPlant": "Planta Asignada",
+      "permissions": "Permisos"
+    },
+    "themes": {
+      "light": "Claro",
+      "dark": "Oscuro",
+      "system": "Sistema"
+    },
+    "languages": {
+      "es": "Espanol",
+      "en": "English"
+    },
+    "security": {
+      "changePassword": "Cambiar Contrasena",
+      "changePasswordSub": "Actualiza tu contrasena de acceso",
+      "change": "Cambiar",
+      "activeSessions": "Sesiones Activas",
+      "activeSessionsSub": "Sesion actual",
+      "active": "activa",
+      "currentSession": "Sesion actual — Navegador Web",
+      "current": "Actual"
+    },
+    "status": {
+      "active": "Activo"
+    },
+    "noPermissions": "Sin permisos asignados",
+    "unassigned": "Sin asignar",
+    "modal": {
+      "changePasswordTitle": "Cambiar Contrasena",
+      "currentPassword": "Contrasena Actual",
+      "newPassword": "Nueva Contrasena",
+      "confirmPassword": "Confirmar Nueva Contrasena",
+      "save": "Cambiar Contrasena",
+      "cancel": "Cancelar"
+    },
+    "messages": {
+      "updateSuccess": "Perfil actualizado correctamente.",
+      "updateError": "Error al actualizar perfil.",
+      "passwordSuccess": "Contrasena actualizada correctamente.",
+      "passwordError": "Error al cambiar contrasena."
+    }
+    
+  },
+  "userMenu": {
+      "profile": "Mi Perfil",
+      "settings": "Configuracion",
+      "noPlant": "Sin planta asignada",
+      "logout": "Cerrar Sesion"
+  },
+  "roles": {
+    "operator": "Operador",
+    "supervisor": "Supervisor",
+    "quality_engineer": "Ingeniero de Calidad",
+    "process_engineer": "Ingeniero de Procesos",
+    "maintenance_engineer": "Ingeniero de Mantenimiento",
+    "inventory_engineer": "Ingeniero de Inventarios",
+    "admin": "Administrador MES",
+    "plant_manager": "Gerente de Planta"
+},
+"rolesPage": {
+  "title": "Gestión de Roles",
+  "subtitle": "Define los permisos base por rol en el sistema",
+  "discard": "Descartar",
+  "saveChanges": "Guardar Cambios",
+  "saving": "Guardando...",
+  "unsavedChanges": "Cambios sin guardar",
+  "allowed": "Permitido",
+  "noAccess": "Sin acceso",
+  "systemRole": "Rol de sistema",
+  "activePermissions": "permisos activos",
+  "permissionsFor": "Permisos",
+  "errorLoad": "Error al cargar roles.",
+  "errorSave": "Error al guardar permisos.",
+  "successSave": "Permisos guardados correctamente.",
+  "columns": {
+    "module": "Módulo",
+    "all": "Todo"
+  }
+},
+"warehouse": {
+  "bom": {
+    "partNumber": "Número de Parte", "search": "Buscar", "revision": "Revisión",
+    "loadBom": "Cargar BOM", "noPartFound": "Parte no encontrado en Plex",
+    "noBomFound": "BOM vacío para este parte", "errorFetching": "Error al consultar Plex",
+    "components": "componentes", "colPartNo": "Parte", "colPartName": "Nombre",
+    "colQty": "Cantidad", "colUnit": "Unidad", "colNote": "Nota", "colPath": "Ruta BOM"
+  },
+  "ctb": {
+    "partNumber": "Número de Parte", "search": "Buscar", "revision": "Revisión",
+    "need": "Cantidad a Producir", "calculate": "Calcular CTB",
+    "noPartFound": "Parte no encontrado", "noBomFound": "BOM vacío",
+    "errorFetching": "Error al consultar Plex", "totalComponents": "Total Componentes",
+    "ready": "Listos", "notReady": "Faltantes", "needQty": "Necesidad",
+    "ctbYes": "CLEAR TO BUILD", "ctbNo": "NO CLEAR TO BUILD",
+    "colPartNo": "Parte", "colPartName": "Nombre", "colNeed": "Necesidad"
+  },
+  "demand": {
+    "customer": "Cliente", "status": "Estado", "refresh": "Actualizar",
+    "releases": "releases", "errorFetching": "Error al consultar Plex",
+    "colPart": "Parte", "colCustPart": "Parte Cliente", "colQtyReady": "Listo",
+    "colShipDate": "Ship Date", "colDueDate": "Due Date", "colRelQty": "Rel Qty",
+    "colShipped": "Enviado", "colBalance": "Balance", "colRelStatus": "Estado Rel",
+    "colRelType": "Tipo Rel"
+  }
+}
+}

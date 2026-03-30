@@ -1,0 +1,207 @@
+{
+  "nav": {
+  "sections": {
+    "production": "Production",
+    "quality": "Quality",
+    "maintenance": "Maintenance",
+    "warehouse": "Warehouse",
+    "administration": "Administration",
+    "warehouseBom": "BOM Explorer",
+    "warehouseCtb": "Clear To Build",
+    "warehouseDemand": "Demand"
+  },
+  "items": {
+    "productionDashboard": "Production Dashboard",
+    "productionOrders": "Orders",
+    "productionEvents": "Events",
+    "qualityInspections": "Inspections",
+    "qualityDefects": "Defects",
+    "maintenanceOrders": "Work Orders",
+    "maintenanceAssets": "Assets",
+    "warehouseInventory": "Inventory",
+    "warehouseMovements": "Movements",
+    "warehouseReceiving": "Receiving",
+    "adminUsers": "Users",
+    "adminRoles": "Roles",
+    "adminPlant": "Plant",
+    "warehouseBom": "BOM Explorer",
+    "warehouseCtb": "Clear To Build",
+    "warehouseDemand": "Demand"
+  }
+},
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "users": {
+    "title": "User Management",
+    "newUser": "New User",
+    "searchPlaceholder": "Search by name or number...",
+    "allRoles": "All roles",
+    "allStatuses": "All statuses",
+    "active": "Active",
+    "inactive": "Inactive",
+    "never": "Never",
+    "columns": {
+      "employee": "Employee",
+      "name": "Name",
+      "role": "Role",
+      "plant": "Plant",
+      "status": "Status",
+      "lastAccess": "Last access",
+      "actions": "Actions"
+    },
+    "modal": {
+      "createTitle": "Create User",
+      "editTitle": "Edit User",
+      "resetPasswordTitle": "Reset Password",
+      "employeeId": "Employee Number",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "role": "Role",
+      "plant": "Plant",
+      "email": "Email Address",
+      "language": "Preferred Language",
+      "password": "Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "save": "Save",
+      "cancel": "Cancel"
+    }
+  },
+  "profile": {
+    "editProfile": "Edit Profile",
+    "save": "Save",
+    "cancel": "Cancel",
+    "lastAccess": "Last access: today",
+    "sections": {
+      "personalInfo": "Personal Information",
+      "personalInfoSub": "Your personal and contact details",
+      "security": "Security",
+      "securitySub": "Manage your password and sessions",
+      "accountSettings": "Account Settings",
+      "accountSettingsSub": "Your display preferences",
+      "systemInfo": "System Information",
+      "systemInfoSub": "Your role and permissions in the platform",
+      "lastAccessNever": "Never",
+      "lastAccessJustNow": "Just now",
+      "lastAccessYesterday": "Yesterday"
+    },
+    "fields": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "employeeId": "Employee Number",
+      "email": "Email Address",
+      "language": "Language",
+      "theme": "Theme",
+      "timezone": "Timezone",
+      "role": "Role",
+      "accountStatus": "Account Status",
+      "assignedPlant": "Assigned Plant",
+      "permissions": "Permissions"
+    },
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "languages": {
+      "es": "Spanish",
+      "en": "English"
+    },
+    "security": {
+      "changePassword": "Change Password",
+      "changePasswordSub": "Update your access password",
+      "change": "Change",
+      "activeSessions": "Active Sessions",
+      "activeSessionsSub": "Current session",
+      "active": "active",
+      "currentSession": "Current session — Web Browser",
+      "current": "Current"
+    },
+    "status": {
+      "active": "Active"
+    },
+    "noPermissions": "No permissions assigned",
+    "unassigned": "Unassigned",
+    "modal": {
+      "changePasswordTitle": "Change Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "save": "Change Password",
+      "cancel": "Cancel"
+    },
+    "messages": {
+      "updateSuccess": "Profile updated successfully.",
+      "updateError": "Error updating profile.",
+      "passwordSuccess": "Password updated successfully.",
+      "passwordError": "Error changing password."
+    }},
+    "userMenu": {
+      "profile": "My Profile",
+      "settings": "Settings",
+      "noPlant": "No plant assigned",
+      "logout": "Sign Out"
+    },
+    "roles": {
+      "operator": "Operator",
+      "supervisor": "Supervisor",
+      "quality_engineer": "Quality Engineer",
+      "process_engineer": "Process Engineer",
+      "maintenance_engineer": "Maintenance Engineer",
+      "inventory_engineer": "Inventory Engineer",
+      "admin": "MES Admin",
+      "plant_manager": "Plant Manager"
+},
+"rolesPage": {
+  "title": "Role Management",
+  "subtitle": "Define base permissions per role in the system",
+  "discard": "Discard",
+  "saveChanges": "Save Changes",
+  "saving": "Saving...",
+  "unsavedChanges": "Unsaved changes",
+  "allowed": "Allowed",
+  "noAccess": "No access",
+  "systemRole": "System role",
+  "activePermissions": "active permissions",
+  "permissionsFor": "Permissions",
+  "errorLoad": "Error loading roles.",
+  "errorSave": "Error saving permissions.",
+  "successSave": "Permissions saved successfully.",
+  "columns": {
+    "module": "Module",
+    "all": "All"
+  }
+},
+"warehouse": {
+  "bom": {
+    "partNumber": "Part Number", "search": "Search", "revision": "Revision",
+    "loadBom": "Load BOM", "noPartFound": "Part not found in Plex",
+    "noBomFound": "Empty BOM for this part", "errorFetching": "Error querying Plex",
+    "components": "components", "colPartNo": "Part", "colPartName": "Name",
+    "colQty": "Quantity", "colUnit": "Unit", "colNote": "Note", "colPath": "BOM Path"
+  },
+  "ctb": {
+    "partNumber": "Part Number", "search": "Search", "revision": "Revision",
+    "need": "Quantity to Build", "calculate": "Calculate CTB",
+    "noPartFound": "Part not found", "noBomFound": "Empty BOM",
+    "errorFetching": "Error querying Plex", "totalComponents": "Total Components",
+    "ready": "Ready", "notReady": "Missing", "needQty": "Need",
+    "ctbYes": "CLEAR TO BUILD", "ctbNo": "NOT CLEAR TO BUILD",
+    "colPartNo": "Part", "colPartName": "Name", "colNeed": "Need"
+  },
+  "demand": {
+    "customer": "Customer", "status": "Status", "refresh": "Refresh",
+    "releases": "releases", "errorFetching": "Error querying Plex",
+    "colPart": "Part", "colCustPart": "Cust Part", "colQtyReady": "Ready",
+    "colShipDate": "Ship Date", "colDueDate": "Due Date", "colRelQty": "Rel Qty",
+    "colShipped": "Shipped", "colBalance": "Balance", "colRelStatus": "Rel Status",
+    "colRelType": "Rel Type"
+  }
+}
+  
+}

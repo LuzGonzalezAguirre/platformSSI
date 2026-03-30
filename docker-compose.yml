@@ -1,0 +1,109 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mes_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mes_db
+      POSTGRES_USER: mes_user
+      POSTGRES_PASSWORD: mes_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mes_user -d mes_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mes_redis
+    restart: unless-stopped
+    command: redis-server --requirepass mes_redis_pass --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "mes_redis_pass", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.dev
+    container_name: mes_backend
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./apps/backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DATABASE_URL=postgresql://mes_user:mes_pass@db:5432/mes_db
+      - REDIS_URL=redis://:mes_redis_pass@redis:6379/0
+      - PLEX_PROXY_URL=http://host.docker.internal:8001
+      - PLEX_PROXY_SECRET=6f2c9cf194b3bb675401d0ad877a79caddcc6afbd724a8cf2f3b5cb9cad815de
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.dev
+    container_name: mes_celery_worker
+    restart: unless-stopped
+    command: celery -A config worker --loglevel=info --concurrency=4
+    volumes:
+      - ./apps/backend:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DATABASE_URL=postgresql://mes_user:mes_pass@db:5432/mes_db
+      - REDIS_URL=redis://:mes_redis_pass@redis:6379/0
+    depends_on:
+      - backend
+
+  celery_beat:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.dev
+    container_name: mes_celery_beat
+    restart: unless-stopped
+    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./apps/backend:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DATABASE_URL=postgresql://mes_user:mes_pass@db:5432/mes_db
+      - REDIS_URL=redis://:mes_redis_pass@redis:6379/0
+    depends_on:
+      - backend
+      - celery_worker
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile.dev
+    container_name: mes_frontend
+    restart: unless-stopped
+    volumes:
+      - ./apps/frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+
+volumes:
+  postgres_data:
+  redis_data:
