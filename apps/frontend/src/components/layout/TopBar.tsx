@@ -43,7 +43,7 @@ export default function TopBar({
   return (
     <header style={styles.topbar}>
       <div style={styles.left}>
-        <span style={styles.breadcrumb}>MES Industrial</span>
+        <span style={styles.breadcrumb}>SSI Platform</span>
       </div>
 
       <div style={styles.right}>
