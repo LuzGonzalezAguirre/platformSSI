@@ -11,9 +11,10 @@
 "warehouseDemand": "Demand"
   },
   "items": {
-    "productionDashboard": "Panel de Produccion",
-    "productionOrders": "Ordenes",
-    "productionEvents": "Eventos",
+    "productionOpsDaily": "Reporte Diario Ops",
+"productionTargets": "Configuración de Metas",
+"productionSafety": "Seguridad",
+"productionAssistance": "Asistencia",
     "qualityInspections": "Inspecciones",
     "qualityDefects": "Defectos",
     "maintenanceOrders": "Ordenes de Trabajo",

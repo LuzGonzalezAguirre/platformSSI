@@ -8,17 +8,48 @@ import RolesPage from "./modules/admin/RolesPage";
 import BomExplorerPage  from "./modules/warehouse/BomExplorerPage";
 import ClearToBuildPage from "./modules/warehouse/ClearToBuildPage";
 import DemandPage       from "./modules/warehouse/DemandPage";
+import TargetsPage from "./modules/production/targets/TargetsPage";
+import SafetyPage from "./modules/production/safety/SafetyPage";
+import AssistancePage from "./modules/production/assistance/AssistancePage";
+
+const now = new Date();
+const hour = now.getHours();
+
+const greeting =
+  hour < 12 ? "Buenos días" :
+  hour < 19 ? "Buenas tardes" :
+  "Buenas noches";
 
 function Dashboard() {
   const user = useAuthStore((s) => s.user);
+
   return (
-    <div>
-      <h2 style={{ color: "var(--color-text-primary)", marginBottom: "0.5rem" }}>
-        Bienvenido, {user?.full_name || user?.employee_id}
-      </h2>
-      <p style={{ color: "var(--color-text-secondary)" }}>
-        Rol: {user?.role_display} — Planta: {user?.plant || "Sin asignar"}
-      </p>
+    <div style={styles.container}>
+      {/* Logo de fondo */}
+      <img
+        src="/logoSSIclaro.png"
+        style={styles.logo} 
+        alt="logo"
+      />
+
+      {/* Contenido */}
+      <div style={styles.content}>
+        
+
+        <h1 style={styles.title}>
+  {greeting}{user?.full_name ? `, ${user.full_name}` : ""}
+</h1>
+
+<p style={styles.subtitle}>
+  {now.toLocaleString()}
+</p>
+        <p style={styles.subtitle}>
+          {user?.role_display || "Usuario"} ·{" "}
+          {user?.plant || "Sin planta asignada"}
+        </p>
+
+        
+      </div>
     </div>
   );
 }
@@ -33,8 +64,12 @@ function AppRoutes() {
     <AppShell>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/production" element={<div>Producción</div>} />
-        <Route path="/production/orders" element={<div>Órdenes de Producción</div>} />
+        <Route path="/production/ops-daily-report" element={<div>Ops Daily Report</div>} />
+        <Route path="/production/targets" element={<TargetsPage />} />
+        <Route path="/production/safety" element={<SafetyPage />} />
+
+        <Route path="/production/assistance" element={<AssistancePage />} />
+
         <Route path="/maintenance/orders" element={<div>Órdenes de Mantenimiento</div>} />
         <Route path="/settings/users" element={<UsersPage />} />        
         <Route path="/settings/roles" element={<RolesPage />} />
@@ -72,3 +107,46 @@ export default function App() {
     </BrowserRouter>
   );
 }
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    position: "relative",
+    padding: "2rem",
+    borderRadius: "16px",
+    overflow: "visible",
+    background: "var(--color-bg-primary)",
+  },
+
+  logo: {
+    position: "absolute",
+    left: "50%",
+    top: "50%", 
+    transform: "translate(-50%, 190px)", 
+    width: "60%",
+    opacity: 0.10,
+    pointerEvents: "none",
+  },
+
+  content: {
+    position: "relative",
+    zIndex: 1,
+  },
+
+  title: {
+    color: "var(--color-text-primary)",
+    fontSize: "1.8rem",
+    fontWeight: 600,
+    marginBottom: "0.3rem",
+  },
+
+  subtitle: {
+    color: "var(--color-text-secondary)",
+    fontSize: "1rem",
+    marginBottom: "0.5rem",
+  },
+
+  meta: {
+    color: "var(--color-text-secondary)",
+    fontSize: "0.85rem",
+    opacity: 0.7,
+  },
+};

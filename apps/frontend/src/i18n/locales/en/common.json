@@ -11,9 +11,10 @@
     "warehouseDemand": "Demand"
   },
   "items": {
-    "productionDashboard": "Production Dashboard",
-    "productionOrders": "Orders",
-    "productionEvents": "Events",
+    "productionOpsDaily": "Ops Daily Report",
+"productionTargets": "Targets Configuration",
+"productionSafety": "Safety",
+"productionAssistance": "Assistance",
     "qualityInspections": "Inspections",
     "qualityDefects": "Defects",
     "maintenanceOrders": "Work Orders",

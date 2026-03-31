@@ -13,35 +13,42 @@ const ADMIN_ROLES: UserRole[] = ["admin"];
 
 export const sidebarConfig: NavSection[] = [
   {
-    id: "production",
-    labelKey: "nav.sections.production",
-    icon: "Factory",
-    allowedRoles: ALL_ROLES,
-    order: 1,
-    items: [
-      {
-        id: "production.dashboard",
-        labelKey: "nav.items.productionDashboard",
-        path: "/production",
-        icon: "LayoutDashboard",
-        allowedRoles: ALL_ROLES,
-      },
-      {
-        id: "production.orders",
-        labelKey: "nav.items.productionOrders",
-        path: "/production/orders",
-        icon: "ClipboardList",
-        allowedRoles: ALL_ROLES,
-      },
-      {
-        id: "production.events",
-        labelKey: "nav.items.productionEvents",
-        path: "/production/events",
-        icon: "ActivitySquare",
-        allowedRoles: SUPERVISORY_ROLES,
-      },
-    ],
-  },
+  id: "production",
+  labelKey: "nav.sections.production",
+  icon: "Factory",
+  allowedRoles: ALL_ROLES,
+  order: 1,
+  items: [
+    {
+      id: "production.ops-daily-report",
+      labelKey: "nav.items.productionOpsDaily",
+      path: "/production/ops-daily-report",
+      icon: "ClipboardList",
+      allowedRoles: ALL_ROLES,
+    },
+    {
+      id: "production.targets",
+      labelKey: "nav.items.productionTargets",
+      path: "/production/targets",
+      icon: "Target",
+      allowedRoles: ALL_ROLES,
+    },
+    {
+      id: "production.safety",
+      labelKey: "nav.items.productionSafety",
+      path: "/production/safety",
+      icon: "ShieldAlert",
+      allowedRoles: ALL_ROLES,
+    },
+    {
+      id: "production.assistance",
+      labelKey: "nav.items.productionAssistance",
+      path: "/production/assistance",
+      icon: "HandHelping",
+      allowedRoles: ALL_ROLES,
+    },
+  ],
+},
   {
     id: "quality",
     labelKey: "nav.sections.quality",
