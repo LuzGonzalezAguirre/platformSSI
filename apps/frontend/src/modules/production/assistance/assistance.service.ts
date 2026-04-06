@@ -36,4 +36,15 @@ export const AssistanceService = {
 
   saveAttendance: (payload: AttendanceBulkPayload): Promise<{ saved: number }> =>
     apiClient.post(`${BASE}/attendance/`, payload).then((r: any) => r.data),
+
+  getEarnedHours: (date: string): Promise<{ date: string; earned_hours: string; notes: string; recorded_at: string } | null> =>
+    apiClient.get(`/production/earned-hours/`, { params: { date } })
+      .then((r: any) => Object.keys(r.data).length === 0 ? null : r.data)
+      .catch(() => null),
+
+  saveEarnedHours: (date: string, earned_hours: number, notes: string): Promise<any> =>
+    apiClient.post(`/production/earned-hours/`, { date, earned_hours, notes }).then((r: any) => r.data),
+
+  deleteEarnedHours: (date: string): Promise<void> =>
+    apiClient.delete(`/production/earned-hours/`, { params: { date } }).then(() => undefined),
 };

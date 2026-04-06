@@ -52,3 +52,19 @@ class AssistanceService:
     @staticmethod
     def bulk_save_attendance(records: list[dict], user) -> int:
         return AssistanceRepository.bulk_upsert_attendance(records, user)
+    
+    @staticmethod
+    def get_earned_hours(attendance_date: date):
+        return AssistanceRepository.get_earned_hours(attendance_date)
+    
+    @staticmethod
+    def save_earned_hours(attendance_date: date, earned_hours: float, notes: str, user):
+        return AssistanceRepository.upsert_earned_hours(attendance_date, earned_hours, notes, user)
+
+    @staticmethod
+    def delete_earned_hours(attendance_date: date) -> bool:
+        return AssistanceRepository.delete_earned_hours(attendance_date)
+
+    @staticmethod
+    def get_earned_hours_range(start: date, end: date) -> list:
+        return AssistanceRepository.get_earned_hours_range(start, end)

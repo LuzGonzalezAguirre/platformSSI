@@ -67,3 +67,24 @@ class AttendanceRecord(models.Model):
 
     def __str__(self):
         return f"{self.employee.name} — {self.date} ({self.status})"
+
+class EarnedHoursRecord(models.Model):
+    date        = models.DateField(unique=True, verbose_name="Fecha")
+    earned_hours = models.DecimalField(max_digits=7, decimal_places=1, default=0.0)
+    notes       = models.CharField(max_length=200, blank=True)
+    recorded_by = models.ForeignKey(
+        "identity.User",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="earned_hours_records",
+    )
+    recorded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table     = "production_earned_hours_record"
+        ordering     = ["-date"]
+        verbose_name = "Earned Hours Record"
+
+    def __str__(self):
+        return f"{self.date} — {self.earned_hours} hrs"
+    

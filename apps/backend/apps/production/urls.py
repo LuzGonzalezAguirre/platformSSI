@@ -6,8 +6,11 @@ from apps.production.views.safety_views import (
     SafetySettingsView, SafetyIncidentListCreateView, SafetyIncidentUpdateView,
 )
 from apps.production.views.assistance_views import (
-    PlantEmployeeListCreateView, PlantEmployeeDetailView, AttendanceView,
+    PlantEmployeeListCreateView, PlantEmployeeDetailView,
+    AttendanceView, EarnedHoursView,
 )
+from apps.production.views.ops_report_views import OpsDailySummaryView, OpsWeeklyTableView
+
 
 urlpatterns = [
     path("business-units/",              BusinessUnitListView.as_view()),
@@ -19,4 +22,9 @@ urlpatterns = [
     path("employees/",                   PlantEmployeeListCreateView.as_view()),
     path("employees/<int:pk>/",          PlantEmployeeDetailView.as_view()),
     path("attendance/",                  AttendanceView.as_view()),
+    path("ops/daily-summary/", OpsDailySummaryView.as_view()),
+    path("ops/weekly-table/", OpsWeeklyTableView.as_view()),
+    path("earned-hours/", EarnedHoursView.as_view()),
+
+
 ]

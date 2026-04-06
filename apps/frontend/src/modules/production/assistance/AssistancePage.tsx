@@ -10,7 +10,7 @@ import {
   SHIFT_LABELS, DEFAULT_HOURS,
 } from "./types";
 
-type Tab = "attendance" | "employees";
+type Tab = "attendance" | "employees"| "productivity";
 
 interface EditModal {
   open: boolean;
@@ -73,7 +73,7 @@ export default function AssistancePage() {
         selectedDate, turnoFilter || undefined,
       );
       setRecords(data);
-      setDraft(data.map((r) => ({ ...r })));
+      draft.map((r: AttendanceRecord) => ({ ...r }))
     } catch {
       setError(lang === "es" ? "Error cargando asistencia" : "Error loading attendance");
     } finally {
@@ -227,8 +227,65 @@ export default function AssistancePage() {
   const TABS = [
     { key: "attendance" as Tab, label: { es: "Asistencia", en: "Attendance" } },
     { key: "employees"  as Tab, label: { es: "Empleados",  en: "Employees"  } },
+    { key: "productivity" as Tab, label: { es: "Productividad", en: "Productivity" } },
   ];
+const [prodDate, setProdDate]           = useState(todayStr());
+const [earnedHours, setEarnedHours]     = useState<number>(0);
+const [earnedNotes, setEarnedNotes]     = useState<string>("");
+const [paidHoursRef, setPaidHoursRef]   = useState<number>(0);
+const [savedEarned, setSavedEarned]     = useState<any>(null);
+const [savingEH, setSavingEH]           = useState(false);
+const [ehMsg, setEhMsg]                 = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+const loadEarnedHours = useCallback(async (date: string) => {
+  try {
+    const [record, attRecords] = await Promise.all([
+      AssistanceService.getEarnedHours(date),
+      AssistanceService.getAttendance(date),
+    ]);
+    setSavedEarned(record);
+    setEarnedHours(record ? parseFloat(record.earned_hours) : 0);
+    setEarnedNotes(record?.notes ?? "");
+    const paid = attRecords.reduce(
+    (acc: number, r: AttendanceRecord) => acc + (parseFloat(r.hours) || 0),
+    0
+    );
+    setPaidHoursRef(paid);
+  } catch {
+    setSavedEarned(null);
+  }
+}, []);
+
+useEffect(() => {
+  if (activeTab === "productivity") loadEarnedHours(prodDate);
+}, [activeTab, prodDate, loadEarnedHours]);
+
+const handleSaveEarnedHours = async () => {
+  setSavingEH(true); setEhMsg(null);
+  try {
+    await AssistanceService.saveEarnedHours(prodDate, earnedHours, earnedNotes);
+    setEhMsg({ type: "success", text: lang === "es" ? "Guardado correctamente" : "Saved successfully" });
+    loadEarnedHours(prodDate);
+  } catch {
+    setEhMsg({ type: "error", text: lang === "es" ? "Error guardando" : "Error saving" });
+  } finally {
+    setSavingEH(false);
+  }
+};
+
+const handleDeleteEarnedHours = async () => {
+  try {
+    await AssistanceService.deleteEarnedHours(prodDate);
+    setEarnedHours(0); setEarnedNotes(""); setSavedEarned(null);
+    setEhMsg({ type: "success", text: lang === "es" ? "Registro eliminado" : "Record deleted" });
+  } catch {
+    setEhMsg({ type: "error", text: lang === "es" ? "Error eliminando" : "Error deleting" });
+  }
+};
+
+const productivityPct = paidHoursRef > 0 && earnedHours > 0
+  ? Math.min((earnedHours / paidHoursRef) * 100, 100)
+  : 0;
   return (
     <div style={s.page}>
       <div style={s.pageHeader}>
@@ -619,7 +676,7 @@ export default function AssistancePage() {
           )}
         </div>
       )}
-
+      
       {/* ── EDIT MODAL ── */}
       {editModal.open && (
         <div style={s.modalOverlay} onClick={() => setEditModal((p) => ({ ...p, open: false }))}>
@@ -693,6 +750,132 @@ export default function AssistancePage() {
           </div>
         </div>
       )}
+      {/* ── PRODUCTIVITY TAB ── */}
+{activeTab === "productivity" && (
+  <div style={s.section}>
+    <div style={s.attControls}>
+      <div style={s.controlGroup}>
+        <label style={s.fieldLabel}>{lang === "es" ? "Fecha:" : "Date:"}</label>
+        <input
+          type="date"
+          value={prodDate}
+          max={todayStr()}
+          onChange={(e) => {
+            setProdDate(e.target.value);
+            loadEarnedHours(e.target.value);
+          }}
+          style={s.dateInput}
+        />
+      </div>
+    </div>
+
+    {paidHoursRef > 0 ? (
+      <div style={s.msgBanner}>
+        {lang === "es" ? "Horas pagadas (asistencia):" : "Paid Hours (attendance):"}{" "}
+        <strong>{paidHoursRef.toFixed(1)} hrs</strong>
+      </div>
+    ) : (
+      <div style={{
+        ...s.readOnlyBanner,
+        color: "#f59e0b",
+        borderColor: "rgba(245,158,11,0.3)",
+        background: "rgba(245,158,11,0.08)",
+      }}>
+        {lang === "es"
+          ? "Sin asistencia guardada para esta fecha. Guarda asistencia primero."
+          : "No attendance saved for this date. Save attendance first."}
+      </div>
+    )}
+
+    <div style={s.addFormGrid}>
+      <div style={s.fieldGroup}>
+        <label style={s.fieldLabel}>
+          {lang === "es" ? "Horas Ganadas (turno 6AM → 6AM)" : "Earned Hours (6AM → 6AM shift)"}
+        </label>
+        <input
+          type="number"
+          min={0}
+          max={9999}
+          step={0.5}
+          value={earnedHours}
+          onChange={(e) => setEarnedHours(parseFloat(e.target.value) || 0)}
+          style={{ ...s.dateInput, width: "140px" }}
+        />
+      </div>
+      <div style={s.fieldGroup}>
+        <label style={s.fieldLabel}>
+          {lang === "es" ? "Notas (opcional)" : "Notes (optional)"}
+        </label>
+        <input
+          type="text"
+          value={earnedNotes}
+          onChange={(e) => setEarnedNotes(e.target.value)}
+          placeholder={lang === "es" ? "ej. paro de línea, capacitación..." : "e.g. downtime, training..."}
+          style={{ ...s.dateInput, minWidth: "260px" }}
+        />
+      </div>
+    </div>
+
+    {/* Resultado */}
+    {earnedHours > 0 && paidHoursRef > 0 && (
+      <div style={{
+        padding: "1.25rem",
+        borderRadius: "var(--radius-lg)",
+        border: `1px solid ${productivityPct >= 85 ? "rgba(16,185,129,0.3)" : productivityPct >= 70 ? "rgba(245,158,11,0.3)" : "rgba(239,68,68,0.3)"}`,
+        background: productivityPct >= 85 ? "rgba(16,185,129,0.05)" : productivityPct >= 70 ? "rgba(245,158,11,0.05)" : "rgba(239,68,68,0.05)",
+      }}>
+        <div style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", marginBottom: "0.5rem" }}>
+          {lang === "es" ? "Productividad" : "Productivity"}
+        </div>
+        <div style={{
+          fontSize: "2.5rem", fontWeight: 800,
+          color: productivityPct >= 85 ? "#10b981" : productivityPct >= 70 ? "#f59e0b" : "#ef4444",
+        }}>
+          {productivityPct.toFixed(1)}%
+        </div>
+        <div style={{ height: "8px", background: "var(--color-border)", borderRadius: "4px", margin: "0.75rem 0" }}>
+          <div style={{
+            height: "100%", width: `${productivityPct}%`, borderRadius: "4px",
+            background: productivityPct >= 85 ? "#10b981" : productivityPct >= 70 ? "#f59e0b" : "#ef4444",
+          }} />
+        </div>
+        <div style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
+          {earnedHours.toFixed(1)} {lang === "es" ? "hrs ganadas" : "earned hrs"} / {paidHoursRef.toFixed(1)} {lang === "es" ? "hrs pagadas" : "paid hrs"}
+        </div>
+      </div>
+    )}
+
+    {ehMsg && (
+      <div style={{
+        ...s.msgBanner,
+        background: ehMsg.type === "success" ? "rgba(16,185,129,0.08)" : "rgba(220,38,38,0.08)",
+        color:      ehMsg.type === "success" ? "#10b981" : "#ef4444",
+        border:     `1px solid ${ehMsg.type === "success" ? "rgba(16,185,129,0.2)" : "rgba(220,38,38,0.2)"}`,
+      }}>
+        {ehMsg.text}
+      </div>
+    )}
+
+    {savedEarned && (
+      <div style={{ fontSize: "0.75rem", color: "var(--color-text-tertiary)" }}>
+        {lang === "es" ? "Último guardado:" : "Last saved:"} {savedEarned.recorded_at}
+      </div>
+    )}
+
+    <div style={{ display: "flex", gap: "0.75rem" }}>
+      <button style={s.saveBtn} onClick={handleSaveEarnedHours} disabled={savingEH}>
+        {savingEH
+          ? (lang === "es" ? "Guardando..." : "Saving...")
+          : (lang === "es" ? "Guardar" : "Save")}
+      </button>
+      {savedEarned && (
+        <button style={s.cancelBtn} onClick={handleDeleteEarnedHours}>
+          {lang === "es" ? "Eliminar registro" : "Delete record"}
+        </button>
+      )}
+    </div>
+  </div>
+)}
     </div>
   );
 }

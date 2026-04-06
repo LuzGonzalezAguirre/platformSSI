@@ -11,6 +11,8 @@ import DemandPage       from "./modules/warehouse/DemandPage";
 import TargetsPage from "./modules/production/targets/TargetsPage";
 import SafetyPage from "./modules/production/safety/SafetyPage";
 import AssistancePage from "./modules/production/assistance/AssistancePage";
+import OpsReportPage from "./modules/production/ops-report/OpsReportPage";
+
 
 const now = new Date();
 const hour = now.getHours();
@@ -64,12 +66,10 @@ function AppRoutes() {
     <AppShell>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/production/ops-daily-report" element={<div>Ops Daily Report</div>} />
+        <Route path="/production/ops-daily-report" element={<OpsReportPage />} />
         <Route path="/production/targets" element={<TargetsPage />} />
         <Route path="/production/safety" element={<SafetyPage />} />
-
         <Route path="/production/assistance" element={<AssistancePage />} />
-
         <Route path="/maintenance/orders" element={<div>Órdenes de Mantenimiento</div>} />
         <Route path="/settings/users" element={<UsersPage />} />        
         <Route path="/settings/roles" element={<RolesPage />} />

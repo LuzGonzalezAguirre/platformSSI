@@ -1,6 +1,7 @@
 from datetime import date
 from django.db.models import QuerySet
 from apps.production.models import PlantEmployee, AttendanceRecord
+from apps.production.models import PlantEmployee, AttendanceRecord, EarnedHoursRecord
 
 
 class AssistanceRepository:
@@ -58,3 +59,38 @@ class AssistanceRepository:
             )
             count += 1
         return count
+    
+    @staticmethod
+    def get_earned_hours(date: date) -> "EarnedHoursRecord | None":
+        from apps.production.models import EarnedHoursRecord
+        try:
+            return EarnedHoursRecord.objects.get(date=date)
+        except EarnedHoursRecord.DoesNotExist:
+            return None
+
+    @staticmethod
+    def upsert_earned_hours(date: date, earned_hours: float, notes: str, user) -> "EarnedHoursRecord":
+        from apps.production.models import EarnedHoursRecord
+        obj, _ = EarnedHoursRecord.objects.update_or_create(
+            date=date,
+            defaults={
+                "earned_hours": earned_hours,
+                "notes":        notes,
+                "recorded_by":  user,
+            },
+        )
+        return obj
+    
+    @staticmethod
+    def delete_earned_hours(date: date) -> bool:
+        from apps.production.models import EarnedHoursRecord
+        deleted, _ = EarnedHoursRecord.objects.filter(date=date).delete()
+        return deleted > 0
+    
+    @staticmethod
+    def get_earned_hours_range(start: date, end: date) -> list:
+        from apps.production.models import EarnedHoursRecord
+        return list(
+            EarnedHoursRecord.objects.filter(date__gte=start, date__lte=end)
+            .values("date", "earned_hours", "notes")
+        )

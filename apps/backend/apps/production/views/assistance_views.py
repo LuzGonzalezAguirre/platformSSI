@@ -78,3 +78,38 @@ class AttendanceView(APIView):
             serializer.validated_data["records"], request.user
         )
         return Response({"saved": count})
+    
+class EarnedHoursView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        date_str = request.query_params.get("date")
+        try:
+            attendance_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return Response({"detail": "Param 'date' required (YYYY-MM-DD)."}, status=400)
+        record = AssistanceService.get_earned_hours(attendance_date)
+        if not record:
+            return Response({})
+        from apps.production.serializers.assistance import EarnedHoursSerializer
+        return Response(EarnedHoursSerializer(record).data)
+
+    def post(self, request):
+        from apps.production.serializers.assistance import EarnedHoursWriteSerializer
+        serializer = EarnedHoursWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+        record = AssistanceService.save_earned_hours(
+            d["date"], float(d["earned_hours"]), d.get("notes", ""), request.user
+        )
+        from apps.production.serializers.assistance import EarnedHoursSerializer
+        return Response(EarnedHoursSerializer(record).data)
+
+    def delete(self, request):
+        date_str = request.query_params.get("date")
+        try:
+            attendance_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return Response({"detail": "Param 'date' required."}, status=400)
+        AssistanceService.delete_earned_hours(attendance_date)
+        return Response(status=status.HTTP_204_NO_CONTENT)

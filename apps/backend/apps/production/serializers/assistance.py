@@ -50,3 +50,15 @@ class AttendanceBulkItemSerializer(serializers.Serializer):
 
 class AttendanceBulkSerializer(serializers.Serializer):
     records = AttendanceBulkItemSerializer(many=True)
+
+class EarnedHoursSerializer(serializers.Serializer):
+    date         = serializers.DateField(read_only=True)
+    earned_hours = serializers.DecimalField(max_digits=7, decimal_places=1, read_only=True)
+    notes        = serializers.CharField(read_only=True)
+    recorded_at  = serializers.DateTimeField(read_only=True)
+
+
+class EarnedHoursWriteSerializer(serializers.Serializer):
+    date         = serializers.DateField()
+    earned_hours = serializers.DecimalField(max_digits=7, decimal_places=1, min_value=0)
+    notes        = serializers.CharField(required=False, allow_blank=True, default="")
