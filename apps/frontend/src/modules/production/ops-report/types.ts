@@ -20,9 +20,12 @@ export interface TotalMetrics {
 export interface DailySummary {
   date: string;
   earned_labor_hours: number;
-  volvo: ClientMetrics;
+  volvo:   ClientMetrics;
   cummins: ClientMetrics;
-  total: TotalMetrics;
+  tulc:    ClientMetrics;
+  total: {
+    yield_pct: number;
+  };
 }
 
 export type ViewMode = "daily" | "weekly" | "monthly";
@@ -58,4 +61,21 @@ export interface WeeklyTable {
   bu: string;
   periods: TablePeriod[];
   totals: WeeklyTableTotals;
+}
+
+export interface OEERecord {
+  date: string;
+  availability_pct: string;
+  performance_pct: string;
+  quality_pct: string;
+  oee_pct: string;
+  recorded_at: string;
+}
+
+export interface OEEWritePayload {
+  date: string;
+  availability_pct: number;
+  performance_pct: number;
+  quality_pct: number;
+  oee_pct: number;
 }

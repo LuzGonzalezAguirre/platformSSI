@@ -75,3 +75,19 @@ class WeeklyWIPWriteSerializer(serializers.Serializer):
     saturday_goal    = serializers.IntegerField(min_value=0, required=False, allow_null=True)
     sunday_actual    = serializers.IntegerField(min_value=0, required=False, allow_null=True)
     sunday_goal      = serializers.IntegerField(min_value=0, required=False, allow_null=True)
+
+class OEERecordSerializer(serializers.Serializer):
+    date             = serializers.DateField(read_only=True)
+    availability_pct = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
+    performance_pct  = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
+    quality_pct      = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
+    oee_pct          = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
+    recorded_at      = serializers.DateTimeField(read_only=True)
+
+
+class OEERecordWriteSerializer(serializers.Serializer):
+    date             = serializers.DateField()
+    availability_pct = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100)
+    performance_pct  = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100)
+    quality_pct      = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100)
+    oee_pct          = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100)

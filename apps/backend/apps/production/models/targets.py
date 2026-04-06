@@ -96,3 +96,25 @@ class WeeklyWIP(models.Model):
 
     def __str__(self):
         return f"{self.business_unit.code} WIP — {self.week_start}"
+
+class OEERecord(models.Model):
+    date             = models.DateField(unique=True)
+    availability_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    performance_pct  = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    quality_pct      = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    oee_pct          = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    recorded_by      = models.ForeignKey(
+        "identity.User",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="oee_records",
+    )
+    recorded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table     = "production_oee_record"
+        ordering     = ["-date"]
+        verbose_name = "OEE Record"
+
+    def __str__(self):
+        return f"{self.date} — OEE {self.oee_pct}%"

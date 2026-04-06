@@ -1,6 +1,6 @@
 from django.urls import path
 from apps.production.views.targets_views import (
-    BusinessUnitListView, WeeklyTargetView, WeeklyWIPView,
+    BusinessUnitListView, WeeklyTargetView, WeeklyWIPView,OEERecordView,
 )
 from apps.production.views.safety_views import (
     SafetySettingsView, SafetyIncidentListCreateView, SafetyIncidentUpdateView,
@@ -25,6 +25,8 @@ urlpatterns = [
     path("ops/daily-summary/", OpsDailySummaryView.as_view()),
     path("ops/weekly-table/", OpsWeeklyTableView.as_view()),
     path("earned-hours/", EarnedHoursView.as_view()),
+    path("ops/oee/", OEERecordView.as_view()),
+
 
 
 ]

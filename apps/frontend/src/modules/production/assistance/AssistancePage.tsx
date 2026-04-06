@@ -80,6 +80,10 @@ export default function AssistancePage() {
       setLoadingAtt(false);
     }
   }, [selectedDate, turnoFilter, lang]);
+  
+  useEffect(() => {
+  setDraft(records.map((r) => ({ ...r })));
+}, [records]);
 
   const loadEmployees = useCallback(async () => {
     setLoadingEmp(true);

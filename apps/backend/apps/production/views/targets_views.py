@@ -67,3 +67,37 @@ class WeeklyWIPView(APIView):
             d["week_date"], d["bu_code"], d, request.user
         )
         return Response(WeeklyWIPSerializer(obj).data, status=status.HTTP_200_OK)
+    
+class OEERecordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        date_str = request.query_params.get("date")
+        try:
+            record_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return Response({"detail": "Param 'date' required (YYYY-MM-DD)."}, status=400)
+
+        from apps.production.services.targets_service import TargetsService
+        record = TargetsService.get_oee(record_date)
+        if not record:
+            return Response({})
+        from apps.production.serializers.targets import OEERecordSerializer
+        return Response(OEERecordSerializer(record).data)
+
+    def post(self, request):
+        from apps.production.serializers.targets import OEERecordWriteSerializer
+        from apps.production.services.targets_service import TargetsService
+        serializer = OEERecordWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+        record = TargetsService.save_oee(
+            d["date"],
+            float(d["availability_pct"]),
+            float(d["performance_pct"]),
+            float(d["quality_pct"]),
+            float(d["oee_pct"]),
+            request.user,
+        )
+        from apps.production.serializers.targets import OEERecordSerializer
+        return Response(OEERecordSerializer(record).data)

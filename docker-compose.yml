@@ -50,7 +50,7 @@ services:
       - DATABASE_URL=postgresql://mes_user:mes_pass@db:5432/mes_db
       - REDIS_URL=redis://:mes_redis_pass@redis:6379/0
       - PLEX_PROXY_URL=http://host.docker.internal:8001
-      - PLEX_PROXY_SECRET=6f2c9cf194b3bb675401d0ad877a79caddcc6afbd724a8cf2f3b5cb9cad815de
+      - PLEX_PROXY_SECRET=24f1eb38c7bef7cea886009fc5e799d745deca1f94ce42acbebe2a4fcb826f8d
     depends_on:
       db:
         condition: service_healthy

@@ -51,3 +51,12 @@ class TargetsService:
             payload[f"{day}_actual"] = data.get(f"{day}_actual", general_actual)
             payload[f"{day}_goal"]   = data.get(f"{day}_goal",   general_goal)
         return TargetsRepository.upsert_weekly_wip(week_date, bu, payload, user)
+    
+    @staticmethod
+    def get_oee(record_date: date):
+        return TargetsRepository.get_oee(record_date)
+
+    @staticmethod
+    def save_oee(record_date: date, availability: float, performance: float,
+                 quality: float, oee: float, user):
+        return TargetsRepository.upsert_oee(record_date, availability, performance, quality, oee, user)

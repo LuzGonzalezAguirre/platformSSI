@@ -90,7 +90,7 @@ class OpsReportService:
         scrap  = OpsReportService.get_scrap_cogp(report_date)
         yield_ = OpsReportService.get_yield_by_client(report_date)
         hours  = OpsReportService.get_earned_labor_hours(report_date)
-
+    
         def cogp_pct(scrap_cost: float, cogp_cost: float) -> float:
             return round((scrap_cost / cogp_cost * 100), 2) if cogp_cost > 0 else 0.0
 
@@ -99,41 +99,58 @@ class OpsReportService:
 
         volvo_target   = _get_day_target(report_date, "volvo")
         cummins_target = _get_day_target(report_date, "cummins")
-        volvo_wip      = _get_wip(report_date, "volvo")
-        cummins_wip    = _get_wip(report_date, "cummins")
+        tulc_target    = _get_day_target(report_date, "tulc")
+
+        volvo_wip   = _get_wip(report_date, "volvo")
+        cummins_wip = _get_wip(report_date, "cummins")
+        tulc_wip    = _get_wip(report_date, "tulc")
 
         volvo_cogp   = prod["volvo"]["cogp_cost"]
         cummins_cogp = prod["cummins"]["cogp_cost"]
-
+        tulc_cogp    = prod.get("tulc", {}).get("cogp_cost", 0.0)
+    
         volvo_qty   = prod["volvo"]["quantity"]
         cummins_qty = prod["cummins"]["quantity"]
-
+        tulc_qty    = prod.get("tulc", {}).get("quantity", 0)
+    
         return {
             "date":               str(report_date),
             "earned_labor_hours": hours.get("earned_labor_hours", 0.0),
             "volvo": {
-                "quantity":        volvo_qty,
-                "target":          volvo_target,
-                "production_pct":  production_pct(volvo_qty, volvo_target),
-                "cogp_cost":       volvo_cogp,
-                "scrap_qty":       scrap["volvo"]["scrap_qty"],
-                "scrap_cost":      scrap["volvo"]["scrap_cost"],
-                "scrap_cogp_pct":  cogp_pct(scrap["volvo"]["scrap_cost"], volvo_cogp),
-                "yield_pct":       yield_["volvo"]["yield_pct"],
-                "wip_actual":      volvo_wip["actual"],
-                "wip_goal":        volvo_wip["goal"],
+                "quantity":       volvo_qty,
+                "target":         volvo_target,
+                "production_pct": production_pct(volvo_qty, volvo_target),
+                "cogp_cost":      volvo_cogp,
+                "scrap_qty":      scrap["volvo"]["scrap_qty"],
+                "scrap_cost":     scrap["volvo"]["scrap_cost"],
+                "scrap_cogp_pct": cogp_pct(scrap["volvo"]["scrap_cost"], volvo_cogp),
+                "yield_pct":      yield_["volvo"]["yield_pct"],
+                "wip_actual":     volvo_wip["actual"],
+                "wip_goal":       volvo_wip["goal"],
             },
             "cummins": {
-                "quantity":        cummins_qty,
-                "target":          cummins_target,
-                "production_pct":  production_pct(cummins_qty, cummins_target),
-                "cogp_cost":       cummins_cogp,
-                "scrap_qty":       scrap["cummins"]["scrap_qty"],
-                "scrap_cost":      scrap["cummins"]["scrap_cost"],
-                "scrap_cogp_pct":  cogp_pct(scrap["cummins"]["scrap_cost"], cummins_cogp),
-                "yield_pct":       yield_["cummins"]["yield_pct"],
-                "wip_actual":      cummins_wip["actual"],
-                "wip_goal":        cummins_wip["goal"],
+                "quantity":       cummins_qty,
+                "target":         cummins_target,
+                "production_pct": production_pct(cummins_qty, cummins_target),
+                "cogp_cost":      cummins_cogp,
+                "scrap_qty":      scrap["cummins"]["scrap_qty"],
+                "scrap_cost":     scrap["cummins"]["scrap_cost"],
+                "scrap_cogp_pct": cogp_pct(scrap["cummins"]["scrap_cost"], cummins_cogp),
+                "yield_pct":      yield_["cummins"]["yield_pct"],
+                "wip_actual":     cummins_wip["actual"],
+                "wip_goal":       cummins_wip["goal"],
+            },
+            "tulc": {
+                "quantity":       tulc_qty,
+                "target":         tulc_target,
+                "production_pct": production_pct(tulc_qty, tulc_target),
+                "cogp_cost":      tulc_cogp,
+                "scrap_qty":      scrap.get("tulc", {}).get("scrap_qty",  0),
+                "scrap_cost":     scrap.get("tulc", {}).get("scrap_cost", 0.0),
+                "scrap_cogp_pct": cogp_pct(scrap.get("tulc", {}).get("scrap_cost", 0.0), tulc_cogp),
+                "yield_pct":      yield_.get("tulc", {}).get("yield_pct", 100.0),
+                "wip_actual":     tulc_wip["actual"],
+               "wip_goal":       tulc_wip["goal"],
             },
             "total": {
                 "yield_pct":  yield_["total"]["yield_pct"],
@@ -440,3 +457,5 @@ class OpsReportService:
     
         cache.set(cache_key, result, CACHE_TTL)
         return result
+
+    

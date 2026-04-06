@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from django.db.models import QuerySet
-from apps.production.models import BusinessUnit, WeeklyTarget, WeeklyWIP
+from apps.production.models import BusinessUnit, WeeklyTarget, WeeklyWIP, OEERecord
 
 
 def _get_week_start(d: date) -> date:
@@ -62,5 +62,29 @@ class TargetsRepository:
             week_start=week_start,
             business_unit=bu,
             defaults={**data, "updated_by": user},
+        )
+        return obj
+    
+    @staticmethod
+    def get_oee(date: "date") -> "OEERecord | None":
+        from apps.production.models import OEERecord
+        try:
+            return OEERecord.objects.get(date=date)
+        except OEERecord.DoesNotExist:
+            return None
+
+    @staticmethod
+    def upsert_oee(date: "date", availability: float, performance: float,
+                   quality: float, oee: float, user) -> "OEERecord":
+        from apps.production.models import OEERecord
+        obj, _ = OEERecord.objects.update_or_create(
+            date=date,
+            defaults={
+                "availability_pct": availability,
+                "performance_pct":  performance,
+                "quality_pct":      quality,
+                "oee_pct":          oee,
+                "recorded_by":      user,
+            },
         )
         return obj
