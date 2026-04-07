@@ -16,159 +16,233 @@ function statusColor(status: string): string {
   return Object.entries(STATUS_COLOR).find(([k]) => key.includes(k))?.[1] ?? "#6b7280";
 }
 
-interface TooltipInfo {
-  item: EquipmentGridItem;
-  x:    number;
-  y:    number;
-}
+// ─── Gráfica resumen por Equipment_Group ──────────────────────────────────────
+function GroupSummaryChart({ data, lang }: { data: EquipmentGridItem[]; lang: string }) {
+  const l = lang === "es";
 
-export default function EquipmentBubbleGrid({ data, lang }: Props) {
-  const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
+  const groupMap = new Map<string, { hours: number; count: number }>();
+  data.forEach((item) => {
+    const g = item.group || (l ? "Sin Grupo" : "No Group");
+    if (!groupMap.has(g)) groupMap.set(g, { hours: 0, count: 0 });
+    const acc = groupMap.get(g)!;
+    acc.hours += item.hours;
+    acc.count += item.count;
+  });
 
-  if (data.length === 0) return null;
-
-  const departments = [...new Set(data.map((d) => d.department))].sort();
-  const maxHours    = Math.max(...data.map((d) => d.hours), 1);
-
-  function radius(hours: number): number {
-    return 12 + (hours / maxHours) * 36;
-  }
+  const groups = [...groupMap.entries()].sort((a, b) => b[1].hours - a[1].hours);
+  const maxH   = Math.max(...groups.map(([, v]) => v.hours), 1);
+  const totalH = groups.reduce((s, [, v]) => s + v.hours, 0);
+  const PALETTE = ["#6366f1", "#f59e0b", "#10b981", "#3b82f6", "#ec4899", "#14b8a6", "#f97316", "#8b5cf6"];
 
   return (
-    <div style={card}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
-        <div style={sectionTitle}>
-          {lang === "es" ? "Equipos — Carga de Mantenimiento" : "Equipment — Maintenance Load"}
-        </div>
-        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-          {(["Completed", "In Progress", "Pending", "Open"] as const).map((label) => (
-            <div key={label} style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
-              <div style={{ width: 10, height: 10, borderRadius: "50%", background: statusColor(label) }} />
-              {label}
-            </div>
-          ))}
-          <div style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
-            · {lang === "es" ? "Tamaño = Horas" : "Size = Hours"}
-          </div>
-        </div>
+    <div style={{ marginBottom: "1.25rem", padding: "1rem", background: "var(--color-bg)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)" }}>
+      <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.875rem" }}>
+        {l ? "Resumen por Grupo de Equipo" : "Summary by Equipment Group"}
       </div>
 
-      <div style={{ position: "relative" }}>
-        {departments.map((dept) => {
-          const items = data.filter((d) => d.department === dept);
-          return (
-            <div key={dept} style={{ marginBottom: "1.25rem" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--color-text-secondary)", marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                {dept}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1.25rem", alignItems: "center" }}>
+        {/* Barras horizontales */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+          {groups.map(([group, val], idx) => {
+            const col    = PALETTE[idx % PALETTE.length];
+            const barPct = (val.hours / maxH) * 100;
+            const pct    = Math.round((val.hours / totalH) * 100);
+            return (
+              <div key={group} style={{ display: "grid", gridTemplateColumns: "150px 1fr 56px 34px", gap: "0.5rem", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: col, flexShrink: 0 }} />
+                  <span style={{ fontSize: "0.75rem", color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={group}>
+                    {group}
+                  </span>
+                </div>
+                <div style={{ position: "relative", height: 16, background: "var(--color-border)", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ position: "absolute", top: 0, left: 0, width: `${barPct}%`, height: "100%", background: col, opacity: 0.75, borderRadius: 3, transition: "width 0.4s ease" }} />
+                </div>
+                <div style={{ fontSize: "0.72rem", fontWeight: 700, color: col, textAlign: "right", whiteSpace: "nowrap" }}>
+                  {val.hours.toFixed(1)} h
+                </div>
+                <div style={{ fontSize: "0.68rem", color: "var(--color-text-secondary)", textAlign: "right" }}>
+                  {pct}%
+                </div>
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
-                {items.sort((a, b) => b.hours - a.hours).map((item) => {
-                  const r   = radius(item.hours);
-                  const col = statusColor(item.dominant_status);
-                  return (
-                    <div
-                      key={item.equipment_id}
-                      style={{
-                        width:           r * 2,
-                        height:          r * 2,
-                        borderRadius:    "50%",
-                        background:      `${col}22`,
-                        border:          `2px solid ${col}`,
-                        display:         "flex",
-                        alignItems:      "center",
-                        justifyContent:  "center",
-                        cursor:          "pointer",
-                        flexShrink:      0,
-                        position:        "relative",
-                        transition:      "transform 0.15s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "scale(1.1)";
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setTooltip({ item, x: rect.left, y: rect.top });
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "scale(1)";
-                        setTooltip(null);
-                      }}
-                    >
-                      <span style={{
-                        fontSize:   Math.max(7, r * 0.35),
-                        fontWeight: 700,
-                        color:      col,
-                        textAlign:  "center",
-                        lineHeight: 1.1,
-                        padding:    "0.1rem",
-                      }}>
-                        {item.equipment_id.length > 8 ? item.equipment_id.slice(0, 7) + "…" : item.equipment_id}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
 
-        {tooltip && (
-          <div style={{
-            position:      "fixed",
-            top:           tooltip.y - 8,
-            left:          tooltip.x + 8,
-            background:    "var(--color-surface)",
-            border:        "1px solid var(--color-border)",
-            borderRadius:  "var(--radius-md)",
-            padding:       "0.75rem 1rem",
-            fontSize:      "0.8125rem",
-            zIndex:        1000,
-            pointerEvents: "none",
-            boxShadow:     "0 4px 16px rgba(0,0,0,0.2)",
-            minWidth:      200,
-          }}>
-            <div style={{ fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "0.375rem" }}>
-              {tooltip.item.equipment_id}
-            </div>
-            <div style={{ color: "var(--color-text-secondary)", fontSize: "0.75rem", marginBottom: "0.5rem" }}>
-              {tooltip.item.description}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.25rem 0.75rem", fontSize: "0.75rem" }}>
-              <span style={{ color: "var(--color-text-secondary)" }}>Work Requests</span>
-              <span style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>{tooltip.item.count}</span>
-              <span style={{ color: "var(--color-text-secondary)" }}>Hours</span>
-              <span style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>{tooltip.item.hours.toFixed(2)}</span>
-              <span style={{ color: "var(--color-text-secondary)" }}>Group</span>
-              <span style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>{tooltip.item.group || "—"}</span>
-              <span style={{ color: "var(--color-text-secondary)" }}>Status</span>
-              <span style={{ fontWeight: 600, color: statusColor(tooltip.item.dominant_status) }}>
-                {tooltip.item.dominant_status}
-              </span>
-            </div>
-            {Object.entries(tooltip.item.statuses).length > 1 && (
-              <div style={{ marginTop: "0.5rem", borderTop: "1px solid var(--color-border)", paddingTop: "0.375rem" }}>
-                {Object.entries(tooltip.item.statuses).map(([st, cnt]) => (
-                  <div key={st} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "var(--color-text-secondary)" }}>
-                    <span>{st}</span>
-                    <span style={{ fontWeight: 600 }}>{cnt}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Mini donut */}
+        {(() => {
+          const size = 80; const cx = 40; const cy = 40; const r = 30; const stroke = 11;
+          const circ = 2 * Math.PI * r;
+          let off = 0;
+          const arcs = groups.map(([group, val], idx) => {
+            const dash = circ * (val.hours / totalH);
+            const arc  = { group, dash, off, col: PALETTE[idx % PALETTE.length] };
+            off += dash;
+            return arc;
+          });
+          return (
+            <svg width={size} height={size} style={{ flexShrink: 0 }}>
+              <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-border)" strokeWidth={stroke} />
+              {arcs.map((arc) => (
+                <circle key={arc.group} cx={cx} cy={cy} r={r} fill="none"
+                  stroke={arc.col} strokeWidth={stroke}
+                  strokeDasharray={`${arc.dash} ${circ - arc.dash}`}
+                  strokeDashoffset={-arc.off + circ * 0.25} />
+              ))}
+              <text x={cx} y={cy - 3} textAnchor="middle" fontSize={12} fontWeight="700" fill="var(--color-text-primary)">
+                {groups.length}
+              </text>
+              <text x={cx} y={cy + 9} textAnchor="middle" fontSize={7} fill="var(--color-text-secondary)">
+                {l ? "grupos" : "groups"}
+              </text>
+            </svg>
+          );
+        })()}
       </div>
     </div>
   );
 }
 
-const card: React.CSSProperties = {
-  background:   "var(--color-surface)",
-  border:       "1px solid var(--color-border)",
-  borderRadius: "var(--radius-lg)",
-  padding:      "1.25rem",
-};
-const sectionTitle: React.CSSProperties = {
-  fontSize:  "0.875rem",
-  fontWeight: 700,
-  color:     "var(--color-text-primary)",
-  margin:    0,
-};
+const card: React.CSSProperties         = { background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1.25rem" };
+const sectionTitle: React.CSSProperties = { fontSize: "0.875rem", fontWeight: 700, color: "var(--color-text-primary)" };
+
+export default function EquipmentBubbleGrid({ data, lang }: Props) {
+  const l = lang === "es";
+
+  // El primer grupo abierto por defecto, el resto colapsado
+  const buildInitialOpen = (groups: [string, EquipmentGridItem[]][]) => {
+    const init: Record<string, boolean> = {};
+    groups.forEach(([g], idx) => { init[g] = idx === 0; });
+    return init;
+  };
+
+  const groupMap = new Map<string, EquipmentGridItem[]>();
+  data.forEach((item) => {
+    const g = item.group || (l ? "Sin Grupo" : "No Group");
+    if (!groupMap.has(g)) groupMap.set(g, []);
+    groupMap.get(g)!.push(item);
+  });
+  const groups = [...groupMap.entries()].sort((a, b) => {
+    const ha = a[1].reduce((s, i) => s + i.hours, 0);
+    const hb = b[1].reduce((s, i) => s + i.hours, 0);
+    return hb - ha;
+  });
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => buildInitialOpen(groups));
+
+  if (data.length === 0) return null;
+
+  const maxHours = Math.max(...data.map((d) => d.hours), 1);
+  const maxCount = Math.max(...data.map((d) => d.count), 1);
+
+  function toggleGroup(group: string) {
+    setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
+  }
+
+  return (
+    <div style={card}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+        <div style={sectionTitle}>
+          {l ? "Equipos — Carga de Mantenimiento" : "Equipment — Maintenance Load"}
+        </div>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+          {(["Completed", "In Progress", "Pending", "Open"] as const).map((label) => (
+            <div key={label} style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.72rem", color: "var(--color-text-secondary)" }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: statusColor(label) }} />
+              {label}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Gráfica resumen — siempre visible */}
+      <GroupSummaryChart data={data} lang={l ? "es" : "en"} />
+
+      {/* Desplegables por Equipment_Group */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        {groups.map(([group, items]) => {
+          const sortedItems = [...items].sort((a, b) => b.hours - a.hours);
+          const groupHours  = sortedItems.reduce((s, i) => s + i.hours, 0);
+          const groupCount  = sortedItems.reduce((s, i) => s + i.count, 0);
+          const isOpen      = openGroups[group] ?? false;
+
+          return (
+            <div key={group} style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+              {/* Header del desplegable */}
+              <div
+                onClick={() => toggleGroup(group)}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.55rem 0.875rem", cursor: "pointer", background: isOpen ? "var(--color-border)" : "transparent", userSelect: "none", transition: "background 0.15s" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span style={{ fontSize: "0.78rem", color: "var(--color-text-secondary)" }}>
+                    {isOpen ? "▼" : "▶"}
+                  </span>
+                  <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-text-primary)" }}>
+                    {group}
+                  </span>
+                  <span style={{ fontSize: "0.7rem", background: "var(--color-border)", borderRadius: 10, padding: "0.05rem 0.45rem", color: "var(--color-text-secondary)", fontWeight: 600 }}>
+                    {sortedItems.length} {l ? "equipos" : "equip."}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "1rem", fontSize: "0.75rem" }}>
+                  <span style={{ fontWeight: 700, color: "#3b82f6" }}>{groupHours.toFixed(1)} h</span>
+                  <span style={{ fontWeight: 700, color: "#f59e0b" }}>{groupCount} WR</span>
+                </div>
+              </div>
+
+              {/* Contenido colapsable */}
+              {isOpen && (
+                <div style={{ padding: "0.75rem 0.875rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                  {sortedItems.map((item) => {
+                    const col         = statusColor(item.dominant_status);
+                    const barPctH     = (item.hours / maxHours) * 100;
+                    const barPctC     = (item.count / maxCount) * 100;
+                    const displayName = item.description || item.equipment_id;
+                    const labelShort  = displayName.length > 28 ? displayName.slice(0, 26) + "…" : displayName;
+
+                    return (
+                      <div key={item.equipment_id} style={{ display: "grid", gridTemplateColumns: "190px 1fr 56px 40px", gap: "0.5rem", alignItems: "center" }}>
+                        {/* Nombre — description arriba, ID abajo en gris */}
+                        <div title={`${displayName} (${item.equipment_id})`}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, overflow: "hidden" }}>
+                            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: col, flexShrink: 0 }} />
+                            <span style={{ fontSize: "0.775rem", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {labelShort}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "0.67rem", color: "var(--color-text-secondary)", paddingLeft: 13 }}>
+                            {item.equipment_id}
+                          </div>
+                        </div>
+
+                        {/* Barra doble: fondo = horas, franja = count */}
+                        <div style={{ position: "relative", height: 22, background: "var(--color-border)", borderRadius: 4, overflow: "hidden" }}>
+                          <div style={{ position: "absolute", top: 0, left: 0, width: `${barPctH}%`, height: "100%", background: `${col}33`, borderRadius: 4, transition: "width 0.4s ease" }} />
+                          <div style={{ position: "absolute", bottom: 0, left: 0, width: `${barPctC}%`, height: "6px", background: col, opacity: 0.85 }} />
+                        </div>
+
+                        <div style={{ fontSize: "0.775rem", fontWeight: 700, color: "#3b82f6", textAlign: "right", whiteSpace: "nowrap" }}>
+                          {item.hours.toFixed(1)} h
+                        </div>
+                        <div style={{ fontSize: "0.775rem", fontWeight: 700, color: col, textAlign: "right" }}>
+                          {item.count}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Leyenda pie */}
+      <div style={{ marginTop: "1rem", display: "flex", gap: "1.5rem", fontSize: "0.7rem", color: "var(--color-text-secondary)", borderTop: "1px solid var(--color-border)", paddingTop: "0.75rem" }}>
+        <span>█ {l ? "Barra fondo = Horas" : "Bar background = Hours"}</span>
+        <span>▬ {l ? "Franja inferior = Cant. WR" : "Bottom stripe = WR Count"}</span>
+      </div>
+    </div>
+  );
+}
