@@ -12,6 +12,10 @@ import TargetsPage from "./modules/production/targets/TargetsPage";
 import SafetyPage from "./modules/production/safety/SafetyPage";
 import AssistancePage from "./modules/production/assistance/AssistancePage";
 import OpsReportPage from "./modules/production/ops-report/OpsReportPage";
+import OverviewPage from "./modules/maintenance/overview/OverviewPage";
+ import WorkRequestsPage from "./modules/maintenance/work-requests/WorkRequestsPage";
+
+
 
 
 const now = new Date();
@@ -80,6 +84,11 @@ function AppRoutes() {
         <Route path="/warehouse/ctb"    element={<ClearToBuildPage />} />
         <Route path="/warehouse/demand" element={<DemandPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/maintenance/overview"    element={<OverviewPage />} />
+        <Route path="/maintenance/actions"     element={<div>Actions — próximamente</div>} /> 
+        <Route path="/maintenance/workcenter"  element={<div>Workcenter Detail — próximamente</div>} />
+        <Route path="/maintenance/work-requests" element={<WorkRequestsPage />} />
+
       </Routes>
     </AppShell>
   );

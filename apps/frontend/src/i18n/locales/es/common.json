@@ -27,7 +27,11 @@
     "adminPlant": "Planta",
     "warehouseBom": "BOM Explorer",
     "warehouseCtb": "Clear To Build",
-    "warehouseDemand": "Demand"
+    "warehouseDemand": "Demand",
+    "maintenanceOverview":   "Overview",
+    "maintenanceActions":    "Acciones",
+    "maintenanceWorkcenter": "Detalle Workcenter",
+    "maintenanceWorkRequests": "Work Requests"
   }
   },
   "common": {
