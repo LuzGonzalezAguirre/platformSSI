@@ -93,30 +93,9 @@ export const sidebarConfig: NavSection[] = [
   icon: "ClipboardList",
   allowedRoles: ALL_ROLES,
 },
-    {
-      id: "maintenance.orders",
-      labelKey: "nav.items.maintenanceOrders",
-      path: "/maintenance/orders",
-      icon: "ScrollText",
-      allowedRoles: ALL_ROLES,
-    },
-    {
-      id: "maintenance.actions",
-      labelKey: "nav.items.maintenanceActions",
-      path: "/maintenance/actions",
-      icon: "Zap",
-      allowedRoles: SUPERVISORY_ROLES,
-    },
-    {
-      id: "maintenance.workcenter",
-      labelKey: "nav.items.maintenanceWorkcenter",
-      path: "/maintenance/workcenter",
-      icon: "Cpu",
-      allowedRoles: SUPERVISORY_ROLES,
-    },
   ],
 },
-  {
+   {
     id: "warehouse",
     labelKey: "nav.sections.warehouse",
     icon: "Warehouse",
@@ -126,15 +105,8 @@ export const sidebarConfig: NavSection[] = [
       {
         id: "warehouse.bom",
         labelKey: "nav.items.warehouseBom",
-        path: "/warehouse/bom",
-        icon: "GitBranch",
-        allowedRoles: ALL_ROLES,
-      },
-      {
-        id: "warehouse.ctb",
-        labelKey: "nav.items.warehouseCtb",
         path: "/warehouse/ctb",
-        icon: "PackageSearch",
+        icon: "GitBranch",
         allowedRoles: ALL_ROLES,
       },
       {

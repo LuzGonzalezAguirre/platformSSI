@@ -34,6 +34,7 @@ services:
       timeout: 5s
       retries: 5
 
+
   backend:
     build:
       context: ./apps/backend
@@ -44,7 +45,7 @@ services:
     volumes:
       - ./apps/backend:/app
     ports:
-      - "8000:8000"
+      - "0.0.0.0:8000:8000"
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.development
       - DATABASE_URL=postgresql://mes_user:mes_pass@db:5432/mes_db
@@ -100,9 +101,9 @@ services:
       - ./apps/frontend:/app
       - /app/node_modules
     ports:
-      - "5173:5173"
+      - "0.0.0.0:5173:5173"
     environment:
-      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+      - VITE_API_BASE_URL=http://pac-kingdel06:8000/api/v1
 
 volumes:
   postgres_data:

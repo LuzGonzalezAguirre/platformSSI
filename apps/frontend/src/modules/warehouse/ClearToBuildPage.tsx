@@ -1,3 +1,4 @@
+// apps/frontend/src/modules/warehouse/ClearToBuildPage.tsx
 import { useState, useMemo } from "react";
 import * as Icons from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -18,10 +19,16 @@ function TreeCell({ row, isLastAtLevel }: { row: CtbRow; isLastAtLevel: boolean[
   const depth = row.level - 1;
   const color = lc(row.level);
 
+  // Extraer revisión BOM del string "43309.3 Rev:2"
+  const bomRev = row.part_no_rev.includes("Rev:")
+    ? row.part_no_rev.split("Rev:")[1]?.trim()
+    : "";
+  const isStale = row.is_active_revision === false;
+
   return (
     <div style={{ display: "flex", alignItems: "center", position: "relative", minHeight: "36px" }}>
       {/* Guías verticales de ancestros */}
-      {Array.from({ length: depth }).map((_, i) => (
+      {Array.from({ length: depth }).map((_, i) =>
         !isLastAtLevel[i] ? (
           <div key={i} style={{
             position: "absolute",
@@ -31,7 +38,7 @@ function TreeCell({ row, isLastAtLevel }: { row: CtbRow; isLastAtLevel: boolean[
             backgroundColor: "var(--color-border)",
           }} />
         ) : null
-      ))}
+      )}
 
       {/* Conector del nodo actual */}
       {depth > 0 && (
@@ -60,6 +67,7 @@ function TreeCell({ row, isLastAtLevel }: { row: CtbRow; isLastAtLevel: boolean[
         display: "flex", alignItems: "center", gap: "0.45rem",
         position: "relative", zIndex: 1,
       }}>
+        {/* Badge de nivel */}
         <span style={{
           minWidth: "20px", height: "20px", borderRadius: "4px",
           backgroundColor: color.bg, color: "#fff",
@@ -68,13 +76,40 @@ function TreeCell({ row, isLastAtLevel }: { row: CtbRow; isLastAtLevel: boolean[
         }}>
           {row.level}
         </span>
+
+        {/* Part No + Name + Note */}
         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.3 }}>
-          <span style={{ fontSize: "0.8rem", fontWeight: "600", fontFamily: "monospace", color: "var(--color-text-primary)" }}>
-            {row.part_no_rev}
-          </span>
-          <span style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)" }}>
-            {row.part_name}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.8rem", fontWeight: "600", fontFamily: "monospace", color: "var(--color-text-primary)" }}>
+              {row.part_no_rev}
+            </span>
+            {/* Badge REV▲ — revisión del BOM no es la activa */}
+            {isStale && (
+              <span
+                title={`BOM uses Rev ${bomRev}, active revision is Rev ${row.active_revision}`}
+                style={{
+                  display: "inline-flex", alignItems: "center",
+                  backgroundColor: "#fef3c7", color: "#92400e",
+                  border: "1px solid #fcd34d",
+                  borderRadius: "3px", fontSize: "0.6rem", fontWeight: "700",
+                  padding: "0px 4px", cursor: "help", letterSpacing: "0.02em",
+                }}
+              >
+                REV▲
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+            <span style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)" }}>
+              {row.part_name}
+            </span>
+            {/* Note inline — phantom, embedded, etc. */}
+            {row.note && (
+              <span style={{ fontSize: "0.68rem", color: "var(--color-text-secondary)", fontStyle: "italic" }}>
+                — {row.note}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -93,7 +128,6 @@ function buildIsLastAtLevel(rows: CtbRow[]): boolean[][] {
 export default function ClearToBuildPage() {
   const { t } = useTranslation();
 
-  // Filtros de búsqueda
   const [partNo, setPartNo]           = useState("");
   const [need, setNeed]               = useState(500);
   const [revisions, setRevisions]     = useState<PartRevision[]>([]);
@@ -103,7 +137,6 @@ export default function ClearToBuildPage() {
   const [loadingRevs, setLoadingRevs] = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
-  // Filtros de tabla
   const [filterLevel, setFilterLevel] = useState<number | null>(null);
   const [search, setSearch]           = useState("");
   const [ctbFilter, setCtbFilter]     = useState<"All" | "Yes" | "No">("All");
@@ -139,12 +172,13 @@ export default function ClearToBuildPage() {
     finally { setLoading(false); }
   };
 
-  const maxLevel     = useMemo(() => Math.max(0, ...rows.map((r) => r.level)), [rows]);
-  const uniqueParts  = useMemo(() => new Set(rows.map((r) => r.part_no_rev.split(" ")[0])).size, [rows]);
-  const readyCount   = rows.filter((r) => r.ctb === "Yes").length;
-  const notReady     = rows.filter((r) => r.ctb === "No").length;
-  const readyPct     = rows.length > 0 ? ((readyCount / rows.length) * 100).toFixed(1) : "0.0";
+  const maxLevel    = useMemo(() => Math.max(0, ...rows.map((r) => r.level)), [rows]);
+  const uniqueParts = useMemo(() => new Set(rows.map((r) => r.part_no_rev.split(" ")[0])).size, [rows]);
+  const readyCount  = rows.filter((r) => r.ctb === "Yes").length;
+  const notReady    = rows.filter((r) => r.ctb === "No").length;
+  const readyPct    = rows.length > 0 ? ((readyCount / rows.length) * 100).toFixed(1) : "0.0";
   const isFullyReady = notReady === 0 && rows.length > 0;
+  const staleCount  = useMemo(() => rows.filter((r) => r.is_active_revision === false).length, [rows]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
@@ -160,6 +194,7 @@ export default function ClearToBuildPage() {
 
   return (
     <div style={S.page}>
+
       {/* ── Filtros superiores ── */}
       <div style={S.filterBar}>
         <div style={S.fg}>
@@ -174,15 +209,19 @@ export default function ClearToBuildPage() {
             />
             <button style={S.btnPrimary} onClick={handleSearchRevisions} disabled={loadingRevs}>
               {loadingRevs ? <Icons.Loader2 size={14} /> : <Icons.Search size={14} />}
-              <span>Search</span>
+              <span>{t("warehouse.ctb.search")}</span>
             </button>
           </div>
         </div>
 
         <div style={S.fg}>
           <label style={S.fl}>{t("warehouse.ctb.need")}</label>
-          <input style={{ ...S.input, width: "90px" }} type="number" min={1}
-            value={need} onChange={(e) => setNeed(parseInt(e.target.value) || 1)} />
+          <input
+            style={{ ...S.input, width: "90px" }}
+            type="number" min={1}
+            value={need}
+            onChange={(e) => setNeed(parseInt(e.target.value) || 1)}
+          />
         </div>
 
         {revisions.length > 0 && (
@@ -247,6 +286,17 @@ export default function ClearToBuildPage() {
             </div>
           </div>
 
+          {/* Advertencia de revisiones stale */}
+          {staleCount > 0 && (
+            <div style={S.staleWarning}>
+              <Icons.AlertTriangle size={15} />
+              <span>
+                {staleCount} component{staleCount > 1 ? "s" : ""} in this BOM use a revision that is not the current active revision.
+                Check <strong>REV▲</strong> badges for details.
+              </span>
+            </div>
+          )}
+
           {/* ── Filtros de tabla ── */}
           <div style={S.tableFilters}>
             <div style={S.fg}>
@@ -263,10 +313,12 @@ export default function ClearToBuildPage() {
 
             <div style={S.fg}>
               <label style={S.fl}>Search</label>
-              <input style={{ ...S.input, minWidth: "260px" }}
+              <input
+                style={{ ...S.input, minWidth: "260px" }}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Part number or name..." />
+                placeholder="Part number or name..."
+              />
             </div>
 
             <div style={S.fg}>
@@ -274,10 +326,12 @@ export default function ClearToBuildPage() {
               <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", height: "36px" }}>
                 {(["All", "Yes", "No"] as const).map((opt) => (
                   <label key={opt} style={{ display: "flex", alignItems: "center", gap: "0.35rem", cursor: "pointer", fontSize: "0.875rem", color: "var(--color-text-primary)" }}>
-                    <input type="radio" name="ctbFilter" value={opt}
+                    <input
+                      type="radio" name="ctbFilter" value={opt}
                       checked={ctbFilter === opt}
                       onChange={() => setCtbFilter(opt)}
-                      style={{ accentColor: "var(--color-primary)" }} />
+                      style={{ accentColor: "var(--color-primary)" }}
+                    />
                     {opt}
                   </label>
                 ))}
@@ -296,9 +350,10 @@ export default function ClearToBuildPage() {
                 <thead>
                   <tr>
                     <th style={{ ...S.th, minWidth: "340px" }}>PART</th>
-                    <th style={{ ...S.th, textAlign: "right" }}>WH</th>
+                    <th style={{ ...S.th, textAlign: "right" }}>BOM QTY</th>
+                    <th style={{ ...S.th, textAlign: "right" }}>NEED</th>
                     <th style={{ ...S.th, textAlign: "right" }}>WIP</th>
-                    <th style={{ ...S.th, textAlign: "right" }}>INV</th>
+                    <th style={{ ...S.th, textAlign: "right" }}>WH</th>
                     <th style={{ ...S.th, textAlign: "right" }}>OH</th>
                     <th style={{ ...S.th, textAlign: "center" }}>CTB</th>
                   </tr>
@@ -310,23 +365,34 @@ export default function ClearToBuildPage() {
                         ? "rgba(220,38,38,0.03)"
                         : i % 2 === 0 ? "transparent" : "var(--color-bg)",
                     }}>
-                      
-
-                      {/* PART con árbol */}
+                      {/* PART — árbol jerárquico */}
                       <td style={{ ...S.td, padding: "0 1rem" }}>
                         <TreeCell row={row} isLastAtLevel={isLastAtLevelMap[i]} />
                       </td>
 
-                      {/* Datos numéricos */}
-                      <td style={{ ...S.td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                        {row.ohymv.toLocaleString()}
+                      {/* BOM Qty */}
+                      <td style={{ ...S.td, textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--color-text-secondary)" }}>
+                        {row.bom_qty % 1 === 0
+                          ? row.bom_qty.toLocaleString()
+                          : row.bom_qty.toFixed(4)}
                       </td>
+
+                      {/* Need — cantidad calculada para producir N unidades */}
+                      <td style={{ ...S.td, textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: "600" }}>
+                        {row.need.toLocaleString()}
+                      </td>
+
+                      {/* WIP */}
                       <td style={{ ...S.td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                         {row.wip.toLocaleString()}
                       </td>
+
+                      {/* WH */}
                       <td style={{ ...S.td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                         {row.inv.toLocaleString()}
                       </td>
+
+                      {/* OH total */}
                       <td style={{ ...S.td, textAlign: "right", fontWeight: "600", fontVariantNumeric: "tabular-nums" }}>
                         {row.ohnv.toLocaleString()}
                       </td>
@@ -365,8 +431,9 @@ const S: Record<string, React.CSSProperties> = {
   fl:           { fontSize: "0.75rem", fontWeight: "600", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" },
   input:        { padding: "0.5rem 0.75rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", fontSize: "0.875rem", color: "var(--color-text-primary)", backgroundColor: "var(--color-bg)" },
   select:       { padding: "0.5rem 0.75rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", fontSize: "0.875rem", color: "var(--color-text-primary)", backgroundColor: "var(--color-bg)" },
-  btnPrimary:   { display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.5rem 1rem", backgroundColor: "var(--color-primary)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "0.875rem", fontWeight: "600", whiteSpace: "nowrap" },
+  btnPrimary:   { display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.5rem 1rem", backgroundColor: "var(--color-primary)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "0.875rem", fontWeight: "600", whiteSpace: "nowrap" as const },
   errorMsg:     { padding: "0.75rem 1rem", borderRadius: "var(--radius-md)", backgroundColor: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "var(--color-stopped)", fontSize: "0.875rem" },
+  staleWarning: { display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.625rem 1rem", borderRadius: "var(--radius-md)", backgroundColor: "#fefce8", border: "1px solid #fcd34d", color: "#92400e", fontSize: "0.8rem" },
   kpiRow:       { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "1rem" },
   kpiCard:      { backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1rem 1.25rem" },
   kpiLabel:     { fontSize: "0.75rem", fontWeight: "600", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.25rem" },
@@ -375,7 +442,7 @@ const S: Record<string, React.CSSProperties> = {
   rowCount:     { fontSize: "0.8rem", color: "var(--color-text-secondary)", padding: "0.4rem 0.75rem", borderRadius: "var(--radius-md)", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)" },
   tableWrap:    { backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" },
   table:        { width: "100%", borderCollapse: "collapse", fontSize: "0.825rem" },
-  th:           { padding: "0.625rem 1rem", textAlign: "left", fontSize: "0.72rem", fontWeight: "700", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", backgroundColor: "var(--color-bg)", borderBottom: "2px solid var(--color-border)", whiteSpace: "nowrap" },
+  th:           { padding: "0.625rem 1rem", textAlign: "left", fontSize: "0.72rem", fontWeight: "700", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", backgroundColor: "var(--color-bg)", borderBottom: "2px solid var(--color-border)", whiteSpace: "nowrap" as const },
   td:           { padding: "0.45rem 1rem", color: "var(--color-text-primary)", borderBottom: "1px solid var(--color-border)" },
   ctbYes:       { display: "inline-flex", alignItems: "center", gap: "0.3rem", padding: "0.2rem 0.6rem", borderRadius: "999px", fontSize: "0.72rem", fontWeight: "700", backgroundColor: "rgba(22,163,74,0.1)", color: "var(--color-running)", border: "1px solid rgba(22,163,74,0.25)" },
   ctbNo:        { display: "inline-flex", alignItems: "center", gap: "0.3rem", padding: "0.2rem 0.6rem", borderRadius: "999px", fontSize: "0.72rem", fontWeight: "700", backgroundColor: "rgba(220,38,38,0.1)", color: "var(--color-stopped)", border: "1px solid rgba(220,38,38,0.25)" },
