@@ -5,7 +5,6 @@ import AppShell from "./components/layout/AppShell";
 import UsersPage from "./modules/admin/UsersPage";
 import ProfilePage from "./modules/profile/ProfilePage";
 import RolesPage from "./modules/admin/RolesPage";
-import BomExplorerPage  from "./modules/warehouse/BomExplorerPage";
 import ClearToBuildPage from "./modules/warehouse/ClearToBuildPage";
 import DemandPage       from "./modules/warehouse/DemandPage";
 import TargetsPage from "./modules/production/targets/TargetsPage";
@@ -80,7 +79,6 @@ function AppRoutes() {
         <Route path="/settings/plant" element={<div>Planta</div>} />
         <Route path="/profile" element={<ProfilePage />} />        
         <Route path="/settings" element={<div>Configuración</div>} />
-        <Route path="/warehouse/bom"    element={<BomExplorerPage />} />
         <Route path="/warehouse/ctb"    element={<ClearToBuildPage />} />
         <Route path="/warehouse/demand" element={<DemandPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

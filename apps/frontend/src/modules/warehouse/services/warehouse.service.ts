@@ -33,6 +33,8 @@ export interface CtbRow {
   ctb: "Yes" | "No";
   bom_path: string;
   note: string;
+  is_active_revision: boolean;
+  active_revision: string;
 }
 
 export interface DemandRow {
