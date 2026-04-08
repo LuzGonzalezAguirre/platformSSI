@@ -445,32 +445,7 @@ export default function ProfilePage() {
               </div>
               <div style={styles.divider} />
 
-              <div>
-                <div style={styles.sysLabel}>{t("profile.fields.permissions")}</div>
-                {permissionModules.length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
-                    {permissionModules.map(([module, actions]) => (
-                      <div key={module} style={styles.permRow}>
-                        <div style={styles.permModuleLabel}>
-                          <DynamicIcon name={MODULE_ICONS[module] || "Circle"} size={13} />
-                          <span>{t(`nav.sections.${module}`, { defaultValue: module })}</span>
-                        </div>
-                        <div style={styles.permActionsWrap}>
-                          {actions.map((action) => (
-                            <span key={action} style={styles.permBadge}>
-                              {t(`permissions.actions.${action}`, { defaultValue: action })}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <span style={{ color: "var(--color-text-secondary)", fontSize: "0.825rem" }}>
-                    {t("profile.noPermissions")}
-                  </span>
-                )}
-              </div>
+              
             </div>
           </Section>
         </div>

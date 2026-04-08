@@ -20,13 +20,21 @@ function TreeCell({ row, isLastAtLevel }: { row: CtbRow; isLastAtLevel: boolean[
   const color = lc(row.level);
 
   // Extraer revisión BOM del string "43309.3 Rev:2"
+  // Formato garantizado por el proxy: "<part_no> Rev:<revision>"
   const bomRev = row.part_no_rev.includes("Rev:")
-    ? row.part_no_rev.split("Rev:")[1]?.trim()
+    ? row.part_no_rev.split("Rev:")[1]?.trim() ?? ""
     : "";
-  const isStale = row.is_active_revision === false;
+
+  // Badge solo cuando la revisión del BOM difiere de la activa
+  // is_latest_revision = false  →  BOM apunta a una rev que no es la activa
+  const showRevBadge =
+    row.is_latest_revision === false &&
+    row.active_revision &&
+    row.active_revision !== bomRev;
 
   return (
     <div style={{ display: "flex", alignItems: "center", position: "relative", minHeight: "36px" }}>
+
       {/* Guías verticales de ancestros */}
       {Array.from({ length: depth }).map((_, i) =>
         !isLastAtLevel[i] ? (
@@ -77,45 +85,60 @@ function TreeCell({ row, isLastAtLevel }: { row: CtbRow; isLastAtLevel: boolean[
           {row.level}
         </span>
 
-        {/* Part No + Name + Note */}
+        {/* Part No + Name + Note + Rev badge */}
         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.3 }}>
+
+          {/* Línea 1: part_no_rev + badge de revisión */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "0.8rem", fontWeight: "600", fontFamily: "monospace", color: "var(--color-text-primary)" }}>
+            <span style={{
+              fontSize: "0.8rem", fontWeight: "600",
+              fontFamily: "monospace", color: "var(--color-text-primary)",
+            }}>
               {row.part_no_rev}
             </span>
-            {/* Badge REV▲ — revisión del BOM no es la activa */}
-            {isStale && (
+
+            {showRevBadge && (
               <span
-                title={`BOM uses Rev ${bomRev}, active revision is Rev ${row.active_revision}`}
+                title={`BOM references Rev ${bomRev} · Using active Rev ${row.active_revision}`}
                 style={{
                   display: "inline-flex", alignItems: "center",
-                  backgroundColor: "#fef3c7", color: "#92400e",
-                  border: "1px solid #fcd34d",
-                  borderRadius: "3px", fontSize: "0.6rem", fontWeight: "700",
-                  padding: "0px 4px", cursor: "help", letterSpacing: "0.02em",
+                  backgroundColor: "#eff6ff",
+                  color: "#1d4ed8",
+                  border: "1px solid #bfdbfe",
+                  borderRadius: "3px",
+                  fontSize: "0.6rem", fontWeight: "700",
+                  padding: "1px 5px",
+                  cursor: "help",
+                  letterSpacing: "0.02em",
+                  userSelect: "none",
                 }}
               >
-                REV▲
+                → Rev {row.active_revision}
               </span>
             )}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+
+          {/* Línea 2: part_name + note */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
             <span style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)" }}>
               {row.part_name}
             </span>
-            {/* Note inline — phantom, embedded, etc. */}
             {row.note && (
-              <span style={{ fontSize: "0.68rem", color: "var(--color-text-secondary)", fontStyle: "italic" }}>
+              <span style={{
+                fontSize: "0.68rem",
+                color: "var(--color-text-secondary)",
+                fontStyle: "italic",
+              }}>
                 — {row.note}
               </span>
             )}
           </div>
+
         </div>
       </div>
     </div>
   );
 }
-
 function buildIsLastAtLevel(rows: CtbRow[]): boolean[][] {
   return rows.map((row, i) => {
     const depth = row.level - 1;
@@ -178,7 +201,7 @@ export default function ClearToBuildPage() {
   const notReady    = rows.filter((r) => r.ctb === "No").length;
   const readyPct    = rows.length > 0 ? ((readyCount / rows.length) * 100).toFixed(1) : "0.0";
   const isFullyReady = notReady === 0 && rows.length > 0;
-  const staleCount  = useMemo(() => rows.filter((r) => r.is_active_revision === false).length, [rows]);
+  const staleCount  = useMemo(() => rows.filter((r) => r.is_latest_revision  === false).length, [rows]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
@@ -288,14 +311,14 @@ export default function ClearToBuildPage() {
 
           {/* Advertencia de revisiones stale */}
           {staleCount > 0 && (
-            <div style={S.staleWarning}>
-              <Icons.AlertTriangle size={15} />
-              <span>
-                {staleCount} component{staleCount > 1 ? "s" : ""} in this BOM use a revision that is not the current active revision.
-                Check <strong>REV▲</strong> badges for details.
-              </span>
-            </div>
-          )}
+  <div style={S.staleWarning}>
+    <Icons.AlertTriangle size={15} />
+    <span>
+      {staleCount} component{staleCount > 1 ? "s" : ""} in this BOM reference a revision
+      that differs from the current active revision. Check <strong>→ Rev</strong> badges for details.
+    </span>
+  </div>
+)}
 
           {/* ── Filtros de tabla ── */}
           <div style={S.tableFilters}>
