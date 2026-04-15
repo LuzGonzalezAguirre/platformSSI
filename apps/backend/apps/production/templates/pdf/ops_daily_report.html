@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 9pt; color: #1e293b; background: #fff; }
+
+  .page { padding: 18mm 14mm; }
+
+  /* HEADER */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 14px; }
+  .header-title { font-size: 16pt; font-weight: 700; color: #0f172a; }
+  .header-sub   { font-size: 9pt; color: #64748b; margin-top: 2px; }
+  .header-date  { font-size: 10pt; font-weight: 600; color: #0f172a; text-align: right; }
+
+  /* SAFETY + KPI ROW */
+  .kpi-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .kpi-card { flex: 1; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; }
+  .kpi-label { font-size: 7.5pt; color: #64748b; margin-bottom: 3px; }
+  .kpi-value { font-size: 14pt; font-weight: 700; color: #0f172a; }
+  .kpi-sub   { font-size: 7pt; color: #94a3b8; margin-top: 2px; }
+  .kpi-safety { background: #f0fdf4; border-color: #86efac; }
+  .kpi-safety .kpi-value { color: #16a34a; }
+
+  /* CLIENTS SUMMARY ROW */
+  .clients-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .client-card { flex: 1; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; }
+  .client-title { font-size: 8pt; font-weight: 700; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; margin-bottom: 6px; }
+  .client-kpi-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .client-kpi-lbl { font-size: 7pt; color: #64748b; }
+  .client-kpi-val { font-size: 7pt; font-weight: 600; color: #0f172a; }
+
+  /* BU SECTION */
+  .bu-section { margin-bottom: 18px; page-break-inside: avoid; }
+  .bu-title { font-size: 11pt; font-weight: 700; color: #0f172a; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 7.5pt; }
+  th { background: #f1f5f9; color: #475569; font-weight: 600; padding: 4px 6px; text-align: center; border: 1px solid #e2e8f0; }
+  td { padding: 3px 6px; text-align: center; border: 1px solid #f1f5f9; color: #1e293b; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .td-total { font-weight: 700; background: #f1f5f9 !important; border-top: 1.5px solid #cbd5e1; }
+  .td-label { text-align: left; font-weight: 600; }
+
+  /* CHARTS GRID */
+  .charts-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+  .chart-wrap { flex: 1; min-width: 200px; }
+  .chart-title { font-size: 7.5pt; font-weight: 600; color: #475569; margin-bottom: 4px; }
+  svg text { font-family: Arial, sans-serif; }
+
+  /* FOOTER */
+  .footer { margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 6px; font-size: 7pt; color: #94a3b8; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="header-title">Reporte Diario Ops</div>
+      <div class="header-sub">Out Tijuana</div>
+    </div>
+    <div class="header-date">{{ report_date }}</div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi-card kpi-safety">
+      <div class="kpi-label">Días sin accidentes</div>
+      <div class="kpi-value">{{ safety_days }}</div>
+      <div class="kpi-sub">Sin incidentes / accidentes</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Yield General</div>
+      <div class="kpi-value">{{ summary.total.yield_pct|floatformat:1 }}%</div>
+      <div class="kpi-sub">Target ≥ 98%</div>
+    </div>
+  </div>
+
+  <!-- CLIENTS SUMMARY -->
+  <div class="clients-row">
+    {% for c in clients %}
+    <div class="client-card">
+      <div class="client-title">{{ c.label }}</div>
+      <div class="client-kpi-row">
+        <span class="client-kpi-lbl">Producción</span>
+        <span class="client-kpi-val">{{ c.data.quantity }}</span>
+      </div>
+      <div class="client-kpi-row">
+        <span class="client-kpi-lbl">Target</span>
+        <span class="client-kpi-val">{{ c.data.target }}</span>
+      </div>
+      <div class="client-kpi-row">
+        <span class="client-kpi-lbl">%</span>
+        <span class="client-kpi-val">{{ c.data.production_pct|floatformat:1 }}%</span>
+      </div>
+      <div class="client-kpi-row">
+        <span class="client-kpi-lbl">Yield</span>
+        <span class="client-kpi-val">{{ c.data.yield_pct|floatformat:1 }}%</span>
+      </div>
+      <div class="client-kpi-row">
+        <span class="client-kpi-lbl">WIP Goal</span>
+        <span class="client-kpi-val">{{ c.data.wip_goal }}</span>
+      </div>
+      <div class="client-kpi-row">
+        <span class="client-kpi-lbl">WIP Actual</span>
+        <span class="client-kpi-val">{{ c.data.wip_actual }}</span>
+      </div>
+      <div class="client-kpi-row">
+        <span class="client-kpi-lbl">Scrap COGP%</span>
+        <span class="client-kpi-val">{{ c.data.scrap_cogp_pct|floatformat:2 }}%</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- PER BU SECTION -->
+  {% for c in clients %}
+  <div class="bu-section">
+    <div class="bu-title">{{ c.label }}</div>
+
+    <!-- TABLE -->
+    <table>
+      <thead>
+        <tr>
+          <th>Período</th><th>Fecha</th><th>Producido</th><th>Target</th>
+          <th>%</th><th>Prod. Acum.</th><th>Target Acum.</th><th>% Acum.</th>
+          <th>Scrap COGP%</th><th>Scrap Acum%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in c.periods %}
+        <tr>
+          <td class="td-label">{{ p.label_es }}</td>
+          <td>{{ p.date_str }}</td>
+          <td>{% if p.has_data %}{{ p.produced }}{% else %}—{% endif %}</td>
+          <td>{{ p.target }}</td>
+          <td>{% if p.day_pct is not None %}{{ p.day_pct|floatformat:1 }}%{% else %}—{% endif %}</td>
+          <td>{% if p.cum_produced is not None %}{{ p.cum_produced }}{% else %}—{% endif %}</td>
+          <td>{% if p.cum_target is not None %}{{ p.cum_target }}{% else %}—{% endif %}</td>
+          <td>{% if p.cum_pct is not None %}{{ p.cum_pct|floatformat:1 }}%{% else %}—{% endif %}</td>
+          <td>{% if p.scrap_cogp_daily is not None %}{{ p.scrap_cogp_daily|floatformat:2 }}%{% else %}—{% endif %}</td>
+          <td>{% if p.scrap_cogp_cum is not None %}{{ p.scrap_cogp_cum|floatformat:2 }}%{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td class="td-total td-label" colspan="2">Total</td>
+          <td class="td-total">{{ c.totals.produced }}</td>
+          <td class="td-total">{{ c.totals.target }}</td>
+          <td class="td-total">{{ c.totals.pct|floatformat:1 }}%</td>
+          <td class="td-total" colspan="5"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- CHARTS -->
+    <div class="charts-grid">
+  <div class="chart-wrap">
+    <div class="chart-title">Producción vs Target</div>
+    {{ c.charts.svg_prod_target|safe }}
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">WIP Actual vs Goal</div>
+    {{ c.charts.svg_wip|safe }}
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">Producido Acumulado vs Goal</div>
+    {{ c.charts.svg_cum|safe }}
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">Scrap COGP% Acumulado</div>
+    {{ c.charts.svg_scrap|safe }}
+  </div>
+</div>
+  </div>
+  {% endfor %}
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>platformSSI · Out Tijuana</span>
+    <span>Generado: {{ report_date }}</span>
+  </div>
+
+</div>
+</body>
+</html>

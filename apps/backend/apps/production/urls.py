@@ -10,7 +10,8 @@ from apps.production.views.assistance_views import (
     AttendanceView, EarnedHoursView,
 )
 from apps.production.views.ops_report_views import OpsDailySummaryView, OpsWeeklyTableView
-
+from apps.production.views.ops_report_views import OpsDailyExportView
+from apps.production.views.ops_report_views import OpsDailyPDFExportView
 
 urlpatterns = [
     path("business-units/",              BusinessUnitListView.as_view()),
@@ -26,6 +27,8 @@ urlpatterns = [
     path("ops/weekly-table/", OpsWeeklyTableView.as_view()),
     path("earned-hours/", EarnedHoursView.as_view()),
     path("ops/oee/", OEERecordView.as_view()),
+    path("ops/export/daily/", OpsDailyExportView.as_view()),
+    path("ops/export/pdf/", OpsDailyPDFExportView.as_view()),
 
 
 

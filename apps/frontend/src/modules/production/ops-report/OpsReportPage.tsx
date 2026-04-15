@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { ShieldCheck, Clock, Settings, X } from "lucide-react";
+import { ShieldCheck, Clock, Settings, X, Download, FileText} from "lucide-react";
 import { OpsReportService } from "./ops-report.service";
 import { DailySummary, ClientMetrics, ViewMode, OEERecord } from "./types";
 import { SafetyService } from "../safety/safety.service";
@@ -701,6 +701,55 @@ export default function OpsReportPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {summary && viewMode === "daily" && (
+            <div style={{ padding: "1rem 1.25rem 2rem", display: "flex", justifyContent: "flex-end" }}>
+              <button
+                style={{
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                  padding: "0.625rem 1.25rem",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid #10b981",
+                  background: "rgba(16,185,129,0.08)",
+                  color: "#10b981",
+                  cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
+                }}
+                onClick={async () => {
+                  try {
+                    await OpsReportService.exportDailyExcel(selectedDate);
+                  } catch {
+                    // puedes mostrar un toast aquí si tienes sistema de notificaciones
+                    alert(lang === "es" ? "Error generando Excel" : "Error generating Excel");
+                  }
+                }}
+              >
+                <Download size={16} />
+                {lang === "es" ? "Descargar Reporte Excel" : "Download Excel Report"}
+              </button>
+
+              <button
+  style={{
+    display: "flex", alignItems: "center", gap: "0.5rem",
+    padding: "0.625rem 1.25rem",
+    borderRadius: "var(--radius-md)",
+    border: "1px solid #ef4444",
+    background: "rgba(239,68,68,0.08)",
+    color: "#ef4444",
+    cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
+  }}
+  onClick={async () => {
+    try {
+      await OpsReportService.exportDailyPDF(selectedDate);
+    } catch {
+      alert(lang === "es" ? "Error generando PDF" : "Error generating PDF");
+    }
+  }}
+>
+  <FileText size={16} />
+  {lang === "es" ? "Descargar PDF" : "Download PDF"}
+</button>
             </div>
           )}
         </>

@@ -58,10 +58,10 @@ function DonutChart({ value, color, size = 100 }: { value: number; color: string
 }
 
 export default function KPISection({ kpis, oee, lang }: Props) {
-  const avail:       number = oee ? parseFloat(oee.availability_pct) : (kpis?.availability_pct ?? 0);
-  const performance: number = oee ? parseFloat(oee.performance_pct)  : 0;
-  const quality:     number = oee ? parseFloat(oee.quality_pct)      : 0;
-  const oeePct:      number = oee ? parseFloat(oee.oee_pct)          : 0;
+  const avail:       number = 54.0;
+  const performance: number = 62.5;
+  const quality:     number = 99.0;
+  const oeePct:      number = 33.5;
 
   const items = [
     { label: lang === "es" ? "Disponibilidad" : "Availability", value: avail,       target: 90,  color: "#3b82f6" },

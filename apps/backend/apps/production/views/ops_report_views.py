@@ -3,7 +3,51 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.production.services.ops_report_service import OpsReportService
+from django.http import HttpResponse
+from apps.production.services.ops_export_service import generate_daily_excel
+from apps.production.services.ops_pdf_service import generate_daily_pdf
 
+class OpsDailyPDFExportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        date_str = request.query_params.get("date")
+        try:
+            report_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return Response({"detail": "Param 'date' required (YYYY-MM-DD)."}, status=400)
+        try:
+            pdf_bytes = generate_daily_pdf(report_date)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=502)
+
+        filename = f"ops_daily_{report_date}.pdf"
+        response = HttpResponse(pdf_bytes.read(), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+class OpsDailyExportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        date_str = request.query_params.get("date")
+        try:
+            report_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return Response({"detail": "Param 'date' required (YYYY-MM-DD)."}, status=400)
+
+        try:
+            excel_bytes = generate_daily_excel(report_date)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=502)
+
+        filename = f"ops_daily_{report_date}.xlsx"
+        response = HttpResponse(
+            excel_bytes.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
 class OpsDailySummaryView(APIView):
     permission_classes = [IsAuthenticated]
