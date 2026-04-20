@@ -61,30 +61,8 @@ class OEETrendView(APIView):
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
 
-        from apps.production.models import OEERecord
-
-        start_date = datetime.strptime(start, "%Y-%m-%d").date()
-        end_date   = datetime.strptime(end,   "%Y-%m-%d").date()
-
-        rows = (
-            OEERecord.objects
-            .filter(date__gte=start_date, date__lt=end_date)
-            .order_by("date")
-            .values("date", "oee_pct", "availability_pct", "performance_pct", "quality_pct")
-        )
-
-        data = [
-            {
-                "date":             r["date"].strftime("%Y-%m-%d"),
-                "oee_pct":          round(float(r["oee_pct"] or 0), 2),
-                "availability_pct": round(float(r["availability_pct"] or 0), 2),
-                "performance_pct":  round(float(r["performance_pct"] or 0), 2),
-                "quality_pct":      round(float(r["quality_pct"] or 0), 2),
-            }
-            for r in rows
-        ]
+        data = MaintenanceService.get_oee_trend_live(start, end)
         return Response({"data": data})
-
 
 class DowntimeByMonthView(APIView):
     permission_classes = [IsAuthenticated]
@@ -95,4 +73,18 @@ class DowntimeByMonthView(APIView):
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
         data = MaintenanceService.get_downtime_by_month(start, end)
+        return Response(data)
+    
+class OEELiveView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            start, end = _parse_dates(request)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=400)
+
+        data = MaintenanceService.get_oee_live(start, end)
+        if data is None:
+            return Response({})
         return Response(data)

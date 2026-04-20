@@ -15,6 +15,7 @@ urlpatterns = [
     path(f"{API_V1}warehouse/", include("apps.warehouse.urls")),
     path(f"{API_V1}production/", include("apps.production.urls")),
     path(f"{API_V1}maintenance/", include("apps.maintenance.urls")),
+    path(f"{API_V1}quality/", include("apps.quality.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:

@@ -68,3 +68,53 @@ class MaintenanceService:
         })
         cache.set(key, result, CACHE_TTL)
         return result
+    
+    @staticmethod
+    def get_oee_live(start_date: str, end_date: str) -> dict | None:
+        key    = f"maint:oee_live:{start_date}:{end_date}"
+        cached = cache.get(key)
+        if cached:
+            return cached
+        result = _post("/oee-live", {"start_date": start_date, "end_date": end_date}, timeout=60)
+        data   = result.get("data")
+        if data:
+            cache.set(key, data, CACHE_TTL)
+        return data
+
+    @staticmethod
+    def get_oee_trend_live(start_date: str, end_date: str) -> list:
+        from datetime import date, timedelta
+
+        key    = f"maint:oee_trend_live:{start_date}:{end_date}"
+        cached = cache.get(key)
+        if cached:
+            return cached
+
+        start = date.fromisoformat(start_date)
+        end   = date.fromisoformat(end_date)
+        days  = (end - start).days + 1
+
+        if days > 365:
+            start = end - timedelta(days=364)
+    
+        result  = []
+        current = start
+        while current <= end:
+            date_str = current.strftime("%Y-%m-%d")
+            try:
+                resp = _post("/oee-live", {"start_date": date_str, "end_date": date_str}, timeout=60)
+                data = resp.get("data")
+                if data and data.get("oee_pct", 0) > 0:
+                    result.append({
+                        "date":             date_str,
+                        "oee_pct":          round(data["oee_pct"], 2),
+                        "availability_pct": round(data["availability_pct"], 2),
+                        "performance_pct":  round(data["performance_pct"], 2),
+                        "quality_pct":      round(data["quality_pct"], 2),
+                    })
+            except Exception:
+                pass
+            current += timedelta(days=1)
+    
+        cache.set(key, result, 3600)
+        return result

@@ -9,7 +9,13 @@ from apps.production.services.ops_pdf_service import generate_daily_pdf
 
 class OpsDailyPDFExportView(APIView):
     permission_classes = [IsAuthenticated]
-
+    def get(self, request):
+        if HTML is None:
+            return Response(
+                {"detail": "PDF export no disponible en este entorno."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+        
     def get(self, request):
         date_str = request.query_params.get("date")
         try:

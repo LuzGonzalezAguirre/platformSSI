@@ -16,7 +16,6 @@ function statusColor(status: string): string {
   return Object.entries(STATUS_COLOR).find(([k]) => key.includes(k))?.[1] ?? "#6b7280";
 }
 
-// ─── Gráfica resumen por Equipment_Group ──────────────────────────────────────
 function GroupSummaryChart({ data, lang }: { data: EquipmentGridItem[]; lang: string }) {
   const l = lang === "es";
 
@@ -32,16 +31,14 @@ function GroupSummaryChart({ data, lang }: { data: EquipmentGridItem[]; lang: st
   const groups = [...groupMap.entries()].sort((a, b) => b[1].hours - a[1].hours);
   const maxH   = Math.max(...groups.map(([, v]) => v.hours), 1);
   const totalH = groups.reduce((s, [, v]) => s + v.hours, 0);
-  const PALETTE = ["#6366f1", "#f59e0b", "#10b981", "#3b82f6", "#ec4899", "#14b8a6", "#f97316", "#8b5cf6"];
+  const PALETTE = ["#6366f1","#f59e0b","#10b981","#3b82f6","#ec4899","#14b8a6","#f97316","#8b5cf6"];
 
   return (
     <div style={{ marginBottom: "1.25rem", padding: "1rem", background: "var(--color-bg)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)" }}>
       <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.875rem" }}>
         {l ? "Resumen por Grupo de Equipo" : "Summary by Equipment Group"}
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1.25rem", alignItems: "center" }}>
-        {/* Barras horizontales */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
           {groups.map(([group, val], idx) => {
             const col    = PALETTE[idx % PALETTE.length];
@@ -68,8 +65,6 @@ function GroupSummaryChart({ data, lang }: { data: EquipmentGridItem[]; lang: st
             );
           })}
         </div>
-
-        {/* Mini donut */}
         {(() => {
           const size = 80; const cx = 40; const cy = 40; const r = 30; const stroke = 11;
           const circ = 2 * Math.PI * r;
@@ -80,23 +75,7 @@ function GroupSummaryChart({ data, lang }: { data: EquipmentGridItem[]; lang: st
             off += dash;
             return arc;
           });
-          return (
-            <svg width={size} height={size} style={{ flexShrink: 0 }}>
-              <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-border)" strokeWidth={stroke} />
-              {arcs.map((arc) => (
-                <circle key={arc.group} cx={cx} cy={cy} r={r} fill="none"
-                  stroke={arc.col} strokeWidth={stroke}
-                  strokeDasharray={`${arc.dash} ${circ - arc.dash}`}
-                  strokeDashoffset={-arc.off + circ * 0.25} />
-              ))}
-              <text x={cx} y={cy - 3} textAnchor="middle" fontSize={12} fontWeight="700" fill="var(--color-text-primary)">
-                {groups.length}
-              </text>
-              <text x={cx} y={cy + 9} textAnchor="middle" fontSize={7} fill="var(--color-text-secondary)">
-                {l ? "grupos" : "groups"}
-              </text>
-            </svg>
-          );
+          
         })()}
       </div>
     </div>
@@ -105,16 +84,17 @@ function GroupSummaryChart({ data, lang }: { data: EquipmentGridItem[]; lang: st
 
 const card: React.CSSProperties         = { background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1.25rem" };
 const sectionTitle: React.CSSProperties = { fontSize: "0.875rem", fontWeight: 700, color: "var(--color-text-primary)" };
+const th: React.CSSProperties           = { padding: "0.4rem 0.75rem", textAlign: "left", fontSize: "0.72rem", fontWeight: 700, color: "var(--color-text-secondary)", whiteSpace: "nowrap" };
+const td: React.CSSProperties           = { padding: "0.4rem 0.75rem", color: "var(--color-text-primary)", verticalAlign: "middle" };
 
 export default function EquipmentBubbleGrid({ data, lang }: Props) {
   const l = lang === "es";
 
-  // El primer grupo abierto por defecto, el resto colapsado
   const buildInitialOpen = (groups: [string, EquipmentGridItem[]][]) => {
-    const init: Record<string, boolean> = {};
-    groups.forEach(([g], idx) => { init[g] = idx === 0; });
-    return init;
-  };
+  const init: Record<string, boolean> = {};
+  groups.forEach(([g]) => { init[g] = false; });
+  return init;
+};
 
   const groupMap = new Map<string, EquipmentGridItem[]>();
   data.forEach((item) => {
@@ -122,6 +102,7 @@ export default function EquipmentBubbleGrid({ data, lang }: Props) {
     if (!groupMap.has(g)) groupMap.set(g, []);
     groupMap.get(g)!.push(item);
   });
+
   const groups = [...groupMap.entries()].sort((a, b) => {
     const ha = a[1].reduce((s, i) => s + i.hours, 0);
     const hb = b[1].reduce((s, i) => s + i.hours, 0);
@@ -132,34 +113,20 @@ export default function EquipmentBubbleGrid({ data, lang }: Props) {
 
   if (data.length === 0) return null;
 
-  const maxHours = Math.max(...data.map((d) => d.hours), 1);
-  const maxCount = Math.max(...data.map((d) => d.count), 1);
-
   function toggleGroup(group: string) {
     setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }));
   }
 
   return (
     <div style={card}>
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
         <div style={sectionTitle}>
           {l ? "Equipos — Carga de Mantenimiento" : "Equipment — Maintenance Load"}
         </div>
-        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
-          {(["Completed", "In Progress", "Pending", "Open"] as const).map((label) => (
-            <div key={label} style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.72rem", color: "var(--color-text-secondary)" }}>
-              <div style={{ width: 8, height: 8, borderRadius: 2, background: statusColor(label) }} />
-              {label}
-            </div>
-          ))}
-        </div>
       </div>
 
-      {/* Gráfica resumen — siempre visible */}
       <GroupSummaryChart data={data} lang={l ? "es" : "en"} />
 
-      {/* Desplegables por Equipment_Group */}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {groups.map(([group, items]) => {
           const sortedItems = [...items].sort((a, b) => b.hours - a.hours);
@@ -169,7 +136,6 @@ export default function EquipmentBubbleGrid({ data, lang }: Props) {
 
           return (
             <div key={group} style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
-              {/* Header del desplegable */}
               <div
                 onClick={() => toggleGroup(group)}
                 style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.55rem 0.875rem", cursor: "pointer", background: isOpen ? "var(--color-border)" : "transparent", userSelect: "none", transition: "background 0.15s" }}
@@ -191,57 +157,57 @@ export default function EquipmentBubbleGrid({ data, lang }: Props) {
                 </div>
               </div>
 
-              {/* Contenido colapsable */}
               {isOpen && (
-                <div style={{ padding: "0.75rem 0.875rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-                  {sortedItems.map((item) => {
-                    const col         = statusColor(item.dominant_status);
-                    const barPctH     = (item.hours / maxHours) * 100;
-                    const barPctC     = (item.count / maxCount) * 100;
-                    const displayName = item.description || item.equipment_id;
-                    const labelShort  = displayName.length > 28 ? displayName.slice(0, 26) + "…" : displayName;
-
-                    return (
-                      <div key={item.equipment_id} style={{ display: "grid", gridTemplateColumns: "190px 1fr 56px 40px", gap: "0.5rem", alignItems: "center" }}>
-                        {/* Nombre — description arriba, ID abajo en gris */}
-                        <div title={`${displayName} (${item.equipment_id})`}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 5, overflow: "hidden" }}>
-                            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: col, flexShrink: 0 }} />
-                            <span style={{ fontSize: "0.775rem", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {labelShort}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: "0.67rem", color: "var(--color-text-secondary)", paddingLeft: 13 }}>
-                            {item.equipment_id}
-                          </div>
-                        </div>
-
-                        {/* Barra doble: fondo = horas, franja = count */}
-                        <div style={{ position: "relative", height: 22, background: "var(--color-border)", borderRadius: 4, overflow: "hidden" }}>
-                          <div style={{ position: "absolute", top: 0, left: 0, width: `${barPctH}%`, height: "100%", background: `${col}33`, borderRadius: 4, transition: "width 0.4s ease" }} />
-                          <div style={{ position: "absolute", bottom: 0, left: 0, width: `${barPctC}%`, height: "6px", background: col, opacity: 0.85 }} />
-                        </div>
-
-                        <div style={{ fontSize: "0.775rem", fontWeight: 700, color: "#3b82f6", textAlign: "right", whiteSpace: "nowrap" }}>
-                          {item.hours.toFixed(1)} h
-                        </div>
-                        <div style={{ fontSize: "0.775rem", fontWeight: 700, color: col, textAlign: "right" }}>
-                          {item.count}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid var(--color-border)" }}>
+                        <th style={th}>{l ? "Equipo" : "Equipment"}</th>
+                        <th style={{ ...th, textAlign: "right" }}>{l ? "Horas" : "Hours"}</th>
+                        <th style={{ ...th, textAlign: "right" }}>WR</th>
+                        <th style={{ ...th, textAlign: "right" }}>%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedItems.map((item, idx) => {
+                        const col         = statusColor(item.dominant_status);
+                        const displayName = item.description || item.equipment_id;
+                        const pct         = groupHours > 0 ? ((item.hours / groupHours) * 100).toFixed(1) : "0.0";
+                        return (
+                          <tr
+                            key={item.equipment_id}
+                            style={{ borderBottom: "1px solid var(--color-border)", background: idx % 2 === 0 ? "transparent" : "var(--color-bg)" }}
+                          >
+                            <td style={td}>
+  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+    <span style={{ width: 8, height: 8, borderRadius: 2, background: col, flexShrink: 0, display: "inline-block" }} />
+    <span style={{ fontSize: "0.68rem", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
+      {item.equipment_id}
+    </span>
+    <span style={{ fontWeight: 500, color: "var(--color-text-primary)" }} title={displayName}>
+      {displayName.length > 36 ? displayName.slice(0, 34) + "…" : displayName}
+    </span>
+  </div>
+</td>
+                            <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#3b82f6" }}>
+                              {item.hours.toFixed(1)} h
+                            </td>
+                            <td style={{ ...td, textAlign: "right", color: "var(--color-text-secondary)", fontWeight: 600 }}>
+                              {item.count}
+                            </td>
+                            <td style={{ ...td, textAlign: "right", color: "var(--color-text-secondary)", fontSize: "0.72rem" }}>
+                              {pct}%
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
           );
         })}
-      </div>
-
-      {/* Leyenda pie */}
-      <div style={{ marginTop: "1rem", display: "flex", gap: "1.5rem", fontSize: "0.7rem", color: "var(--color-text-secondary)", borderTop: "1px solid var(--color-border)", paddingTop: "0.75rem" }}>
-        <span>█ {l ? "Barra fondo = Horas" : "Bar background = Hours"}</span>
-        <span>▬ {l ? "Franja inferior = Cant. WR" : "Bottom stripe = WR Count"}</span>
       </div>
     </div>
   );

@@ -31,7 +31,9 @@
     "maintenanceOverview":   "Overview",
     "maintenanceActions":    "Actions",
     "maintenanceWorkcenter": "Workcenter Detail",
-    "maintenanceWorkRequests": "Work Requests"
+    "maintenanceWorkRequests": "Work Requests",
+    "qualityDashboard": "Dashboard"
+
 
   }
 },

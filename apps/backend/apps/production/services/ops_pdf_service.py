@@ -3,7 +3,11 @@
 from datetime import date, timedelta
 from io import BytesIO
 from django.template.loader import render_to_string
-from weasyprint import HTML, CSS
+try:
+    from weasyprint import HTML, CSS
+except (ImportError, OSError):
+    HTML = None
+    CSS  = None
 from apps.production.services.ops_report_service import OpsReportService
 from apps.production.repositories.safety_repository import SafetyRepository
 

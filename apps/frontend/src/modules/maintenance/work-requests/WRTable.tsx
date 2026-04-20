@@ -166,7 +166,7 @@ export default function WRTable({ rows, lang }: Props) {
     setOpenTypes((prev) => ({ ...prev, [type]: !prev[type] }));
   }
 
-  const isOpen = (type: string) => openTypes[type] !== undefined ? openTypes[type] : byType[0]?.[0] === type;
+  const isOpen = (type: string) => openTypes[type] ?? false;
 
   const Th = ({ label, field }: { label: string; field?: keyof WorkRequest }) => (
     <th style={{ ...thStyle, cursor: field ? "pointer" : "default" }} onClick={() => field && toggleSort(field)}>
@@ -218,15 +218,12 @@ export default function WRTable({ rows, lang }: Props) {
                   {typeRows.reduce((s, r) => s + r.maintenance_hours, 0).toFixed(1)} h
                 </span>
               </div>
-              <div style={{ display: "flex", gap: "0.4rem" }}>
-                {[...new Set(typeRows.map((r) => r.status))].map((s) => <StatusChip key={s} status={s} />)}
-              </div>
+              
             </div>
 
             {isOpen(type) && (
               <>
-                {/* ── Mini gráfica de status ── */}
-                <TypeStatusChart typeRows={typeRows} lang={lang} />
+                
 
                 {/* ── Tabla de filas ── */}
                 <div style={{ overflowX: "auto" }}>
@@ -250,7 +247,6 @@ export default function WRTable({ rows, lang }: Props) {
                         return (
                           <tr key={r.work_request_no} style={{ background: i % 2 === 0 ? "transparent" : "var(--color-bg)" }}>
                             <td style={{ ...tdStyle, fontWeight: 700, whiteSpace: "nowrap" }}>
-                              {isOverdue && <span title={l ? "Vencida" : "Overdue"} style={{ marginRight: 4 }}>⚠️</span>}
                               {r.work_request_no}
                             </td>
                             <td style={{ ...tdStyle, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.description}>

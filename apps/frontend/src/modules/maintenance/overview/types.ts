@@ -60,3 +60,15 @@ export interface DowntimeByMonth {
   total_events: number;
   total_hours:  number;
 }
+
+export interface WRKpis {
+  total_wr:       number;
+  total_hours:    number;
+  completed_pct:  number;
+  pending_count:  number;
+  avg_hours:      number;
+  top_failure:    string;
+  avg_lead_time:  number | null;  // ahora es MTTR en horas
+  backlog:        number;         // Open WIs (todos los pending)
+  overdue:        number;         // pending con due_date vencida
+}

@@ -28,9 +28,9 @@ export const MaintenanceService = {
       .then((r: any) => r.data),
 
   // Reutiliza el mismo endpoint de OPS — mismo OEERecord en PostgreSQL
-  getOEE: (date: string): Promise<OEEData | null> =>
+  getOEELive: (start: string, end: string): Promise<OEEData | null> =>
     apiClient
-      .get(`${OEE_BASE}/oee/`, { params: { date } })
+      .get(`${BASE}/oee-live/`, { params: { start_date: start, end_date: end } })
       .then((r: any) => (Object.keys(r.data).length === 0 ? null : r.data))
       .catch(() => null),
 

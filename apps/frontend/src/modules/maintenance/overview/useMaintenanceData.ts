@@ -23,11 +23,10 @@ export function useMaintenanceData(range: DateRange) {
     setLoading(true);
     setError(null);
     try {
-      const oeeDate = lastDayOfRange(range.end);
       const [kpiRes, reasonRes, oeeRes, trendRes, monthRes] = await Promise.all([
         MaintenanceService.getKPIs(range.start, range.end),
         MaintenanceService.getReasons(range.start, range.end),
-        MaintenanceService.getOEE(oeeDate),
+        MaintenanceService.getOEELive(range.start, range.end),
         MaintenanceService.getOEETrend(range.start, range.end),
         MaintenanceService.getDowntimeByMonth(range.start, range.end),
       ]);

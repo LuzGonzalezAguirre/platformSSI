@@ -11,6 +11,7 @@ export interface WorkRequest {
   equipment_description: string;
   equipment_group:       string;
   department:            string;
+  scheduled_hours:       number;
   maintenance_hours:     number;
   failure:               string;
   failure_type:          string;
@@ -18,14 +19,17 @@ export interface WorkRequest {
 }
 
 export interface WRKpis {
-  total_wr:       number;
-  total_hours:    number;
-  completed_pct:  number;
-  pending_count:  number;
-  avg_hours:      number;
-  top_failure:    string;
-  avg_lead_time:  number | null;
-  backlog:        number;
+  total_wr:          number;
+  total_scheduled:   number;   // horas planeadas totales
+  total_maintenance: number;   // horas reales totales
+  completed_pct:     number;
+  pending_count:     number;
+  avg_scheduled:     number;
+  avg_maintenance:   number;
+  efficiency:        number | null;  // % planeado/real
+  top_failure:       string;
+  avg_lead_time:     number | null;
+  backlog:           number;
 }
 
 export interface GroupedItem {

@@ -31,7 +31,8 @@
     "maintenanceOverview":   "Overview",
     "maintenanceActions":    "Acciones",
     "maintenanceWorkcenter": "Detalle Workcenter",
-    "maintenanceWorkRequests": "Work Requests"
+    "maintenanceWorkRequests": "Work Requests",
+    "qualityDashboard": "Dashboard"
   }
   },
   "common": {

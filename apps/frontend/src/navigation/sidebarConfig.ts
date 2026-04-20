@@ -50,28 +50,21 @@ export const sidebarConfig: NavSection[] = [
   ],
 },
   {
-    id: "quality",
-    labelKey: "nav.sections.quality",
-    icon: "BadgeCheck",
-    allowedRoles: ALL_ROLES,
-    order: 2,
-    items: [
-      {
-        id: "quality.inspections",
-        labelKey: "nav.items.qualityInspections",
-        path: "/quality/inspections",
-        icon: "ClipboardCheck",
-        allowedRoles: ALL_ROLES,
-      },
-      {
-        id: "quality.defects",
-        labelKey: "nav.items.qualityDefects",
-        path: "/quality/defects",
-        icon: "AlertTriangle",
-        allowedRoles: SUPERVISORY_ROLES,
-      },
-    ],
-  },
+  id: "quality",
+  labelKey: "nav.sections.quality",
+  icon: "BadgeCheck",
+  allowedRoles: ALL_ROLES,
+  order: 2,
+  items: [
+    {
+      id: "quality.dashboard",
+      labelKey: "nav.items.qualityDashboard",
+      path: "/quality/dashboard",
+      icon: "ShieldCheck",
+      allowedRoles: ALL_ROLES,
+    },
+  ],
+},
   {
   id: "maintenance",
   labelKey: "nav.sections.maintenance",
