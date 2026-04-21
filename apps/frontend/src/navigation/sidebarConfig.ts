@@ -63,6 +63,13 @@ export const sidebarConfig: NavSection[] = [
       icon: "ShieldCheck",
       allowedRoles: ALL_ROLES,
     },
+    {
+  id: "qualityPanel",
+  labelKey: "nav.items.qualityPanel",
+  path: "/quality/panel",
+  icon: "LayoutDashboard",
+  allowedRoles: ALL_ROLES,
+},
   ],
 },
   {

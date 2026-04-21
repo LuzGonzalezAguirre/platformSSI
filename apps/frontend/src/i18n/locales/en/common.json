@@ -32,7 +32,9 @@
     "maintenanceActions":    "Actions",
     "maintenanceWorkcenter": "Workcenter Detail",
     "maintenanceWorkRequests": "Work Requests",
-    "qualityDashboard": "Dashboard"
+    "qualityDashboard": "Dashboard",
+    "qualityPanel": "Operational Panel"
+
 
 
   }
@@ -77,7 +79,15 @@
       "newPassword": "New Password",
       "confirmPassword": "Confirm Password",
       "save": "Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "jobTitle": "Job Title",
+"jobTitlePlaceholder": "e.g. Production Engineer",
+"rolesRequired": "You must assign at least one role.",
+"saveError": "Error saving.",
+"saving": "Saving...",
+"systemRoles": "System roles",
+"customRoles": "Custom roles",
+"rolesSelected": "selected"
     }
   },
   "profile": {
@@ -156,14 +166,14 @@
       "logout": "Sign Out"
     },
     "roles": {
-      "operator": "Operator",
-      "supervisor": "Supervisor",
-      "quality_engineer": "Quality Engineer",
-      "process_engineer": "Process Engineer",
-      "maintenance_engineer": "Maintenance Engineer",
-      "inventory_engineer": "Inventory Engineer",
-      "admin": "MES Admin",
-      "plant_manager": "Plant Manager"
+  "operator": "Operator",
+  "supervisor": "Supervisor",
+  "quality_engineer": "Quality",
+  "process_engineer": "Production",
+  "maintenance_engineer": "Maintenance",
+  "inventory_engineer": "Warehouse",
+  "admin": "Administrator",
+  "plant_manager": "Plant Manager"
 },
 "rolesPage": {
   "title": "Role Management",

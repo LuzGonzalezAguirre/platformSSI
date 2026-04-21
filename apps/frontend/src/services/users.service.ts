@@ -22,6 +22,7 @@ export interface User {
   is_active: boolean;
   date_joined: string;
   last_login: string | null;
+  job_title: string;
 }
 
 export interface RoleChoice {
@@ -40,6 +41,7 @@ export interface CreateUserPayload {
   preferred_language: string;
   password: string;
   roles: string[];
+  job_title: string;
 }
 
 export interface UpdateUserPayload {
@@ -50,6 +52,7 @@ export interface UpdateUserPayload {
   preferred_language?: string;
   is_active?: boolean;
   roles?: string[];
+  job_title: string;
 }
 
 export const UsersService = {

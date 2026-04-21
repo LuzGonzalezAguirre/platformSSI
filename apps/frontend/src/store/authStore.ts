@@ -18,6 +18,7 @@ export interface User {
   last_name: string;
   full_name: string;
   email: string;
+  job_title: string;
   role_display: string;
   roles: UserRole[];
   plant: string;
@@ -57,12 +58,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: !!localStorage.getItem("mes_access_token") && !!loadUser(),
 
   setAuth: (access, refresh, user) => {
-    localStorage.setItem("mes_access_token", access);
-    localStorage.setItem("mes_refresh_token", refresh);
-    localStorage.setItem("mes_user", JSON.stringify(user));
-    localStorage.setItem("mes_language", user.preferred_language);
-    set({ access, refresh, user, isAuthenticated: true });
-  },
+  localStorage.setItem("mes_access_token", access);
+  localStorage.setItem("mes_refresh_token", refresh);
+  localStorage.setItem("mes_user", JSON.stringify(user));
+  localStorage.setItem("mes_language", user.preferred_language);
+
+  // Aplicar idioma activamente al iniciar sesión
+  import("../i18n").then(({ default: i18n }) => {
+    i18n.changeLanguage(user.preferred_language);
+  });
+
+  set({ access, refresh, user, isAuthenticated: true });
+},
 
   clearAuth: () => {
     localStorage.removeItem("mes_access_token");

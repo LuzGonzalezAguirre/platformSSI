@@ -37,6 +37,12 @@ class User(AbstractUser):
         blank=True,
         verbose_name="Planta",
     )
+    job_title = models.CharField(
+    max_length=100,
+    blank=True,
+    default="",
+    verbose_name="Puesto",
+)
     preferred_language = models.CharField(
         max_length=10,
         choices=[("es", "Español"), ("en", "English")],

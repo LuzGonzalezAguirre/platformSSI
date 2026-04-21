@@ -32,7 +32,9 @@
     "maintenanceActions":    "Acciones",
     "maintenanceWorkcenter": "Detalle Workcenter",
     "maintenanceWorkRequests": "Work Requests",
-    "qualityDashboard": "Dashboard"
+    "qualityDashboard": "Dashboard",
+    "qualityPanel": "Operational Panel"
+
   }
   },
   "common": {
@@ -75,7 +77,15 @@
       "newPassword": "Nueva Contrasena",
       "confirmPassword": "Confirmar Contrasena",
       "save": "Guardar",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "jobTitle": "Puesto",
+"jobTitlePlaceholder": "Ej. Ingeniero de Producción",
+"rolesRequired": "Debes asignar al menos un rol.",
+"saveError": "Error al guardar.",
+"saving": "Guardando...",
+"systemRoles": "Roles de sistema",
+"customRoles": "Roles personalizados",
+"rolesSelected": "seleccionado(s)"
     }
   },
   "profile": {
@@ -156,14 +166,14 @@
       "logout": "Cerrar Sesion"
   },
   "roles": {
-    "operator": "Operador",
-    "supervisor": "Supervisor",
-    "quality_engineer": "Ingeniero de Calidad",
-    "process_engineer": "Ingeniero de Procesos",
-    "maintenance_engineer": "Ingeniero de Mantenimiento",
-    "inventory_engineer": "Ingeniero de Inventarios",
-    "admin": "Administrador MES",
-    "plant_manager": "Gerente de Planta"
+  "operator": "Operador",
+  "supervisor": "Supervisor",
+  "quality_engineer": "Calidad",
+  "process_engineer": "Producción",
+  "maintenance_engineer": "Mantenimiento",
+  "inventory_engineer": "Almacén",
+  "admin": "Administrador",
+  "plant_manager": "Gerente de Planta"
 },
 "rolesPage": {
   "title": "Gestión de Roles",

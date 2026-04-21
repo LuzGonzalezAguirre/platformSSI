@@ -41,13 +41,13 @@ export default function AppShell({ children }: AppShellProps) {
       <div style={styles.main}>
         {/* TopBar */}
         <TopBar
-          onUserMenuClick={() => setUserMenuOpen((v) => !v)}
-          userFullName={user.full_name || user.employee_id}
-          userRole={user.role_display}
-          userAvatarUrl={user.avatar_url}
-          currentLanguage={i18n.language}
-          onLanguageChange={handleLanguageChange}
-        />
+  onUserMenuClick={() => setUserMenuOpen((v) => !v)}
+  userFullName={user.full_name || user.employee_id}
+  userRole={user.job_title || user.role_display}
+  userAvatarUrl={user.avatar_url}
+  currentLanguage={i18n.language}
+  onLanguageChange={handleLanguageChange}
+/>
 
         {/* User dropdown menu */}
         <UserMenu

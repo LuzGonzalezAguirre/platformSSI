@@ -26,6 +26,7 @@ class UserListSerializer(serializers.ModelSerializer):
             "role_display",
             "roles",
             "plant",
+            "job_title",
             "preferred_language",
             "is_active",
             "date_joined",
@@ -40,6 +41,7 @@ class UserListSerializer(serializers.ModelSerializer):
     def get_roles(self, obj) -> list:
         return list(obj.roles.values("id", "name", "slug", "is_system"))
 
+
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     email    = serializers.EmailField(required=False, allow_blank=True, default="")
@@ -52,6 +54,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "plant",
+            "job_title",
             "preferred_language",
             "password",
         ]
@@ -67,6 +70,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "plant",
+            "job_title",
             "preferred_language",
             "is_active",
         ]
