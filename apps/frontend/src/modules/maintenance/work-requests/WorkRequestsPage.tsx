@@ -384,7 +384,6 @@ export default function WorkRequestsPage() {
           <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>
             {l ? "Mantenimiento — Work Requests" : "Work Requests"}
           </h1>
-          <p style={{ fontSize: "0.875rem", color: "var(--color-text-secondary)", margin: "0.25rem 0 0" }}>Out Tijuana</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
           <label style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)" }}>{l ? "Desde:" : "From:"}</label>

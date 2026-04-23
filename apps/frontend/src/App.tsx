@@ -15,6 +15,9 @@ import OverviewPage from "./modules/maintenance/overview/OverviewPage";
 import WorkRequestsPage from "./modules/maintenance/work-requests/WorkRequestsPage";
 import QualityDashboard from "./modules/quality/QualityDashboard";
 import QualityPanelPage from "./modules/quality/QualityPanelPage";
+import OperationalPanelPage from "./modules/operational-panel/OperationalPanelPage";
+import CorrectiveActionsPage from "./modules/maintenance/corrective-actions/CorrectiveActionsPage";
+
 
 
 
@@ -92,6 +95,10 @@ function AppRoutes() {
         <Route path="/maintenance/work-requests" element={<WorkRequestsPage />} />
         <Route path="/quality/dashboard" element={<QualityDashboard />} />
         <Route path="/quality/panel" element={<QualityPanelPage />} />
+        <Route path="/operational-panel" element={<OperationalPanelPage />} />
+        <Route path="/maintenance/corrective-actions" element={<CorrectiveActionsPage />} />
+
+
 
 
 

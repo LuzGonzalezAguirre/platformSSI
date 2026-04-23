@@ -8,9 +8,12 @@
     "administration": "Administration",
     "warehouseBom": "BOM Explorer",
     "warehouseCtb": "Clear To Build",
-    "warehouseDemand": "Demand"
+    "warehouseDemand": "Demand",
+    "operationalPanel": "Dashboard"
+
   },
   "items": {
+    "operationalPanel": "Overview",
     "productionOpsDaily": "Ops Daily Report",
 "productionTargets": "Targets Configuration",
 "productionSafety": "Safety",
@@ -33,7 +36,9 @@
     "maintenanceWorkcenter": "Workcenter Detail",
     "maintenanceWorkRequests": "Work Requests",
     "qualityDashboard": "Dashboard",
-    "qualityPanel": "Operational Panel"
+    "qualityPanel": "Operational Panel",
+    "maintenanceCorrectiveActions": "Corrective Actions"
+
 
 
 

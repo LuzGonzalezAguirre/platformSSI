@@ -53,7 +53,6 @@ export default function OverviewPage() {
       <div style={s.header}>
         <div>
           <h1 style={s.title}>{lang === "es" ? "Mantenimiento — Overview" : "Maintenance Overview"}</h1>
-          <p style={s.subtitle}>Out Tijuana</p>
         </div>
         <div style={s.dateControls}>
           <label style={s.fieldLabel}>{lang === "es" ? "Desde:" : "From:"}</label>

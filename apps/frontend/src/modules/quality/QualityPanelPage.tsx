@@ -702,7 +702,6 @@ export default function QualityPanelPage() {
           <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>
             {l ? "Panel Operativo — Calidad" : "Operational Panel — Quality"}
           </h1>
-          <p style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)", margin: "1px 0 0" }}>Out Tijuana</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
           <span style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)" }}>{l ? "Desde:" : "From:"}</span>

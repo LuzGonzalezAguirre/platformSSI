@@ -727,7 +727,6 @@ export default function QualityDashboard() {
       <div style={s.header}>
         <div>
           <h1 style={s.title}>{l ? "Dashboard de Calidad" : "Quality Dashboard"}</h1>
-          <p style={s.subtitle}>Out Tijuana</p>
         </div>
         <div style={s.filterBar}>
           <span style={s.filterLabel}>{l ? "Desde:" : "From:"}</span>

@@ -8,9 +8,11 @@
     "administration": "Administracion",
     "warehouseBom": "BOM Explorer",
 "warehouseCtb": "Clear To Build",
-"warehouseDemand": "Demand"
+"warehouseDemand": "Demand",
+"operationalPanel": "Tablero"
   },
   "items": {
+    "operationalPanel": "Vista General",
     "productionOpsDaily": "Reporte Diario Ops",
 "productionTargets": "Configuración de Metas",
 "productionSafety": "Seguridad",
@@ -33,7 +35,8 @@
     "maintenanceWorkcenter": "Detalle Workcenter",
     "maintenanceWorkRequests": "Work Requests",
     "qualityDashboard": "Dashboard",
-    "qualityPanel": "Operational Panel"
+    "qualityPanel": "Operational Panel",
+    "maintenanceCorrectiveActions": "Acciones Correctivas"
 
   }
   },

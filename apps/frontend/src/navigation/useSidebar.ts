@@ -41,6 +41,7 @@ function sidebarReducer(state: SidebarState, action: SidebarAction): SidebarStat
 
 // Mapeo sección → módulo de permisos
 const SECTION_MODULE_MAP: Record<string, ModuleKey> = {
+  "operational-panel": "production", 
   production:     "production",
   quality:        "quality",
   maintenance:    "maintenance",

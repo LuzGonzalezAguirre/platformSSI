@@ -366,7 +366,6 @@ export default function OpsReportPage() {
       <div style={s.pageHeader}>
         <div>
           <h1 style={s.title}>{lang === "es" ? "Reporte Diario Ops" : "Ops Daily Report"}</h1>
-          <p style={s.subtitle}>Out Tijuana</p>
         </div>
         <div style={s.dateControl}>
           <label style={s.fieldLabel}>{lang === "es" ? "Fecha:" : "Date:"}</label>
