@@ -86,6 +86,13 @@ export const sidebarConfig: NavSection[] = [
         icon: "LayoutDashboard",
         allowedRoles: ALL_ROLES,
       },
+      {
+  id: "quality.qwall",
+  labelKey: "nav.items.qualityQwall",
+  path: "/quality/qwall",
+  icon: "ClipboardCheck",
+  allowedRoles: ALL_ROLES,
+},
     ],
   },
   {

@@ -7,6 +7,9 @@ SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-secret-key-not-for-production
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
+# Q-Wall: BD local SQL Server de inspecciones
+QWALL_DB_CONN_STR = "SERVER=AAS-PAC-FTP01;DATABASE=CCS;Trusted_Connection=yes;"
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
