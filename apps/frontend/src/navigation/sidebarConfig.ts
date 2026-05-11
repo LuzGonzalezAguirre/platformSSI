@@ -80,19 +80,26 @@ export const sidebarConfig: NavSection[] = [
         allowedRoles: ALL_ROLES,
       },
       {
-        id: "qualityPanel",
-        labelKey: "nav.items.qualityPanel",
-        path: "/quality/panel",
-        icon: "LayoutDashboard",
-        allowedRoles: ALL_ROLES,
-      },
-      {
   id: "quality.qwall",
   labelKey: "nav.items.qualityQwall",
   path: "/quality/qwall",
   icon: "ClipboardCheck",
   allowedRoles: ALL_ROLES,
 },
+{
+  id: "quality.qwall-dashboard",
+  labelKey: "nav.items.qualityQwallDashboard",
+  path: "/quality/qwall-dashboard",
+  icon: "BarChart2",
+  allowedRoles: ALL_ROLES,
+},
+{
+      id: "quality.rejections",
+      labelKey: "nav.items.qualityRejections",
+      path: "/quality/rejections",
+      icon: "XCircle",
+      allowedRoles: ALL_ROLES,
+    },
     ],
   },
   {
@@ -116,13 +123,7 @@ export const sidebarConfig: NavSection[] = [
         icon: "ClipboardList",
         allowedRoles: ALL_ROLES,
       },
-      {
-        id: "maintenance.corrective-actions",
-        labelKey: "nav.items.maintenanceCorrectiveActions",
-        path: "/maintenance/corrective-actions",
-        icon: "ClipboardCheck",
-        allowedRoles: ALL_ROLES,
-      },
+      
     ],
   },
   {

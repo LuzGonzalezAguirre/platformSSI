@@ -38,7 +38,9 @@
     "qualityDashboard": "Dashboard",
     "qualityPanel": "Operational Panel",
     "maintenanceCorrectiveActions": "Corrective Actions",
-    "qualityQwall": "Q-Wall Report"
+    "qualityQwall": "Q-Wall Report",
+    "qualityQwallDashboard": "Q-Wall Dashboard",
+    "qualityRejections": "Rejections"
 
 
 

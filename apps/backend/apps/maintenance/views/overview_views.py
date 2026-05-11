@@ -84,7 +84,34 @@ class OEELiveView(APIView):
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
 
+        # ── 1. Buscar registro manual en PostgreSQL ───────────────────────
+        from datetime import datetime
+        from apps.production.repositories.targets_repository import TargetsRepository
+        from apps.production.serializers.targets import OEERecordSerializer
+
+        start_date = datetime.strptime(start, "%Y-%m-%d").date()
+        end_date   = datetime.strptime(end,   "%Y-%m-%d").date()
+
+        # Busca el registro más reciente dentro del rango
+        from apps.production.models import OEERecord
+        manual = (
+            OEERecord.objects
+            .filter(date__gte=start_date, date__lte=end_date)
+            .order_by("-date")
+            .first()
+        )
+
+        if manual:
+            # Hay dato manual — lo devuelve con una bandera para que el
+            # frontend sepa el origen
+            data = OEERecordSerializer(manual).data
+            data["source"] = "manual"
+            return Response(data)
+
+        # ── 2. Fallback — calcular desde Plex ────────────────────────────
         data = MaintenanceService.get_oee_live(start, end)
         if data is None:
             return Response({})
+
+        data["source"] = "plex"
         return Response(data)

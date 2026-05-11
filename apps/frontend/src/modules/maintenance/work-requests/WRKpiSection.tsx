@@ -48,9 +48,8 @@ export default function WRKpiSection({ kpis, lang }: Props) {
 
       {/* Horas reales (Equipment Log) */}
       <KPICard
-        label={l ? "Horas Reales (Log)" : "Actual Hours (Log)"}
+        label={l ? "Horas Reales" : "Actual Hours"}
         value={`${kpis.total_maintenance.toFixed(1)} h`}
-        sub={`${l ? "Promedio" : "Avg"}: ${kpis.avg_maintenance.toFixed(1)} h/WR`}
         accent="#f59e0b"
       />
 
@@ -58,7 +57,6 @@ export default function WRKpiSection({ kpis, lang }: Props) {
       <KPICard
         label={l ? "Horas Planeadas" : "Scheduled Hours"}
         value={`${kpis.total_scheduled.toFixed(1)} h`}
-        sub={`${l ? "Promedio" : "Avg"}: ${kpis.avg_scheduled.toFixed(1)} h/WR`}
         accent="#6366f1"
       />
 
@@ -68,7 +66,7 @@ export default function WRKpiSection({ kpis, lang }: Props) {
         value={kpis.efficiency != null ? `${kpis.efficiency.toFixed(1)}%` : "—"}
         sub={
           kpis.efficiency == null  ? (l ? "Sin datos completos" : "No completed data")
-          : kpis.efficiency >= 100 ? (l ? "Dentro del plan ✓" : "Within plan ✓")
+          : kpis.efficiency >= 100 ? (l ? "Dentro del plan" : "Within plan")
           : (l ? "Por encima del plan" : "Over planned time")
         }
         accent={effColor}
@@ -90,13 +88,7 @@ export default function WRKpiSection({ kpis, lang }: Props) {
         accent={kpis.backlog > 0 ? "#ef4444" : "#10b981"}
       />
 
-      {/* Lead time */}
-      <KPICard
-        label={l ? "Lead Time Promedio" : "Avg Lead Time"}
-        value={kpis.avg_lead_time != null ? `${kpis.avg_lead_time} ${l ? "días" : "days"}` : "—"}
-        sub={l ? "Solicitud → Completado" : "Request → Completed"}
-        accent="#06b6d4"
-      />
+     
 
       {/* Top failure */}
       <KPICard

@@ -74,8 +74,8 @@ export const SHIFT_LABELS: Record<AttendanceShift, { es: string; en: string }> =
 };
 
 export const DEFAULT_HOURS: Record<AttendanceShift, number> = {
-  full:     12,
-  partial:  4,
+  full:     11,
+  partial:  6,
   overtime: 10,
   none:     0,
 };

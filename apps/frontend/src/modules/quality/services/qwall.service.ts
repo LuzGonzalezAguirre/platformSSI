@@ -58,34 +58,52 @@ export interface QWallReport {
   rows:         QWallRow[];
 }
 
+// Agregar interface
+export interface QWallPartNumber {
+  pn_id:               number;
+  ssiPN:               string;
+  volvoProductNumber:  string;
+  bu_name:             string;
+}
+
+
+
 export const QWallService = {
-  getReport: async (startDate: string, endDate: string): Promise<QWallReport> => {
-    const { data } = await apiClient.get("/quality/qwall/", {
-      params: { start_date: startDate, end_date: endDate },
-    });
-    return data;
-  },
+  getReport: async (startDate: string, endDate: string, includeTest = false): Promise<QWallReport> => {
+  const { data } = await apiClient.get("/quality/qwall/", {
+    params: {
+      start_date:   startDate,
+      end_date:     endDate,
+      include_test: String(includeTest),
+    },
+  });
+  return data;
+},
 
-  downloadExcel: async (startDate: string, endDate: string): Promise<void> => {
-    const token   = localStorage.getItem("mes_access_token") ?? "";
-    const baseUrl = ((import.meta as any).env?.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1").replace(/\/$/, "");
-    const url     = `${baseUrl}/quality/qwall/?start_date=${startDate}&end_date=${endDate}&export=xlsx`;
 
-    console.log("Descargando Excel desde:", url);  // ← confirma la URL exacta
+downloadExcel: async (startDate: string, endDate: string, includeTest = false): Promise<void> => {
+  const token   = localStorage.getItem("mes_access_token") ?? "";
+  const baseUrl = ((import.meta as any).env?.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1").replace(/\/$/, "");
+  const url     = `${baseUrl}/quality/qwall/?start_date=${startDate}&end_date=${endDate}&export=xlsx&include_test=${includeTest}`;
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { "Authorization": `Bearer ${token}` },
-    });
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${token}` },
+  });
 
-    if (!response.ok) throw new Error(`Error ${response.status}`);
+  if (!response.ok) throw new Error(`Error ${response.status}`);
 
-    const blob    = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const a       = document.createElement("a");
-    a.href        = blobUrl;
-    a.download    = `qwall_${startDate}_${endDate}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(blobUrl);
+  const blob    = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a       = document.createElement("a");
+  a.href        = blobUrl;
+  a.download    = `qwall_${startDate}_${endDate}${includeTest ? "_test" : ""}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(blobUrl);
+},
+// Agregar al objeto QWallService:
+getPartNumbers: async (): Promise<QWallPartNumber[]> => {
+  const { data } = await apiClient.get("/quality/qwall/part-numbers/");
+  return data;
 },
 };

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Download } from "lucide-react";
 import {
@@ -8,6 +8,7 @@ import {
   QWallInspectorRow,
   QWallPartRow,
   QWallFailMode,
+  QWallPartNumber,
 } from "../services/qwall.service";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -98,66 +99,115 @@ function KPI({ label, value, sub, color }: {
 function Bar({ pct, color }: { pct: number; color: string }) {
   return (
     <svg width="80" height="10" style={{ verticalAlign: "middle" }}>
-      <rect x={0} y={2} width={80}                   height={6} rx={3} fill="var(--color-border)" />
+      <rect x={0} y={2} width={80}                    height={6} rx={3} fill="var(--color-border)" />
       <rect x={0} y={2} width={Math.round(pct * 0.8)} height={6} rx={3} fill={color} />
     </svg>
   );
 }
 
-// ── Export CSV (client-side) ──────────────────────────────────────────────────
-
-function exportCSV(rows: QWallRow[], start: string, end: string): void {
-  const headers = [
-    "Fecha", "Semana", "Mes", "Inspector", "Tipo", "Resultado", "WO",
-    "Part Number", "Serial SSI", "Serial Volvo", "Duración (seg)", "Fallas",
-  ];
-  const csvRows = rows.map((r: QWallRow) => [
-    r.inspection_date, r.week_number, r.month_name, r.inspector,
-    r.inspection_type, r.result, r.work_order, r.part_number,
-    r.serial_ssi, r.serial_volvo, r.duration_seconds,
-    `"${r.fail_modes.replace(/"/g, '""')}"`,
-  ].join(","));
-
-  const content = [headers.join(","), ...csvRows].join("\n");
-  const blob    = new Blob([content], { type: "text/csv;charset=utf-8;" });
-  const url     = URL.createObjectURL(blob);
-  const a       = document.createElement("a");
-  a.href        = url;
-  a.download    = `qwall_${start}_${end}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 // ── Filtros de tabla ──────────────────────────────────────────────────────────
 
 interface TableFilters {
-  filtered:       QWallRow[];
-  inspector:      string;
-  setInspector:   (v: string) => void;
-  result:         "" | "PASS" | "FAIL";
-  setResult:      (v: "" | "PASS" | "FAIL") => void;
-  partNo:         string;
-  setPartNo:      (v: string) => void;
-  inspectors:     string[];
-  partNumbers:    string[];
+  filtered:     QWallRow[];
+  inspector:    string;
+  setInspector: (v: string) => void;
+  result:       "" | "PASS" | "FAIL";
+  setResult:    (v: "" | "PASS" | "FAIL") => void;
+  partNo:       string;
+  setPartNo:    (v: string) => void;
+  inspectors:   string[];
+  partNumbers:  string[];
 }
 
-function useTableFilters(rows: QWallRow[]): TableFilters {
+function useTableFilters(rows: QWallRow[], pnForBu: string[]): TableFilters {
   const [inspector, setInspector] = useState<string>("");
   const [result,    setResult]    = useState<"" | "PASS" | "FAIL">("");
   const [partNo,    setPartNo]    = useState<string>("");
 
-  // Anotación explícita para que TS no infiera Set<unknown>
-  const inspectors:  string[] = [...new Set<string>(rows.map((r: QWallRow) => r.inspector))].sort();
-  const partNumbers: string[] = [...new Set<string>(rows.map((r: QWallRow) => r.part_number))].sort();
+  // Filtrar por BU primero
+  const buFiltered: QWallRow[] = pnForBu.length > 0
+    ? rows.filter((r) => pnForBu.includes(r.part_number))
+    : rows;
 
-  const filtered: QWallRow[] = rows.filter((r: QWallRow) =>
+  const inspectors:  string[] = [...new Set<string>(buFiltered.map((r) => r.inspector))].sort();
+  const partNumbers: string[] = [...new Set<string>(buFiltered.map((r) => r.part_number))].sort();
+
+  const filtered: QWallRow[] = buFiltered.filter((r) =>
     (!inspector || r.inspector   === inspector) &&
     (!result    || r.result      === result)    &&
     (!partNo    || r.part_number === partNo)
   );
 
-  return { filtered, inspector, setInspector, result, setResult, partNo, setPartNo, inspectors, partNumbers };
+  return {
+    filtered, inspector, setInspector,
+    result, setResult, partNo, setPartNo,
+    inspectors, partNumbers,
+  };
+}
+
+// ── KPIs derivados del subset filtrado ───────────────────────────────────────
+
+function deriveKpis(rows: QWallRow[]) {
+  const total      = rows.length;
+  const pass       = rows.filter((r) => r.result === "PASS").length;
+  const fail       = total - pass;
+  const pass_rate  = total ? Math.round((pass / total) * 10000) / 100 : 0;
+  const durations  = rows.map((r) => r.duration_seconds).filter(Boolean);
+  const avg_duration = durations.length
+    ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+    : 0;
+  const inspectors  = new Set(rows.map((r) => r.inspector)).size;
+  const part_numbers = new Set(rows.map((r) => r.part_number)).size;
+  return { total, pass, fail, pass_rate, avg_duration, inspectors, part_numbers };
+}
+
+function deriveByInspector(rows: QWallRow[]): QWallInspectorRow[] {
+  const map: Record<string, { total: number; pass: number; dur: number }> = {};
+  for (const r of rows) {
+    if (!map[r.inspector]) map[r.inspector] = { total: 0, pass: 0, dur: 0 };
+    map[r.inspector].total += 1;
+    if (r.result === "PASS") map[r.inspector].pass += 1;
+    if (r.duration_seconds)  map[r.inspector].dur  += r.duration_seconds;
+  }
+  return Object.entries(map).map(([inspector, s]) => ({
+    inspector,
+    total:        s.total,
+    pass:         s.pass,
+    fail:         s.total - s.pass,
+    pass_rate:    s.total ? Math.round((s.pass / s.total) * 1000) / 10 : 0,
+    avg_duration: s.total ? Math.round(s.dur / s.total) : 0,
+  }));
+}
+
+function deriveByPart(rows: QWallRow[]): QWallPartRow[] {
+  const map: Record<string, { total: number; pass: number }> = {};
+  for (const r of rows) {
+    if (!map[r.part_number]) map[r.part_number] = { total: 0, pass: 0 };
+    map[r.part_number].total += 1;
+    if (r.result === "PASS") map[r.part_number].pass += 1;
+  }
+  return Object.entries(map).map(([part_number, s]) => ({
+    part_number,
+    total:     s.total,
+    pass:      s.pass,
+    fail:      s.total - s.pass,
+    pass_rate: s.total ? Math.round((s.pass / s.total) * 1000) / 10 : 0,
+  })).sort((a, b) => b.total - a.total);
+}
+
+function deriveFailModes(rows: QWallRow[]): QWallFailMode[] {
+  const map: Record<string, number> = {};
+  for (const r of rows) {
+    if (r.result === "FAIL" && r.fail_modes) {
+      for (const fm of r.fail_modes.split(",")) {
+        const key = fm.trim();
+        if (key) map[key] = (map[key] ?? 0) + 1;
+      }
+    }
+  }
+  return Object.entries(map)
+    .map(([fail_mode, count]) => ({ fail_mode, count }))
+    .sort((a, b) => b.count - a.count);
 }
 
 // ── Página principal ──────────────────────────────────────────────────────────
@@ -166,26 +216,64 @@ export default function QWallPage() {
   const { i18n } = useTranslation();
   const l        = i18n.language === "es";
 
-  const [startDate, setStartDate] = useState<string>(daysAgo(7));
-  const [endDate,   setEndDate]   = useState<string>(todayStr());
-  const [data,      setData]      = useState<QWallReport | null>(null);
-  const [loading,   setLoading]   = useState<boolean>(false);
-  const [error,     setError]     = useState<string | null>(null);
+  const [startDate,   setStartDate]   = useState<string>(daysAgo(7));
+  const [endDate,     setEndDate]     = useState<string>(todayStr());
+  const [data,        setData]        = useState<QWallReport | null>(null);
+  const [loading,     setLoading]     = useState<boolean>(false);
+  const [error,       setError]       = useState<string | null>(null);
+  const [includeTest, setIncludeTest] = useState<boolean>(false);
+
+  // Catálogo BU / PN
+  const [partCatalog, setPartCatalog] = useState<QWallPartNumber[]>([]);
+  const [buFilter,    setBuFilter]    = useState<string>("");
+
+  useEffect(() => {
+    QWallService.getPartNumbers().then(setPartCatalog).catch(() => {});
+  }, []);
+
+  const buList: string[] = [...new Set(partCatalog.map((p) => p.bu_name))].sort();
+
+  const pnForBu: string[] = buFilter
+    ? partCatalog.filter((p) => p.bu_name === buFilter).map((p) => p.ssiPN)
+    : partCatalog.map((p) => p.ssiPN);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await QWallService.getReport(startDate, endDate);
-      setData(result);
-    } catch {
-      setError(l ? "Error al cargar datos de Q-Wall." : "Failed to load Q-Wall data.");
-    } finally {
-      setLoading(false);
-    }
-  }, [startDate, endDate, l]);
+  setLoading(true);
+  setError(null);
+  try {
+    const result = await QWallService.getReport(startDate, endDate, includeTest);
+    setData(result);
+  } catch {
+    setError(l ? "Error al cargar datos de Q-Wall." : "Failed to load Q-Wall data.");
+  } finally {
+    setLoading(false);
+  }
+}, [startDate, endDate, includeTest, l]);
 
-  const filters = useTableFilters(data?.rows ?? []);
+// Auto-reload cuando cambia el toggle (solo si ya hay datos)
+useEffect(() => {
+  if (data !== null) {
+    load();
+  }
+}, [includeTest]);
+
+  const filters = useTableFilters(data?.rows ?? [], pnForBu);
+
+  // Reset partNo al cambiar BU
+  useEffect(() => {
+    filters.setPartNo("");
+  }, [buFilter]);
+
+  // KPIs y aggregados derivados del subset BU-filtrado
+  const subsetRows  = filters.filtered;
+  const allBuRows   = pnForBu.length > 0
+    ? (data?.rows ?? []).filter((r) => pnForBu.includes(r.part_number))
+    : (data?.rows ?? []);
+
+  const kpis        = deriveKpis(allBuRows);
+  const byInspector = deriveByInspector(allBuRows);
+  const byPart      = deriveByPart(allBuRows);
+  const failModes   = deriveFailModes(allBuRows);
 
   return (
     <div style={s.page}>
@@ -194,22 +282,64 @@ export default function QWallPage() {
       <div style={s.header}>
         <div>
           <h1 style={s.title}>{l ? "Reporte Q-Wall" : "Q-Wall Report"}</h1>
-          <p style={s.sub}>{l ? "Inspecciones de calidad — vista consolidada" : "Quality inspections — consolidated view"}</p>
+          <p style={s.sub}>
+            {l ? "Inspecciones de calidad — vista consolidada" : "Quality inspections — consolidated view"}
+          </p>
         </div>
+
         <div style={s.filters}>
           <span style={s.label}>{l ? "Desde:" : "From:"}</span>
           <input type="date" value={startDate} max={endDate} style={s.input}
             onChange={(e) => setStartDate(e.target.value)} />
+
           <span style={s.label}>{l ? "Hasta:" : "To:"}</span>
           <input type="date" value={endDate} max={todayStr()} style={s.input}
             onChange={(e) => setEndDate(e.target.value)} />
-          <button style={s.btn} onClick={load}>
-            {loading ? (l ? "Cargando..." : "Loading...") : (l ? "Consultar" : "Load")}
+
+          {/* Filtro BU */}
+          <select
+            style={s.input}
+            value={buFilter}
+            onChange={(e) => setBuFilter(e.target.value)}
+          >
+            <option value="">{l ? "— Todas las BU —" : "— All BUs —"}</option>
+            {buList.map((bu) => (
+              <option key={bu} value={bu}>{bu}</option>
+            ))}
+          </select>
+
+          {/* Toggle pruebas/producción */}
+          <button
+            style={{
+              ...s.btnOutline,
+              background: includeTest ? "rgba(245,158,11,0.12)" : "var(--color-surface)",
+              color:      includeTest ? "#f59e0b"               : "var(--color-text-secondary)",
+              border:     includeTest ? "1px solid #f59e0b"     : "1px solid var(--color-border)",
+              fontWeight: includeTest ? 700                      : 600,
+            }}
+            onClick={() => setIncludeTest((v) => !v)}
+            title={l
+              ? "Alternar entre producción y pruebas"
+              : "Toggle between production and tests"}
+          >
+             {includeTest
+              ? (l ? "Pruebas"    : "Tests")
+              : (l ? "Producción" : "Production")}
           </button>
+
+          <button style={s.btn} onClick={load}>
+            {loading
+              ? (l ? "Cargando..." : "Loading...")
+              : (l ? "Consultar"   : "Load")}
+          </button>
+
           {data && (
-            <button style={s.btnOutline} onClick={() => QWallService.downloadExcel(startDate, endDate)}>
-  <Download size={13} /> Excel
-</button>
+            <button
+              style={s.btnOutline}
+              onClick={() => QWallService.downloadExcel(startDate, endDate, includeTest)}
+            >
+              <Download size={13} /> Excel
+            </button>
           )}
         </div>
       </div>
@@ -218,7 +348,9 @@ export default function QWallPage() {
 
       {!data && !loading && (
         <div style={s.loading}>
-          {l ? "Selecciona un rango y presiona Consultar." : "Select a date range and press Load."}
+          {l
+            ? "Selecciona un rango y presiona Consultar."
+            : "Select a date range and press Load."}
         </div>
       )}
 
@@ -230,31 +362,51 @@ export default function QWallPage() {
 
       {data && !loading && (
         <>
-          {/* KPIs */}
+          {/* Badge modo activo */}
+          {buFilter && (
+            <div>
+              <span style={{
+                background: "rgba(59,130,246,0.1)", color: "#3b82f6",
+                border: "1px solid #3b82f6", borderRadius: 8,
+                padding: "0.25rem 0.75rem", fontSize: "0.8rem", fontWeight: 600,
+              }}>
+                BU: {buFilter} · {kpis.total} {l ? "inspecciones" : "inspections"}
+              </span>
+            </div>
+          )}
+
+          {/* KPIs — derivados del subset BU */}
           <div style={s.kpiGrid}>
-            <KPI label={l ? "Total inspecciones" : "Total inspections"} value={data.summary.total.toLocaleString()} />
-            <KPI label="PASS" value={data.summary.pass.toLocaleString()} color="#10b981" />
-            <KPI label="FAIL" value={data.summary.fail.toLocaleString()} color="#ef4444" />
+            <KPI
+              label={l ? "Total inspecciones" : "Total inspections"}
+              value={kpis.total.toLocaleString()}
+            />
+            <KPI label="PASS" value={kpis.pass.toLocaleString()} color="#10b981" />
+            <KPI label="FAIL" value={kpis.fail.toLocaleString()} color="#ef4444" />
             <KPI
               label={l ? "Tasa de aprobación" : "Pass rate"}
-              value={`${data.summary.pass_rate.toFixed(1)}%`}
-              color={passRateColor(data.summary.pass_rate)}
+              value={`${kpis.pass_rate.toFixed(1)}%`}
+              color={passRateColor(kpis.pass_rate)}
             />
             <KPI
               label={l ? "Tiempo promedio" : "Avg. cycle time"}
-              value={fmtDuration(Math.round(data.summary.avg_duration))}
+              value={fmtDuration(kpis.avg_duration)}
               sub="mm:ss"
             />
-            <KPI label={l ? "Inspectores" : "Inspectors"} value={String(data.summary.inspectors)} />
-            <KPI label="Part Numbers" value={String(data.summary.part_numbers)} />
+            <KPI
+              label={l ? "Inspectores" : "Inspectors"}
+              value={String(kpis.inspectors)}
+            />
+            <KPI label="Part Numbers" value={String(kpis.part_numbers)} />
           </div>
 
-          {/* Gráficos: inspectores + fail modes */}
+          {/* Inspector + Fail modes */}
           <div style={s.grid2}>
 
-            {/* Por inspector */}
             <div style={s.section}>
-              <div style={s.secTitle}>{l ? "Rendimiento por inspector" : "Performance by inspector"}</div>
+              <div style={s.secTitle}>
+                {l ? "Rendimiento por inspector" : "Performance by inspector"}
+              </div>
               <table style={s.table}>
                 <thead>
                   <tr>
@@ -265,7 +417,7 @@ export default function QWallPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.by_inspector.map((row: QWallInspectorRow) => (
+                  {byInspector.map((row: QWallInspectorRow) => (
                     <tr key={row.inspector}>
                       <td style={s.td}>{row.inspector}</td>
                       <td style={s.td}>{row.total}</td>
@@ -284,15 +436,16 @@ export default function QWallPage() {
               </table>
             </div>
 
-            {/* Fail modes */}
             <div style={s.section}>
-              <div style={s.secTitle}>{l ? "Modos de falla (Pareto)" : "Fail modes (Pareto)"}</div>
-              {data.fail_modes.length === 0 ? (
+              <div style={s.secTitle}>
+                {l ? "Modos de falla (Pareto)" : "Fail modes (Pareto)"}
+              </div>
+              {failModes.length === 0 ? (
                 <p style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
                   {l ? "Sin fallas registradas." : "No failures recorded."}
                 </p>
               ) : (() => {
-                const max = data.fail_modes[0]?.count ?? 1;
+                const max = failModes[0]?.count ?? 1;
                 return (
                   <table style={s.table}>
                     <thead>
@@ -303,7 +456,7 @@ export default function QWallPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.fail_modes.map((fm: QWallFailMode) => (
+                      {failModes.map((fm: QWallFailMode) => (
                         <tr key={fm.fail_mode}>
                           <td style={s.td}>{fm.fail_mode}</td>
                           <td style={{ ...s.td, fontWeight: 700 }}>{fm.count}</td>
@@ -321,7 +474,9 @@ export default function QWallPage() {
 
           {/* Por part number */}
           <div style={s.section}>
-            <div style={s.secTitle}>{l ? "Desglose por part number" : "By part number"}</div>
+            <div style={s.secTitle}>
+              {l ? "Desglose por part number" : "By part number"}
+            </div>
             <table style={s.table}>
               <thead>
                 <tr>
@@ -333,29 +488,38 @@ export default function QWallPage() {
                 </tr>
               </thead>
               <tbody>
-                {[...data.by_part]
-                  .sort((a: QWallPartRow, b: QWallPartRow) => b.total - a.total)
-                  .map((row: QWallPartRow) => (
-                    <tr key={row.part_number}>
-                      <td style={{ ...s.td, fontFamily: "monospace" }}>{row.part_number}</td>
-                      <td style={s.td}>{row.total}</td>
-                      <td style={{ ...s.td, color: "#10b981" }}>{row.pass}</td>
-                      <td style={{ ...s.td, color: "#ef4444" }}>{row.fail}</td>
-                      <td style={s.td}>
-                        <span style={{ color: passRateColor(row.pass_rate), fontWeight: 600 }}>
-                          {row.pass_rate.toFixed(1)}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                {byPart.map((row: QWallPartRow) => (
+                  <tr key={row.part_number}>
+                    <td style={{ ...s.td, fontFamily: "monospace" }}>{row.part_number}</td>
+                    <td style={s.td}>{row.total}</td>
+                    <td style={{ ...s.td, color: "#10b981" }}>{row.pass}</td>
+                    <td style={{ ...s.td, color: "#ef4444" }}>{row.fail}</td>
+                    <td style={s.td}>
+                      <span style={{ color: passRateColor(row.pass_rate), fontWeight: 600 }}>
+                        {row.pass_rate.toFixed(1)}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
 
           {/* Tabla detalle con filtros */}
           <div style={s.section}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap" as const, gap: "0.5rem" }}>
-              <div style={s.secTitle}>{l ? "Detalle de inspecciones" : "Inspection detail"}</div>
+            <div style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              marginBottom: "0.75rem", flexWrap: "wrap" as const, gap: "0.5rem",
+            }}>
+              <div style={s.secTitle}>
+                {l ? "Detalle de inspecciones" : "Inspection detail"}
+                <span style={{
+                  marginLeft: "0.75rem", fontSize: "0.75rem", fontWeight: 400,
+                  color: "var(--color-text-secondary)",
+                }}>
+                  ({subsetRows.length} {l ? "registros" : "records"})
+                </span>
+              </div>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" as const }}>
 
                 <select style={s.input} value={filters.inspector}
@@ -406,9 +570,11 @@ export default function QWallPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filters.filtered.map((row: QWallRow) => (
-                    <tr key={row.inspection_id}
-                      style={{ background: row.result === "FAIL" ? "rgba(239,68,68,0.04)" : undefined }}>
+                  {subsetRows.map((row: QWallRow) => (
+                    <tr
+                      key={row.inspection_id}
+                      style={{ background: row.result === "FAIL" ? "rgba(239,68,68,0.04)" : undefined }}
+                    >
                       <td style={s.td}>{row.inspection_date}</td>
                       <td style={s.td}>{row.week_number}</td>
                       <td style={s.td}>{row.inspector}</td>
@@ -433,9 +599,14 @@ export default function QWallPage() {
                 </tbody>
               </table>
 
-              {filters.filtered.length === 0 && (
-                <p style={{ textAlign: "center", padding: "1.5rem", color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
-                  {l ? "Sin registros con los filtros actuales." : "No records match the current filters."}
+              {subsetRows.length === 0 && (
+                <p style={{
+                  textAlign: "center", padding: "1.5rem",
+                  color: "var(--color-text-secondary)", fontSize: "0.85rem",
+                }}>
+                  {l
+                    ? "Sin registros con los filtros actuales."
+                    : "No records match the current filters."}
                 </p>
               )}
             </div>

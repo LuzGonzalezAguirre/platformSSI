@@ -1,21 +1,44 @@
+# apps/backend/apps/quality/services/qwall_service.py
+
 import hashlib
+import re
 from datetime import date
 from django.core.cache import cache
 from ..repositories.qwall_repository import QWallRepository
 
-CACHE_TTL = 300  # 5 min — datos de inspección no cambian en tiempo real
+CACHE_TTL = 300
+
+
+def _is_test_wo(work_order) -> bool:
+    """
+    WO de prueba si:
+    - es None / vacío
+    - es 0 (int o string)
+    - es solo ceros: "000000", "0000"
+    - empieza con P seguido de solo ceros: "P000000", "p000"
+    """
+    if work_order is None:
+        return True
+    wo = str(work_order).strip()
+    if not wo or wo == "0":
+        return True
+    if re.fullmatch(r"0+", wo):
+        return True
+    if re.fullmatch(r"[Pp]0+", wo):
+        return True
+    return False
 
 
 class QWallService:
 
     @staticmethod
-    def _cache_key(start_date: date, end_date: date) -> str:
-        raw = f"qwall:{start_date}:{end_date}"
+    def _cache_key(start_date: date, end_date: date, include_test: bool) -> str:
+        raw = f"qwall:{start_date}:{end_date}:test={include_test}"
         return hashlib.md5(raw.encode()).hexdigest()
 
     @staticmethod
-    def get_report(start_date: date, end_date: date) -> dict:
-        key    = QWallService._cache_key(start_date, end_date)
+    def get_report(start_date: date, end_date: date, include_test: bool = False) -> dict:
+        key    = QWallService._cache_key(start_date, end_date, include_test)
         cached = cache.get(key)
         if cached:
             return cached
@@ -27,7 +50,18 @@ class QWallService:
             cache.set(key, result, CACHE_TTL)
             return result
 
-        result = QWallService._aggregate(rows)
+        # ── Separar producción vs pruebas ─────────────────────────────────────
+        if include_test:
+            filtered_rows = [r for r in rows if _is_test_wo(r.get("work_order"))]
+        else:
+            filtered_rows = [r for r in rows if not _is_test_wo(r.get("work_order"))]
+
+        if not filtered_rows:
+            result = QWallService._empty_response()
+            cache.set(key, result, CACHE_TTL)
+            return result
+
+        result = QWallService._aggregate(filtered_rows)
         cache.set(key, result, CACHE_TTL)
         return result
 
@@ -38,11 +72,9 @@ class QWallService:
         fail_count  = total - pass_count
         pass_rate   = round((pass_count / total) * 100, 2) if total else 0
 
-        # Tiempo promedio
-        durations     = [r["duration_seconds"] for r in rows if r["duration_seconds"]]
-        avg_duration  = round(sum(durations) / len(durations), 1) if durations else 0
+        durations    = [r["duration_seconds"] for r in rows if r["duration_seconds"]]
+        avg_duration = round(sum(durations) / len(durations), 1) if durations else 0
 
-        # Fail modes: solo para las filas FAIL, expandir la lista CSV
         fail_mode_counter: dict[str, int] = {}
         for r in rows:
             if r["result"] == "FAIL" and r["fail_modes"]:
@@ -53,11 +85,9 @@ class QWallService:
 
         fail_modes_ranked = sorted(
             [{"fail_mode": k, "count": v} for k, v in fail_mode_counter.items()],
-            key=lambda x: x["count"],
-            reverse=True,
+            key=lambda x: x["count"], reverse=True,
         )
 
-        # Inspector performance
         inspector_stats: dict[str, dict] = {}
         for r in rows:
             name = r["inspector"]
@@ -81,7 +111,6 @@ class QWallService:
             for name, s in inspector_stats.items()
         ]
 
-        # Part number breakdown
         part_stats: dict[str, dict] = {}
         for r in rows:
             pn = r["part_number"]
@@ -102,7 +131,6 @@ class QWallService:
             for pn, s in part_stats.items()
         ]
 
-        # Serializar fechas a string para JSON
         rows_serialized = [
             {**r, "inspection_date": str(r["inspection_date"])} for r in rows
         ]
@@ -117,10 +145,10 @@ class QWallService:
                 "inspectors":   len(inspector_stats),
                 "part_numbers": len(part_stats),
             },
-            "by_inspector":   by_inspector,
-            "by_part":        by_part,
-            "fail_modes":     fail_modes_ranked,
-            "rows":           rows_serialized,
+            "by_inspector": by_inspector,
+            "by_part":      by_part,
+            "fail_modes":   fail_modes_ranked,
+            "rows":         rows_serialized,
         }
 
     @staticmethod

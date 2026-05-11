@@ -484,46 +484,40 @@ function BUBars({ data }: { data: WCRow[] }) {
 
 // ── Top Parts ─────────────────────────────────────────────────────────────────
 
+// ── Top Parts ─────────────────────────────────────────────────────────────────
+
 function TopParts({ data, topN }: { data: PartRow[]; topN: number }) {
   const rows    = data.slice(0, topN);
   const maxQty  = rows[0]?.scrap_qty ?? 1;
-  const maxCost = Math.max(...rows.map((r) => r.scrap_cost), 1);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
       <div style={{ display: "flex", gap: "8px", fontSize: "10px", color: "var(--color-text-tertiary)", paddingBottom: "4px", borderBottom: "1px solid var(--color-border)" }}>
         <span style={{ width: "70px" }}>Part No</span>
-        <span style={{ width: "90px" }}>Type</span>
+        <span style={{ width: "110px" }}>WC</span>
         <span style={{ flex: 1 }}>Scrap qty</span>
         <span style={{ width: "38px", textAlign: "right" }}>pcs</span>
-        <span style={{ width: "52px", textAlign: "right" }}>costo</span>
       </div>
-      {rows.map((r) => {
-        const costSeverity = r.scrap_cost / maxCost;
-        const barColor = costSeverity > 0.6 ? "#ef4444" : costSeverity > 0.3 ? "#f59e0b" : "#3b82f6";
-        return (
-          <div key={`${r.part_no}|${r.workcenter}`} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ width: "70px", fontSize: "11px", color: "var(--color-text-primary)", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {r.part_no}
-            </span>
-            <span style={{ width: "90px", fontSize: "10px", color: "var(--color-text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {r.part_type || "—"}
-            </span>
-            <div style={{ flex: 1, position: "relative", height: "14px", background: "var(--color-border)", borderRadius: "3px", overflow: "hidden" }}>
-              <div style={{ ...s.barFill, width: `${(r.scrap_qty / maxQty) * 100}%`, background: barColor, opacity: 0.8 }} />
-            </div>
-            <span style={{ width: "38px", fontSize: "11px", color: "var(--color-text-primary)", textAlign: "right", fontWeight: 600 }}>{r.scrap_qty}</span>
-            <span style={{ width: "52px", fontSize: "10px", color: "var(--color-text-secondary)", textAlign: "right" }}>{fmtCurrency(r.scrap_cost)}</span>
+      {rows.map((r) => (
+        <div key={`${r.part_no}|${r.workcenter}`} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ width: "70px", fontSize: "11px", color: "var(--color-text-primary)", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {r.part_no}
+          </span>
+          <span style={{ width: "110px", fontSize: "10px", color: "var(--color-text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+            title={r.workcenter}>
+            {r.workcenter.replace(/^HM |^TULC /, "")}
+          </span>
+          <div style={{ flex: 1, position: "relative", height: "10px", background: "var(--color-border)", borderRadius: "2px", overflow: "hidden" }}>
+            <div style={{ position: "absolute", height: "100%", width: `${(r.scrap_qty / maxQty) * 100}%`, background: "#ef4444", opacity: 0.75 }} />
           </div>
-        );
-      })}
-      <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", marginTop: "2px" }}>
-        color = severidad de costo relativo
-      </div>
+          <span style={{ width: "38px", fontSize: "11px", color: "var(--color-text-primary)", textAlign: "right", fontWeight: 600 }}>
+            {r.scrap_qty}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
-
 // ── Detail Table ──────────────────────────────────────────────────────────────
 
 function DetailTable({ data, lang }: { data: WCRow[]; lang: "es" | "en" }) {
@@ -710,10 +704,19 @@ export default function QualityDashboard() {
     }
   }, [startDate, endDate, useShift, l]);
 
+  const DISPLAY_WORKCENTERS = new Set([
+  "TULC Ensamble Final",
+  "HM Ensamble Final 2", "HM Ensamble Frontal 2",
+  "HM Ensamble Final 3", "HM Ensamble Frontal 3",
+  ]);
   useEffect(() => { load(); loadTargets(); }, [load, loadTargets]);
 
-  const wcData   = data ? (buFilter === "all" ? data.by_workcenter : data.by_workcenter.filter((r) => r.bu === buFilter)) : [];
+  const wcData = data ? (buFilter === "all"
+  ? data.by_workcenter.filter((r) => DISPLAY_WORKCENTERS.has(r.workcenter))
+  : data.by_workcenter.filter((r) => DISPLAY_WORKCENTERS.has(r.workcenter) && r.bu === buFilter)
+) : [];
   const partData = data ? (buFilter === "all" ? data.by_part       : data.by_part.filter((r) => r.bu === buFilter))       : [];
+
 
   const yieldPct  = data?.summary.yield_pct  ?? 0;
   const totalQty  = data?.summary.total_qty  ?? 0;
@@ -827,11 +830,7 @@ export default function QualityDashboard() {
             </div>
           </div>
 
-          {/* HEATMAP */}
-          <div style={s.card}>
-            <div style={s.cardTitle}>{l ? "Heatmap — turno × workcenter" : "Heatmap — shift × workcenter"}</div>
-            <Heatmap data={data?.by_shift ?? []} />
-          </div>
+          
 
           {/* TABLA DETALLE */}
           <div style={s.card}>

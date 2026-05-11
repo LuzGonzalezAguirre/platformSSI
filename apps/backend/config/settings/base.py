@@ -124,3 +124,6 @@ MEDIA_ROOT = BASE_DIR / "media"
 PLEX_PROXY_URL    = env("PLEX_PROXY_URL", default="http://host.docker.internal:8001")
 PLEX_PROXY_SECRET = env("PLEX_PROXY_SECRET", default="")
 PLEX_CACHE_TTL    = 300  # segundos — 5 minutos default
+
+QWALL_PROXY_URL    = env("QWALL_PROXY_URL", default="http://host.docker.internal:8002")
+QWALL_PROXY_TOKEN = env("QWALL_PROXY_TOKEN", default="")

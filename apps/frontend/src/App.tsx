@@ -18,6 +18,8 @@ import QualityPanelPage from "./modules/quality/QualityPanelPage";
 import OperationalPanelPage from "./modules/operational-panel/OperationalPanelPage";
 import CorrectiveActionsPage from "./modules/maintenance/corrective-actions/CorrectiveActionsPage";
 import QWallPage from "./modules/quality/qwall/QWallPage";
+import QWallDashboardPage from "./modules/quality/qwall/QWallDashboardPage";
+import RejectionReportPage  from "./modules/quality/RejectionReportPage";
 
 
 
@@ -100,6 +102,10 @@ function AppRoutes() {
         <Route path="/operational-panel" element={<OperationalPanelPage />} />
         <Route path="/maintenance/corrective-actions" element={<CorrectiveActionsPage />} />
         <Route path="/quality/qwall" element={<QWallPage />} />
+        <Route path="/quality/qwall-dashboard" element={<QWallDashboardPage />} />
+        <Route path="/quality/rejections" element={<RejectionReportPage />} />
+
+
 
 
 
