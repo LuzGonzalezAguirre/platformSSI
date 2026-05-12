@@ -20,6 +20,9 @@ import CorrectiveActionsPage from "./modules/maintenance/corrective-actions/Corr
 import QWallPage from "./modules/quality/qwall/QWallPage";
 import QWallDashboardPage from "./modules/quality/qwall/QWallDashboardPage";
 import RejectionReportPage  from "./modules/quality/RejectionReportPage";
+import { ProblemList } from "./modules/quality/problem-control/components/ProblemList";
+import { ProblemDetail } from "./modules/quality/problem-control/components/ProblemDetail";
+
 
 
 
@@ -104,7 +107,8 @@ function AppRoutes() {
         <Route path="/quality/qwall" element={<QWallPage />} />
         <Route path="/quality/qwall-dashboard" element={<QWallDashboardPage />} />
         <Route path="/quality/rejections" element={<RejectionReportPage />} />
-
+        <Route path="/quality/problems" element={<ProblemList />} />
+        <Route path="/quality/problems/:id" element={<ProblemDetail />} />
 
 
 

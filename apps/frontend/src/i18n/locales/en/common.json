@@ -40,7 +40,8 @@
     "maintenanceCorrectiveActions": "Corrective Actions",
     "qualityQwall": "Q-Wall Report",
     "qualityQwallDashboard": "Q-Wall Dashboard",
-    "qualityRejections": "Rejections"
+    "qualityRejections": "Rejections",
+    "qualityProblemControl": "Problem Control (8D)"
 
 
 
@@ -228,6 +229,111 @@
     "colShipped": "Shipped", "colBalance": "Balance", "colRelStatus": "Rel Status",
     "colRelType": "Rel Type"
   }
+},
+
+  "problemControl": {
+    "title": "Problem Control (8D)",
+    "createNew": "Create New Problem",
+    "number": "Number",
+    "customer": "Customer",
+    "description": "Description",
+    "partNumber": "Part Number",
+    "daysOpen": "Days Open",
+    "overdue": "Overdue",
+    "overdueStages": "overdue stages",
+    "noProblems": "No problems registered",
+    "notFound": "Problem not found",
+    "draft": "(Draft)",
+    "createdBy": "Created by",
+    "createdAt": "Created at",
+    "champion": "Champion",
+    "quality": "Quality",
+    
+    "status": {
+      "label": "Status",
+      "draft": "Draft",
+      "pending": "Pending Approval",
+      "approved": "Approved",
+      "closed": "Closed",
+      "rejected": "Rejected"
+    },
+    
+    "severity": {
+      "label": "Severity",
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    
+    "allStatus": "All Status",
+    "allSeverity": "All Severity",
+    
+    "submitForApproval": "Submit for Approval",
+    "review": "Review",
+    "closeProblem": "Close Problem",
+    "auditLog": "Audit Log",
+    
+    "8dProcess": "8D Process",
+    "stageNotFound": "Stage not found",
+    "due": "Due",
+    "stageCompleted": "Stage Completed",
+    "completedBy": "Completed by",
+    "completeStage": "Complete Stage",
+    
+    "overrideRequired": "Override Required",
+    "overrideMessage": "This stage is overdue. Request manager override to continue.",
+    "requestOverride": "Request Override",
+    
+    "fiveWhy": "Five Why Analysis",
+    "rootCause": "Root Cause",
+    
+    "confirmSubmit": "Submit this problem for manager approval?",
+    "confirmClose": "Close this problem? All stages must be completed.",
+    "confirmComplete": "Mark this stage as completed?",
+    "confirmApprove": "Approve this problem?",
+    "confirmReject": "Reject this problem?",
+    
+    "reviewProblem": "Review Problem",
+    "problemSummary": "Problem Summary",
+    "approveProblem": "Approve Problem",
+    "rejectProblem": "Reject Problem",
+    
+    "approvalConfirmation": "Approval Confirmation",
+    "approvalMessage": "By approving this problem:",
+    "approvalEffect1": "An official number will be generated (CA-WW-YY-NNNN)",
+    "approvalEffect2": "The 8 stages of the 8D process will be initialized",
+    "approvalEffect3": "The problem will move to APPROVED status",
+    
+    "rejectionWarning": "Rejection Warning",
+    "rejectionMessage": "The problem will return to DRAFT status and the creator must correct it.",
+    "rejectionReason": "Rejection Reason",
+    "rejectionReasonPlaceholder": "Explain why you are rejecting this problem...",
+    "rejectionReasonRequired": "Rejection reason is required",
+    
+    "noAuditLogs": "No audit logs",
+    
+    "actions": {
+      "created": "Problem created",
+      "updated": "Problem updated",
+      "approved": "Problem approved",
+      "rejected": "Problem rejected",
+      "closed": "Problem closed",
+      "override_requested": "Override requested",
+      "override_approved": "Override approved",
+      "stage_completed": "Stage completed"
+    },
+    
+    "createDraft": "Create Draft",
+    "customerPlaceholder": "Ex: ACME Corp",
+    "partNumberPlaceholder": "Ex: ENG-12345",
+    "descriptionPlaceholder": "Describe the problem in detail (minimum 20 characters)...",
+    
+    "validation": {
+      "customerRequired": "Customer is required",
+      "descriptionRequired": "Description is required",
+      "descriptionTooShort": "Description must be at least 20 characters"
+    }
+  }
 }
   
-}

@@ -39,7 +39,8 @@
     "maintenanceCorrectiveActions": "Acciones Correctivas",
     "qualityQwall": "Q-Wall Report",
     "qualityQwallDashboard": "Dashboard Q-Wall",
-    "qualityRejections": "Rechazos"
+    "qualityRejections": "Rechazos",
+    "qualityProblemControl": "Problem Control (8D)"
 
   }
   },
@@ -48,7 +49,17 @@
     "error": "Ocurrio un error",
     "save": "Guardar",
     "cancel": "Cancelar",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "back": "Volver",
+    "view": "Ver",
+    "actions": "Acciones",
+    "search": "Buscar",
+    "clearFilters": "Limpiar Filtros",
+    "processing": "Procesando...",
+    "creating": "Creando...",
+    "system": "Sistema",
+    "charactersMin": "caracteres mínimo"
+
   },
   "users": {
     "title": "Gestion de Usuarios",
@@ -226,5 +237,109 @@
     "colShipped": "Enviado", "colBalance": "Balance", "colRelStatus": "Estado Rel",
     "colRelType": "Tipo Rel"
   }
-}
+},
+"problemControl": {
+    "title": "Control de Problemas (8D)",
+    "createNew": "Crear Nuevo Problema",
+    "number": "Número",
+    "customer": "Cliente",
+    "description": "Descripción",
+    "partNumber": "Número de Parte",
+    "daysOpen": "Días Abiertos",
+    "overdue": "Vencidos",
+    "overdueStages": "etapas vencidas",
+    "noProblems": "No hay problemas registrados",
+    "notFound": "Problema no encontrado",
+    "draft": "(Borrador)",
+    "createdBy": "Creado por",
+    "createdAt": "Creado el",
+    "champion": "Champion",
+    "quality": "Quality",
+    
+    "status": {
+      "label": "Estado",
+      "draft": "Borrador",
+      "pending": "Pendiente de Aprobación",
+      "approved": "Aprobado",
+      "closed": "Cerrado",
+      "rejected": "Rechazado"
+    },
+    
+    "severity": {
+      "label": "Severidad",
+      "critical": "Crítico",
+      "high": "Alto",
+      "medium": "Medio",
+      "low": "Bajo"
+    },
+    
+    "allStatus": "Todos los Estados",
+    "allSeverity": "Todas las Severidades",
+    
+    "submitForApproval": "Enviar para Aprobación",
+    "review": "Revisar",
+    "closeProblem": "Cerrar Problema",
+    "auditLog": "Historial de Auditoría",
+    
+    "8dProcess": "Proceso 8D",
+    "stageNotFound": "Etapa no encontrada",
+    "due": "Vencimiento",
+    "stageCompleted": "Etapa Completada",
+    "completedBy": "Completado por",
+    "completeStage": "Completar Etapa",
+    
+    "overrideRequired": "Se Requiere Override",
+    "overrideMessage": "Esta etapa está vencida. Solicita un override al manager para continuar.",
+    "requestOverride": "Solicitar Override",
+    
+    "fiveWhy": "Análisis de 5 Porqués",
+    "rootCause": "Causa Raíz",
+    
+    "confirmSubmit": "¿Enviar este problema para aprobación del manager?",
+    "confirmClose": "¿Cerrar este problema? Todas las etapas deben estar completadas.",
+    "confirmComplete": "¿Marcar esta etapa como completada?",
+    "confirmApprove": "¿Aprobar este problema?",
+    "confirmReject": "¿Rechazar este problema?",
+    
+    "reviewProblem": "Revisar Problema",
+    "problemSummary": "Resumen del Problema",
+    "approveProblem": "Aprobar Problema",
+    "rejectProblem": "Rechazar Problema",
+    
+    "approvalConfirmation": "Confirmación de Aprobación",
+    "approvalMessage": "Al aprobar este problema:",
+    "approvalEffect1": "Se generará un número oficial (CA-WW-YY-NNNN)",
+    "approvalEffect2": "Se inicializarán las 8 etapas del proceso 8D",
+    "approvalEffect3": "El problema pasará a estado APROBADO",
+    
+    "rejectionWarning": "Advertencia de Rechazo",
+    "rejectionMessage": "El problema volverá a estado BORRADOR y el creador deberá corregirlo.",
+    "rejectionReason": "Razón del Rechazo",
+    "rejectionReasonPlaceholder": "Explica por qué estás rechazando este problema...",
+    "rejectionReasonRequired": "La razón del rechazo es obligatoria",
+    
+    "noAuditLogs": "No hay registros de auditoría",
+    
+    "actions": {
+      "created": "Problema creado",
+      "updated": "Problema actualizado",
+      "approved": "Problema aprobado",
+      "rejected": "Problema rechazado",
+      "closed": "Problema cerrado",
+      "override_requested": "Override solicitado",
+      "override_approved": "Override aprobado",
+      "stage_completed": "Etapa completada"
+    },
+    
+    "createDraft": "Crear Borrador",
+    "customerPlaceholder": "Ej: ACME Corp",
+    "partNumberPlaceholder": "Ej: ENG-12345",
+    "descriptionPlaceholder": "Describe el problema en detalle (mínimo 20 caracteres)...",
+    
+    "validation": {
+      "customerRequired": "El cliente es obligatorio",
+      "descriptionRequired": "La descripción es obligatoria",
+      "descriptionTooShort": "La descripción debe tener al menos 20 caracteres"
+    }
+  }
 }

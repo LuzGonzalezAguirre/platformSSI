@@ -228,50 +228,97 @@ function PieChart({ slices }: { slices: { label: string; value: number; color: s
   );
 }
 
-// ── TrendChart ────────────────────────────────────────────────────────────────
+// ── TrendChart — Serie de tiempo estilo Excel ─────────────────────────────────
 
 function TrendChart({ points, lang = "es" }: { points: DayPoint[]; lang?: "es" | "en" }) {
-
   const [tooltip,      setTooltip]      = useState<{ idx: number; point: DayPoint } | null>(null);
-  const [labelMode,    setLabelMode]    = useState<"hover" | "fixed">("hover");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const l = lang === "es";
+
   if (points.length < 2) return (
     <div style={{ color: "var(--color-text-secondary)", fontSize: "0.8rem", padding: "1rem" }}>
       {l ? "Sin suficientes datos" : "Not enough data"}
     </div>
   );
 
-  const W      = isFullscreen ? 1100 : 560;
-  const H      = isFullscreen ? 320  : 120;
-  const padL   = 36; const padR = 12;
-  const padT   = labelMode === "fixed" ? 28 : 10;
-  const padB   = 24;
+  const W      = isFullscreen ? 1100 : 580;
+  const H      = isFullscreen ? 340  : 180;
+  const padL   = 42;
+  const padR   = 48;  // eje Y derecho (Pass Rate)
+  const padT   = 16;
+  const padB   = 32;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
   const n      = points.length;
 
-  const toX = (i: number) => padL + (i / (n - 1)) * chartW;
-  const maxTotal = Math.max(...points.map(p => p.total), 1);
-  const toY = (v: number) => padT + chartH * (1 - v / maxTotal);
+  // ── Escalas ──────────────────────────────────────────────────────────────
+  const maxVol  = Math.max(...points.map(p => p.total), 1);
+  const volStep = Math.ceil(maxVol / 5);
+  const volMax  = volStep * 5;
 
-  const passRateLine = points.map((p, i) =>
-    `${toX(i).toFixed(1)},${(padT + chartH * (1 - p.pass_rate / 100)).toFixed(1)}`
-  ).join(" ");
-  const totalLine = points.map((p, i) =>
-    `${toX(i).toFixed(1)},${toY(p.total).toFixed(1)}`
-  ).join(" ");
-  const failLine = points.map((p, i) =>
-    `${toX(i).toFixed(1)},${toY(p.fail).toFixed(1)}`
-  ).join(" ");
+  const toX     = (i: number) => padL + (i / Math.max(n - 1, 1)) * chartW;
+  const toYVol  = (v: number) => padT + chartH * (1 - v / volMax);
+  const toYRate = (v: number) => padT + chartH * (1 - v / 100);
 
-  const step      = Math.max(1, Math.floor(n / (isFullscreen ? 12 : 6)));
-  const labels    = points.filter((_, i) => i % step === 0 || i === n - 1);
-  const fixedStep = Math.max(1, Math.floor(n / (isFullscreen ? 20 : 8)));
-  const fixedLabels = points.filter((_, i) => i % fixedStep === 0 || i === n - 1);
+  // ── Paths de líneas ───────────────────────────────────────────────────────
+  const mkPath = (vals: number[], toY: (v: number) => number) =>
+    points.map((_, i) => `${i === 0 ? "M" : "L"} ${toX(i).toFixed(1)} ${toY(vals[i]).toFixed(1)}`).join(" ");
 
+  const pathTotal = mkPath(points.map(p => p.total),     toYVol);
+  const pathPass  = mkPath(points.map(p => p.pass),      toYVol);
+  const pathFail  = mkPath(points.map(p => p.fail),      toYVol);
+  const pathRate  = mkPath(points.map(p => p.pass_rate), toYRate);
+
+  // ── Etiquetas eje X ───────────────────────────────────────────────────────
+  const xStep   = Math.max(1, Math.floor(n / (isFullscreen ? 20 : 8)));
+  const xLabels = points
+    .map((p, i) => ({ p, i }))
+    .filter(({ i }) => i === 0 || i === n - 1 || i % xStep === 0);
+
+  // ── Ticks eje izquierdo (vol) ─────────────────────────────────────────────
+  const volTicks = Array.from({ length: 6 }, (_, k) => k * volStep);
+
+  // ── Series config ─────────────────────────────────────────────────────────
+  const SERIES = [
+    { key: "total",     color: "#6366f1", label: l ? "Total" : "Total",       vals: points.map(p => p.total),     toY: toYVol,  dash: "6 3",  marker: "diamond" },
+    { key: "pass",      color: "#10b981", label: "PASS",                       vals: points.map(p => p.pass),      toY: toYVol,  dash: "",      marker: "circle"  },
+    { key: "fail",      color: "#ef4444", label: "FAIL",                       vals: points.map(p => p.fail),      toY: toYVol,  dash: "4 2",  marker: "square"  },
+    { key: "pass_rate", color: "#f59e0b", label: "Pass Rate %",                vals: points.map(p => p.pass_rate), toY: toYRate, dash: "",      marker: "circle"  },
+  ] as const;
+
+  const PATHS = {
+    total:     pathTotal,
+    pass:      pathPass,
+    fail:      pathFail,
+    pass_rate: pathRate,
+  };
+
+  // ── Marcador según tipo ───────────────────────────────────────────────────
+  function Marker({ cx, cy, color, type, hov }: {
+    cx: number; cy: number; color: string; type: string; hov: boolean;
+  }) {
+    const r = hov ? 5 : 3.5;
+    if (type === "diamond") {
+      const s = r * 1.3;
+      return <polygon
+        points={`${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`}
+        fill={hov ? "#fff" : color} stroke={color} strokeWidth={hov ? 2 : 1.5}
+      />;
+    }
+    if (type === "square") {
+      return <rect
+        x={cx - r} y={cy - r} width={r * 2} height={r * 2}
+        fill={hov ? "#fff" : color} stroke={color} strokeWidth={hov ? 2 : 1.5}
+      />;
+    }
+    return <circle
+      cx={cx} cy={cy} r={r}
+      fill={hov ? "#fff" : color} stroke={color} strokeWidth={hov ? 2 : 1.5}
+    />;
+  }
+
+  // ── Mouse ─────────────────────────────────────────────────────────────────
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (labelMode === "fixed") return;
     const rect   = e.currentTarget.getBoundingClientRect();
     const scaleX = W / rect.width;
     const mouseX = (e.clientX - rect.left) * scaleX;
@@ -283,55 +330,60 @@ function TrendChart({ points, lang = "es" }: { points: DayPoint[]; lang?: "es" |
     setTooltip({ idx: closest, point: points[closest] });
   };
 
-  const btnBase: React.CSSProperties = {
-    fontSize: "0.7rem", fontWeight: 600, padding: "0.2rem 0.6rem",
-    borderRadius: 5, cursor: "pointer", border: "1px solid var(--color-border)",
-  };
-
+  // ── SVG ───────────────────────────────────────────────────────────────────
   const svgContent = (
     <svg
       width="100%"
       viewBox={`0 0 ${W} ${H}`}
-      style={{ overflow: "visible", cursor: labelMode === "hover" ? "crosshair" : "default" }}
+      style={{ overflow: "visible", cursor: "crosshair" }}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setTooltip(null)}
     >
-      {/* Grid */}
-      {[0, 0.25, 0.5, 0.75, 1].map(pct => {
-        const y = padT + chartH * (1 - pct);
+      {/* Gridlines horizontales */}
+      {volTicks.map(v => {
+        const y = toYVol(v);
         return (
-          <g key={pct}>
-            <line x1={padL} x2={W - padR} y1={y} y2={y} stroke="var(--color-border)" strokeWidth={0.5} />
-            <text x={padL - 4} y={y + 3} textAnchor="end" fontSize={8} fill="var(--color-text-secondary)">
-              {Math.round(maxTotal * pct)}
+          <g key={`g-${v}`}>
+            <line
+              x1={padL} x2={W - padR} y1={y} y2={y}
+              stroke="var(--color-border)" strokeWidth={v === 0 ? 1 : 0.5}
+              strokeDasharray={v === 0 ? "" : "3 3"}
+            />
+            <text x={padL - 5} y={y + 3} textAnchor="end" fontSize={8.5}
+              fill="var(--color-text-secondary)">
+              {v}
             </text>
           </g>
         );
       })}
 
+      {/* Ticks eje derecho (Pass Rate) */}
+      {[0, 25, 50, 75, 95, 100].map(v => (
+        <g key={`rt-${v}`}>
+          {v === 95 && (
+            <line
+              x1={padL} x2={W - padR} y1={toYRate(95)} y2={toYRate(95)}
+              stroke="#f59e0b" strokeWidth={0.8} strokeDasharray="5 3" opacity={0.6}
+            />
+          )}
+          <text
+            x={W - padR + 5} y={toYRate(v) + 3}
+            textAnchor="start" fontSize={8.5}
+            fill={v === 95 ? "#f59e0b" : "var(--color-text-secondary)"}
+            fontWeight={v === 95 ? 700 : 400}
+          >
+            {v}%
+          </text>
+        </g>
+      ))}
+
       {/* Ejes */}
-      <line x1={padL} x2={padL}     y1={padT} y2={padT + chartH} stroke="var(--color-border)" strokeWidth={1} />
-      <line x1={padL} x2={W - padR} y1={padT + chartH} y2={padT + chartH} stroke="var(--color-border)" strokeWidth={1} />
-
-      {/* Líneas */}
-      <polyline points={totalLine}    fill="none" stroke="#3b82f6" strokeWidth={2}   strokeLinejoin="round" />
-      <polyline points={failLine}     fill="none" stroke="#ef4444" strokeWidth={1.5} strokeLinejoin="round" strokeDasharray="4 2" />
-      <polyline points={passRateLine} fill="none" stroke="#10b981" strokeWidth={1.5} strokeLinejoin="round" />
-
-      {/* Dots */}
-      {points.map((p, i) => {
-        const isHov = tooltip?.idx === i;
-        return (
-          <circle key={i} cx={toX(i)} cy={toY(p.total)}
-            r={isHov ? 5 : 2.5}
-            fill={isHov ? "#fff" : "#3b82f6"}
-            stroke="#3b82f6" strokeWidth={isHov ? 2 : 0}
-          />
-        );
-      })}
+      <line x1={padL}   x2={padL}   y1={padT} y2={padT + chartH} stroke="var(--color-border)" strokeWidth={1} />
+      <line x1={W-padR} x2={W-padR} y1={padT} y2={padT + chartH} stroke="var(--color-border)" strokeWidth={1} />
+      <line x1={padL}   x2={W-padR} y1={padT + chartH} y2={padT + chartH} stroke="var(--color-border)" strokeWidth={1} />
 
       {/* Línea vertical hover */}
-      {labelMode === "hover" && tooltip && (
+      {tooltip && (
         <line
           x1={toX(tooltip.idx)} x2={toX(tooltip.idx)}
           y1={padT} y2={padT + chartH}
@@ -339,64 +391,109 @@ function TrendChart({ points, lang = "es" }: { points: DayPoint[]; lang?: "es" |
         />
       )}
 
-      {/* Etiquetas fijas */}
-      {labelMode === "fixed" && fixedLabels.map(p => {
-        const i     = points.indexOf(p);
-        const x     = toX(i);
-        const isEdge = i === 0 || i === n - 1;
-        const anchor = isEdge ? (i === 0 ? "start" : "end") : "middle";
-        return (
-          <g key={p.date}>
-            <line x1={x} x2={x} y1={padT} y2={padT + chartH}
-              stroke="var(--color-border)" strokeWidth={0.5} strokeDasharray="2 2" />
-            <rect x={x - 14} y={padT - 22} width={28} height={16} rx={3}
-              fill="var(--color-surface)" stroke="var(--color-border)" strokeWidth={0.7} />
-            <text x={x} y={padT - 11} textAnchor="middle" fontSize={8} fontWeight={700} fill="#3b82f6">
-              {p.total}
-            </text>
-            {p.fail > 0 && (
-              <text x={x} y={toY(p.fail) - 5} textAnchor={anchor} fontSize={7} fontWeight={600} fill="#ef4444">
-                {p.fail}F
-              </text>
-            )}
-            <text x={x} y={padT + chartH * (1 - p.pass_rate / 100) - 5}
-              textAnchor={anchor} fontSize={7} fill="#10b981">
-              {p.pass_rate.toFixed(0)}%
-            </text>
-          </g>
-        );
-      })}
+      {/* Líneas de series */}
+      {SERIES.map(s => (
+        <path
+          key={s.key}
+          d={PATHS[s.key]}
+          fill="none"
+          stroke={s.color}
+          strokeWidth={s.key === "pass_rate" ? 2.5 : 1.8}
+          strokeDasharray={s.dash}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      ))}
 
-      {/* Eje X */}
-      {labels.map(p => (
-        <text key={p.date} x={toX(points.indexOf(p))} y={H - 4}
-          textAnchor="middle" fontSize={8} fill="var(--color-text-secondary)">
+      {/* Marcadores — todos los puntos si n<=60, solo hover si n>60 */}
+      {SERIES.map(s =>
+        points.map((p, i) => {
+          const show = n <= 60 || tooltip?.idx === i;
+          if (!show) return null;
+          const hov = tooltip?.idx === i;
+          const cy  = s.toY(s.vals[i]);
+          return (
+            <Marker
+              key={`${s.key}-${i}`}
+              cx={toX(i)} cy={cy}
+              color={s.color}
+              type={s.marker}
+              hov={hov}
+            />
+          );
+        })
+      )}
+
+      {/* Eje X — etiquetas */}
+      {xLabels.map(({ p, i }) => (
+        <text
+          key={`xl-${p.date}`}
+          x={toX(i)} y={H - 6}
+          textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}
+          fontSize={8.5} fill="var(--color-text-secondary)"
+        >
           {p.date.slice(5)}
         </text>
       ))}
 
-      {/* Leyenda */}
-      <rect x={padL}      y={H - 22} width={6} height={6} fill="#3b82f6" />
-      <text x={padL + 9}  y={H - 16} fontSize={8} fill="var(--color-text-secondary)">Total</text>
-      <rect x={padL + 45} y={H - 22} width={6} height={6} fill="#ef4444" />
-      <text x={padL + 54} y={H - 16} fontSize={8} fill="var(--color-text-secondary)">FAIL</text>
-      <rect x={padL + 85} y={H - 22} width={6} height={6} fill="#10b981" />
-      <text x={padL + 94} y={H - 16} fontSize={8} fill="var(--color-text-secondary)">Pass Rate</text>
+      {/* Leyenda inline */}
+      {SERIES.map((s, si) => {
+        const lx = padL + si * 115;
+        return (
+          <g key={`leg-${s.key}`}>
+            <line x1={lx} x2={lx + 18} y1={H - padB + 10} y2={H - padB + 10}
+              stroke={s.color} strokeWidth={2} strokeDasharray={s.dash} />
+            <Marker cx={lx + 9} cy={H - padB + 10} color={s.color} type={s.marker} hov={false} />
+            <text x={lx + 22} y={H - padB + 14} fontSize={8.5} fill="var(--color-text-secondary)">
+              {s.label}
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 
+  // ── Tooltip ───────────────────────────────────────────────────────────────
+  const tooltipEl = tooltip ? (
+    <div style={{
+      position: "absolute",
+      left: `${(toX(tooltip.idx) / W) * 100}%`,
+      top: "2rem",
+      transform: tooltip.idx > n * 0.75 ? "translate(-105%, 0)" : "translate(-50%, 0)",
+      background: "var(--color-surface)",
+      border: "1px solid var(--color-border)",
+      borderRadius: "8px", padding: "0.5rem 0.75rem",
+      fontSize: "0.75rem", pointerEvents: "none", zIndex: 20,
+      boxShadow: "0 4px 16px rgba(0,0,0,0.15)", whiteSpace: "nowrap",
+    }}>
+      <div style={{ fontWeight: 700, marginBottom: "0.3rem", color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
+        {tooltip.point.date}
+      </div>
+      {([
+        ["#6366f1", l ? "Total" : "Total",  tooltip.point.total,                            ""],
+        ["#10b981", "PASS",                  tooltip.point.pass,                             ""],
+        ["#ef4444", "FAIL",                  tooltip.point.fail,                             ""],
+        ["#f59e0b", "Pass Rate",             tooltip.point.pass_rate,                        "%"],
+      ] as [string, string, number, string][]).map(([c, lb, v, unit]) => (
+        <div key={lb} style={{ display: "flex", justifyContent: "space-between", gap: "1.5rem", marginBottom: "0.1rem" }}>
+          <span style={{ color: c, fontWeight: 600 }}>{lb}</span>
+          <span style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>
+            {unit === "%" ? `${v.toFixed(1)}%` : v}
+          </span>
+        </div>
+      ))}
+    </div>
+  ) : null;
+
+  // ── Toolbar ───────────────────────────────────────────────────────────────
+  const btnBase: React.CSSProperties = {
+    fontSize: "0.7rem", fontWeight: 600, padding: "0.2rem 0.6rem",
+    borderRadius: 5, cursor: "pointer", border: "1px solid var(--color-border)",
+    background: "var(--color-surface)", color: "var(--color-text-secondary)",
+  };
+
   const toolbar = (
-    <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.4rem", marginBottom: "0.5rem" }}>
-      <button
-        onClick={() => { setLabelMode(m => m === "hover" ? "fixed" : "hover"); setTooltip(null); }}
-        style={{
-          ...btnBase,
-          background: labelMode === "fixed" ? "rgba(59,130,246,0.12)" : "var(--color-surface)",
-          color:      labelMode === "fixed" ? "#3b82f6"               : "var(--color-text-secondary)",
-        }}
-      >
-        {labelMode === "hover" ? (l ? "Etiquetas fijas" : "Fixed labels") : (l ? "Tooltip hover" : "Hover tooltip")}
-      </button>
+    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.5rem" }}>
       <button
         onClick={() => setIsFullscreen(v => !v)}
         style={{
@@ -410,38 +507,7 @@ function TrendChart({ points, lang = "es" }: { points: DayPoint[]; lang?: "es" |
     </div>
   );
 
-  // Tooltip flotante
-  const tooltipEl = labelMode === "hover" && tooltip ? (
-    <div style={{
-      position: "absolute",
-      left: `${(toX(tooltip.idx) / W) * 100}%`,
-      top: "2rem",
-      transform: "translate(-50%, 0)",
-      background: "var(--color-surface)",
-      border: "1px solid var(--color-border)",
-      borderRadius: "8px", padding: "0.5rem 0.75rem",
-      fontSize: "0.75rem", color: "var(--color-text-primary)",
-      pointerEvents: "none", zIndex: 20,
-      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-      whiteSpace: "nowrap",
-    }}>
-      <div style={{ fontWeight: 700, marginBottom: "0.25rem", color: "var(--color-text-secondary)" }}>
-        {tooltip.point.date}
-      </div>
-      {([["#3b82f6","Total",tooltip.point.total],["#10b981","PASS",tooltip.point.pass],["#ef4444","FAIL",tooltip.point.fail]] as [string,string,number][]).map(([c,lb,v]) => (
-        <div key={lb} style={{ display: "flex", justifyContent: "space-between", gap: "1rem" }}>
-          <span style={{ color: c }}>{lb}</span>
-          <span style={{ fontWeight: 700 }}>{v}</span>
-        </div>
-      ))}
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem",
-        borderTop: "1px solid var(--color-border)", paddingTop: "0.15rem", marginTop: "0.1rem" }}>
-        <span style={{ color: "#10b981" }}>Pass Rate</span>
-        <span style={{ fontWeight: 700 }}>{tooltip.point.pass_rate.toFixed(1)}%</span>
-      </div>
-    </div>
-  ) : null;
-
+  // ── Fullscreen ────────────────────────────────────────────────────────────
   if (isFullscreen) {
     return (
       <div style={{
@@ -452,26 +518,11 @@ function TrendChart({ points, lang = "es" }: { points: DayPoint[]; lang?: "es" |
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <span style={{ fontWeight: 700, fontSize: "1rem", color: "var(--color-text-primary)" }}>
-            {l ? "Tendencia diaria" : "Daily trend"}
+            {l ? "Tendencia diaria — Inspecciones Q-Wall" : "Daily trend — Q-Wall Inspections"}
           </span>
-          <div style={{ display: "flex", gap: "0.4rem" }}>
-            <button
-              onClick={() => { setLabelMode(m => m === "hover" ? "fixed" : "hover"); setTooltip(null); }}
-              style={{
-                ...btnBase,
-                background: labelMode === "fixed" ? "rgba(59,130,246,0.12)" : "var(--color-surface)",
-                color:      labelMode === "fixed" ? "#3b82f6"               : "var(--color-text-secondary)",
-              }}
-            >
-              {labelMode === "hover" ? (l ? "Etiquetas fijas" : "Fixed labels") : (l ? "Tooltip hover" : "Hover tooltip")}
-            </button>
-            <button
-              onClick={() => setIsFullscreen(false)}
-              style={{ ...btnBase, background: "var(--color-surface)", color: "var(--color-text-secondary)" }}
-            >
-              {l ? "✕ Cerrar" : "✕ Close"}
-            </button>
-          </div>
+          <button onClick={() => setIsFullscreen(false)} style={btnBase}>
+            {l ? "✕ Cerrar" : "✕ Close"}
+          </button>
         </div>
         <div style={{ position: "relative", flex: 1 }}>
           {tooltipEl}

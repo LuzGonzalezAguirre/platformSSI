@@ -100,6 +100,13 @@ export const sidebarConfig: NavSection[] = [
       icon: "XCircle",
       allowedRoles: ALL_ROLES,
     },
+     {
+      id: "quality.problem-control",
+      labelKey: "nav.items.qualityProblemControl",
+      path: "/quality/problems",
+      icon: "AlertCircle",
+      allowedRoles: ALL_ROLES,
+    },
     ],
   },
   {

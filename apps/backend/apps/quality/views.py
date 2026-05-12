@@ -425,3 +425,390 @@ class QWallPartNumbersView(APIView):
             return Response(data)
         except Exception as e:
             return Response({"detail": str(e)}, status=502)
+        
+"""
+Problem Control Views - DRF ViewSets and API endpoints.
+"""
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+
+from .models import Problem, Stage, AuditLog, SLASettings
+from .serializers import (
+    ProblemListSerializer,
+    ProblemDetailSerializer,
+    ProblemCreateSerializer,
+    ProblemUpdateSerializer,
+    StageSerializer,
+    StageUpdateSerializer,
+    ApprovalSerializer,
+    OverrideRequestSerializer,
+    AuditLogSerializer,
+    SLASettingsSerializer,
+)
+from .services.problem_service import ProblemService
+from .repositories.problem_repository import ProblemRepository, StageRepository
+
+
+class ProblemViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Problem CRUD and workflow actions.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.service = ProblemService()
+        self.repository = ProblemRepository()
+    
+    def get_queryset(self):
+        """Filter problems based on user role."""
+        filters = {
+            'status': self.request.query_params.get('status'),
+            'severity': self.request.query_params.get('severity'),
+            'search': self.request.query_params.get('search'),
+            'created_by': self.request.query_params.get('created_by'),
+        }
+        # Remove None values
+        filters = {k: v for k, v in filters.items() if v is not None}
+        
+        return self.repository.list_for_user(
+            user=self.request.user,
+            filters=filters
+        )
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action == 'list':
+            return ProblemListSerializer
+        elif self.action == 'create':
+            return ProblemCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return ProblemUpdateSerializer
+        return ProblemDetailSerializer
+    
+    def create(self, request):
+        """Create new problem in DRAFT status."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        problem = self.service.create_draft(
+            data=serializer.validated_data,
+            user=request.user,
+            request_meta=self._get_request_meta(request)
+        )
+        
+        output_serializer = ProblemDetailSerializer(problem)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, pk=None):
+        """Update problem (only drafts allowed)."""
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            problem = self.service.update_draft(
+                problem_id=pk,
+                data=serializer.validated_data,
+                user=request.user,
+                request_meta=self._get_request_meta(request)
+            )
+            output_serializer = ProblemDetailSerializer(problem)
+            return Response(output_serializer.data)
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    def destroy(self, request, pk=None):
+        """Delete problem (only drafts allowed)."""
+        try:
+            self.repository.delete(pk)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        """Submit problem for manager approval."""
+        try:
+            problem = self.service.submit_for_approval(
+                problem_id=pk,
+                user=request.user,
+                request_meta=self._get_request_meta(request)
+            )
+            serializer = ProblemDetailSerializer(problem)
+            return Response(serializer.data)
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """Approve problem (Manager only)."""
+        user_role = self._get_user_role(request.user)
+        if user_role != 'manager':
+            return Response(
+                {'error': 'Only managers can approve problems'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            problem = self.service.approve_problem(
+                problem_id=pk,
+                approver=request.user,
+                request_meta=self._get_request_meta(request)
+            )
+            serializer = ProblemDetailSerializer(problem)
+            return Response(serializer.data)
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """Reject problem (Manager only)."""
+        user_role = self._get_user_role(request.user)
+        if user_role != 'manager':
+            return Response(
+                {'error': 'Only managers can reject problems'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = ApprovalSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        reason = serializer.validated_data.get('reason', '')
+        if not reason:
+            return Response(
+                {'error': 'Reason is required for rejection'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            problem = self.service.reject_problem(
+                problem_id=pk,
+                reason=reason,
+                rejector=request.user,
+                request_meta=self._get_request_meta(request)
+            )
+            output_serializer = ProblemDetailSerializer(problem)
+            return Response(output_serializer.data)
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=True, methods=['post'])
+    def close(self, request, pk=None):
+        """Close problem (requires all stages completed)."""
+        try:
+            problem = self.service.close_problem(
+                problem_id=pk,
+                user=request.user,
+                request_meta=self._get_request_meta(request)
+            )
+            serializer = ProblemDetailSerializer(problem)
+            return Response(serializer.data)
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=True, methods=['get'])
+    def audit_log(self, request, pk=None):
+        """Get audit log for problem."""
+        problem = self.get_object()
+        logs = AuditLog.objects.filter(problem=problem).order_by('-created_at')
+        serializer = AuditLogSerializer(logs, many=True)
+        return Response(serializer.data)
+    
+    def _get_request_meta(self, request):
+        """Extract request metadata for audit."""
+        return {
+            'ip_address': self._get_client_ip(request),
+            'user_agent': request.META.get('HTTP_USER_AGENT', '')
+        }
+    
+    def _get_client_ip(self, request):
+        """Extract client IP from request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            return x_forwarded_for.split(',')[0]
+        return request.META.get('REMOTE_ADDR')
+    
+    def _get_user_role(self, user):
+        """Get user role from job_title."""
+        if hasattr(user, 'job_title') and user.job_title:
+            return user.job_title.lower()
+        return 'viewer'
+
+
+class StageViewSet(viewsets.ModelViewSet):
+    """ViewSet for Stage operations."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = StageSerializer
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.repository = StageRepository()
+    
+    def get_queryset(self):
+        """Get stages (filtered by problem if provided)."""
+        qs = Stage.objects.select_related('problem', 'assigned_to')
+        problem_id = self.request.query_params.get('problem_id')
+        if problem_id:
+            qs = qs.filter(problem_id=problem_id)
+        return qs
+    
+    def update(self, request, pk=None):
+        """Update stage data."""
+        serializer = StageUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        stage = self.repository.get_by_id(pk)
+        
+        # Check if can edit
+        if stage.is_overdue and not stage.override_approved:
+            return Response(
+                {'error': 'Override required to edit overdue stage'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Update data
+        if 'data' in serializer.validated_data:
+            stage = self.repository.update_data(
+                stage_id=pk,
+                data=serializer.validated_data['data']
+            )
+        
+        # Complete if requested
+        if serializer.validated_data.get('complete'):
+            stage = self.repository.complete_stage(
+                stage_id=pk,
+                user=request.user
+            )
+            
+            # Audit log
+            AuditLog.log_change(
+                entity=stage,
+                action=AuditLog.Action.STAGE_COMPLETED,
+                user=request.user,
+                changes={'completed_by': request.user.get_full_name()}
+            )
+        
+        output_serializer = StageSerializer(stage, context={'request': request})
+        return Response(output_serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        """Mark stage as completed."""
+        stage = self.repository.get_by_id(pk)
+        
+        if stage.is_overdue and not stage.override_approved:
+            return Response(
+                {'error': 'Override required to complete overdue stage'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        stage = self.repository.complete_stage(pk, request.user)
+        
+        # Audit log
+        AuditLog.log_change(
+            entity=stage,
+            action=AuditLog.Action.STAGE_COMPLETED,
+            user=request.user,
+            changes={'completed_by': request.user.get_full_name()}
+        )
+        
+        serializer = StageSerializer(stage, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='request-override')
+    def request_override(self, request, pk=None):
+        """Request override for overdue stage."""
+        serializer = OverrideRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        stage = self.repository.get_by_id(pk)
+        
+        if not stage.is_overdue:
+            return Response(
+                {'error': 'Stage is not overdue'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        stage.request_override(
+            reason=serializer.validated_data['reason'],
+            user=request.user
+        )
+        
+        output_serializer = StageSerializer(stage, context={'request': request})
+        return Response(output_serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='approve-override')
+    def approve_override(self, request, pk=None):
+        """Approve override request (Manager only)."""
+        user_role = request.user.job_title.lower() if hasattr(request.user, 'job_title') else None
+        if user_role != 'manager':
+            return Response(
+                {'error': 'Only managers can approve overrides'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        stage = self.repository.get_by_id(pk)
+        
+        if not stage.override_requested:
+            return Response(
+                {'error': 'No override request pending'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        stage.approve_override(user=request.user)
+        
+        serializer = StageSerializer(stage, context={'request': request})
+        return Response(serializer.data)
+
+
+class SLASettingsViewSet(viewsets.ViewSet):
+    """ViewSet for SLA settings (singleton)."""
+    permission_classes = [IsAuthenticated]
+    
+    def list(self, request):
+        """Get current SLA settings."""
+        settings = SLASettings.get_current()
+        serializer = SLASettingsSerializer(settings)
+        return Response(serializer.data)
+    
+    def update(self, request):
+        """Update SLA settings (Manager only)."""
+        user_role = request.user.job_title.lower() if hasattr(request.user, 'job_title') else None
+        if user_role != 'manager':
+            return Response(
+                {'error': 'Only managers can update SLA settings'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        settings = SLASettings.get_current()
+        serializer = SLASettingsSerializer(settings, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        
+        # Update
+        for field, value in serializer.validated_data.items():
+            setattr(settings, field, value)
+        settings.updated_by = request.user
+        settings.save()
+        
+        output_serializer = SLASettingsSerializer(settings)
+        return Response(output_serializer.data)
