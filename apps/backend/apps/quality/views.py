@@ -424,4 +424,4 @@ class QWallPartNumbersView(APIView):
             cache.set(cache_key, data, 3600)  # 1 hora — catálogo estático
             return Response(data)
         except Exception as e:
-            return Response({"detail": str(e)}, status=502)
+            return Response({"detail": str(e)}, status=502) 
