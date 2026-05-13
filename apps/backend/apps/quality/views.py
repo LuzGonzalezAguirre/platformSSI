@@ -32,7 +32,7 @@ from django.http import HttpResponse
 from apps.quality.services.qwall_service import QWallService
 PROXY_URL  = os.getenv("QWALL_PROXY_URL",   "http://host.docker.internal:8002")
 HEADERS    = {"Authorization": f"Bearer {os.getenv('QWALL_PROXY_TOKEN', '')}"}
-
+HOLA = "HOLA"
 class ScrapDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
