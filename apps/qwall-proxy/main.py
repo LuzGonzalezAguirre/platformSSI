@@ -3,6 +3,7 @@
 import os
 import base64
 import pyodbc
+import traceback  
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel

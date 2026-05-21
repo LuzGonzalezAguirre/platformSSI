@@ -1,0 +1,9 @@
+[
+  {"model": "quality.holiday", "pk": 1, "fields": {"date": "2026-01-01", "name": "Año Nuevo", "is_recurring": true}},
+  {"model": "quality.holiday", "pk": 2, "fields": {"date": "2026-02-02", "name": "Día de la Constitución", "is_recurring": true}},
+  {"model": "quality.holiday", "pk": 3, "fields": {"date": "2026-03-16", "name": "Natalicio de Benito Juárez", "is_recurring": true}},
+  {"model": "quality.holiday", "pk": 4, "fields": {"date": "2026-05-01", "name": "Día del Trabajo", "is_recurring": true}},
+  {"model": "quality.holiday", "pk": 5, "fields": {"date": "2026-09-16", "name": "Día de la Independencia", "is_recurring": true}},
+  {"model": "quality.holiday", "pk": 6, "fields": {"date": "2026-11-16", "name": "Día de la Revolución Mexicana", "is_recurring": true}},
+  {"model": "quality.holiday", "pk": 7, "fields": {"date": "2026-12-25", "name": "Navidad", "is_recurring": true}}
+]

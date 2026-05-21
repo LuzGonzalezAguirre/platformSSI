@@ -1,0 +1,123 @@
+[
+  {
+    "model": "quality.severitylevel",
+    "pk": 1,
+    "fields": {
+      "level": 0,
+      "customer_note": "Detected Before Shipped to Customer",
+      "internal_note": "Detected by Operator, No Effect",
+      "supplier_note": "Detected by Us, No Effect",
+      "audit_note": "NONE"
+    }
+  },
+  {
+    "model": "quality.severitylevel",
+    "pk": 2,
+    "fields": {
+      "level": 1,
+      "customer_note": "Detected by Customer, No Effect",
+      "internal_note": "Detected by Operator, Very Minor Effect",
+      "supplier_note": "Detected by Us, Very Minor Effect",
+      "audit_note": "Observation by Team Member"
+    }
+  },
+  {
+    "model": "quality.severitylevel",
+    "pk": 3,
+    "fields": {
+      "level": 2,
+      "customer_note": "Detected by Customer, Very Minor Effect",
+      "internal_note": "Detected by Operator, Causes Inconvenience",
+      "supplier_note": "Detected by Us, Causes Inconvenience",
+      "audit_note": "Observation by Internal Auditor"
+    }
+  },
+  {
+    "model": "quality.severitylevel",
+    "pk": 4,
+    "fields": {
+      "level": 3,
+      "customer_note": "Detected by Customer, Causes Inconvenience",
+      "internal_note": "Detected by Operator, Requires Sort",
+      "supplier_note": "Detected by Us, Requires Sort",
+      "audit_note": "Opportunity for Improvement identified by Team Member"
+    }
+  },
+  {
+    "model": "quality.severitylevel",
+    "pk": 5,
+    "fields": {
+      "level": 4,
+      "customer_note": "Detected by Customer, Requires Sort",
+      "internal_note": "Detected by Operator, Disrupts Production",
+      "supplier_note": "Detected by Us, Disrupts Production",
+      "audit_note": "Opportunity for Improvement identified by Internal Auditor"
+    }
+  },
+  {
+    "model": "quality.severitylevel",
+    "pk": 6,
+    "fields": {
+      "level": 5,
+      "customer_note": "Detected by Customer, Disrupts Production",
+      "internal_note": "Detected by Operator, Wrecks Equipment",
+      "supplier_note": "Detected by Us, Wrecks Our Equipment",
+      "audit_note": "Non-conformance identified by Team Member"
+    }
+  },
+  {
+    "model": "quality.severitylevel",
+    "pk": 7,
+    "fields": {
+      "level": 6,
+      "customer_note": "Detected by Customer, Wrecks Their Equipment",
+      "internal_note": "Detected by Final Auditor, Very Minor Effect",
+      "supplier_note": "Gets Past Us, Detected by Our Customer, Minor Effect",
+      "audit_note": "Non-conformance identified by Internal Auditor"
+    }
+  },
+  {
+    "model": "quality.severitylevel",
+    "pk": 8,
+    "fields": {
+      "level": 7,
+      "customer_note": "Gets Past Our Customer, Detected by Their Customer",
+      "internal_note": "Detected by Final Auditor, Requires Sort",
+      "supplier_note": "Gets Past Us, Detected by Our Customer, Requires Sort",
+      "audit_note": "3rd Party Audit - Auditor Note"
+    }
+  },
+  {
+    "model": "quality.severitylevel",
+    "pk": 9,
+    "fields": {
+      "level": 8,
+      "customer_note": "Causes a Vehicle Field Failure",
+      "internal_note": "Detected by Final Auditor, Disrupts Production",
+      "supplier_note": "Gets Past Us, Detected by Our Customer, Disrupts Their Production",
+      "audit_note": "3rd Party Audit Opportunity for Improvement"
+    }
+  },
+  {
+    "model": "quality.severitylevel",
+    "pk": 10,
+    "fields": {
+      "level": 9,
+      "customer_note": "Causes a Vehicle Field Failure - Emissions or Regulatory Item",
+      "internal_note": "Not Detected by Operator or Final Auditor, Gets to Our Customer",
+      "supplier_note": "Causes a Field Failure",
+      "audit_note": "3rd Party Audit Minor Non-Conformance"
+    }
+  },
+  {
+    "model": "quality.severitylevel",
+    "pk": 11,
+    "fields": {
+      "level": 10,
+      "customer_note": "Safety Hazard to Vehicle Operator",
+      "internal_note": "Safety Hazard to Machine Operator",
+      "supplier_note": "Safety Hazard to Vehicle Operator",
+      "audit_note": "3rd Party Audit Major Non-Conformance"
+    }
+  }
+]

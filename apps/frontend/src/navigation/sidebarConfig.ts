@@ -66,42 +66,52 @@ export const sidebarConfig: NavSection[] = [
     ],
   },
   {
-    id: "quality",
-    labelKey: "nav.sections.quality",
-    icon: "BadgeCheck",
-    allowedRoles: ALL_ROLES,
-    order: 2,
-    items: [
-      {
-        id: "quality.dashboard",
-        labelKey: "nav.items.qualityDashboard",
-        path: "/quality/dashboard",
-        icon: "ShieldCheck",
-        allowedRoles: ALL_ROLES,
-      },
-      {
-  id: "quality.qwall",
-  labelKey: "nav.items.qualityQwall",
-  path: "/quality/qwall",
-  icon: "ClipboardCheck",
+  id: "quality",
+  labelKey: "nav.sections.quality",
+  icon: "BadgeCheck",
   allowedRoles: ALL_ROLES,
-},
-{
-  id: "quality.qwall-dashboard",
-  labelKey: "nav.items.qualityQwallDashboard",
-  path: "/quality/qwall-dashboard",
-  icon: "BarChart2",
-  allowedRoles: ALL_ROLES,
-},
-{
+  order: 2,
+  items: [
+    {
+      id: "quality.dashboard",
+      labelKey: "nav.items.qualityDashboard",
+      path: "/quality/dashboard",
+      icon: "ShieldCheck",
+      allowedRoles: ALL_ROLES,
+    },
+    {
+      id: "quality.qwall",
+      labelKey: "nav.items.qualityQwall",
+      path: "/quality/qwall",
+      icon: "ClipboardCheck",
+      allowedRoles: ALL_ROLES,
+    },
+    {
+      id: "quality.qwall-dashboard",
+      labelKey: "nav.items.qualityQwallDashboard",
+      path: "/quality/qwall-dashboard",
+      icon: "BarChart2",
+      allowedRoles: ALL_ROLES,
+    },
+    {
       id: "quality.rejections",
       labelKey: "nav.items.qualityRejections",
       path: "/quality/rejections",
       icon: "XCircle",
       allowedRoles: ALL_ROLES,
     },
-    ],
-  },
+    // ════════════════════════════════════════════════════════════════════
+    // PROBLEM CONTROL (NUEVO)
+    // ════════════════════════════════════════════════════════════════════
+    {
+      id: "quality.problems",
+      labelKey: "nav.items.qualityProblems",
+      path: "/quality/problems",
+      icon: "AlertTriangle", // o "FileWarning", "AlertCircle", "Activity"
+      allowedRoles: ALL_ROLES, // Ajusta según tus roles (ej: ["quality", "admin"])
+    },
+  ],
+},
   {
     id: "maintenance",
     labelKey: "nav.sections.maintenance",

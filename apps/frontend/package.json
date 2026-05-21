@@ -9,7 +9,8 @@
     "lint": "eslint src --ext ts,tsx"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.62.16",
+    "@tanstack/react-query": "^5.100.10",
+    "@tanstack/react-query-devtools": "^5.100.10",
     "axios": "^1.7.9",
     "date-fns": "^4.1.0",
     "i18next": "^24.2.2",
@@ -18,7 +19,7 @@
     "react-dom": "^18.3.1",
     "react-i18next": "^15.4.0",
     "react-router-dom": "^6.28.1",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

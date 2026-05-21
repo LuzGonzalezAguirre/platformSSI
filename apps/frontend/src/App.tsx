@@ -1,3 +1,5 @@
+// apps/frontend/src/App.tsx
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/authStore";
 import LoginPage from "./modules/auth/LoginPage";
@@ -6,7 +8,7 @@ import UsersPage from "./modules/admin/UsersPage";
 import ProfilePage from "./modules/profile/ProfilePage";
 import RolesPage from "./modules/admin/RolesPage";
 import ClearToBuildPage from "./modules/warehouse/ClearToBuildPage";
-import DemandPage       from "./modules/warehouse/DemandPage";
+import DemandPage from "./modules/warehouse/DemandPage";
 import TargetsPage from "./modules/production/targets/TargetsPage";
 import SafetyPage from "./modules/production/safety/SafetyPage";
 import AssistancePage from "./modules/production/assistance/AssistancePage";
@@ -19,14 +21,14 @@ import OperationalPanelPage from "./modules/operational-panel/OperationalPanelPa
 import CorrectiveActionsPage from "./modules/maintenance/corrective-actions/CorrectiveActionsPage";
 import QWallPage from "./modules/quality/qwall/QWallPage";
 import QWallDashboardPage from "./modules/quality/qwall/QWallDashboardPage";
-import RejectionReportPage  from "./modules/quality/RejectionReportPage";
+import RejectionReportPage from "./modules/quality/RejectionReportPage";
 
-
-
-
-
-
-
+// ════════════════════════════════════════════════════════════════════════
+// PROBLEM CONTROL IMPORTS (NUEVO)
+// ════════════════════════════════════════════════════════════════════════
+import { ProblemListPage } from "./modules/quality/problem-control/pages/ProlemListPage";
+import { ProblemWizardPage } from "./modules/quality/problem-control/pages/ProblemWizardPage";
+import { ProblemDetailPage } from "./modules/quality/problem-control/pages/ProblemDetailPage";
 
 const now = new Date();
 const hour = now.getHours();
@@ -41,30 +43,24 @@ function Dashboard() {
 
   return (
     <div style={styles.container}>
-      {/* Logo de fondo */}
       <img
         src="/logoSSIclaro.png"
         style={styles.logo} 
         alt="logo"
       />
 
-      {/* Contenido */}
       <div style={styles.content}>
-        
-
         <h1 style={styles.title}>
-  {greeting}{user?.full_name ? `, ${user.full_name}` : ""}
-</h1>
+          {greeting}{user?.full_name ? `, ${user.full_name}` : ""}
+        </h1>
 
-<p style={styles.subtitle}>
-  {now.toLocaleString()}
-</p>
+        <p style={styles.subtitle}>
+          {now.toLocaleString()}
+        </p>
         <p style={styles.subtitle}>
           {user?.role_display || "Usuario"} ·{" "}
           {user?.plant || "Sin planta asignada"}
         </p>
-
-        
       </div>
     </div>
   );
@@ -90,12 +86,11 @@ function AppRoutes() {
         <Route path="/settings/plant" element={<div>Planta</div>} />
         <Route path="/profile" element={<ProfilePage />} />        
         <Route path="/settings" element={<div>Configuración</div>} />
-        <Route path="/warehouse/ctb"    element={<ClearToBuildPage />} />
+        <Route path="/warehouse/ctb" element={<ClearToBuildPage />} />
         <Route path="/warehouse/demand" element={<DemandPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-        <Route path="/maintenance/overview"    element={<OverviewPage />} />
-        <Route path="/maintenance/actions"     element={<div>Actions — próximamente</div>} /> 
-        <Route path="/maintenance/workcenter"  element={<div>Workcenter Detail — próximamente</div>} />
+        <Route path="/maintenance/overview" element={<OverviewPage />} />
+        <Route path="/maintenance/actions" element={<div>Actions — próximamente</div>} /> 
+        <Route path="/maintenance/workcenter" element={<div>Workcenter Detail — próximamente</div>} />
         <Route path="/maintenance/work-requests" element={<WorkRequestsPage />} />
         <Route path="/quality/dashboard" element={<QualityDashboard />} />
         <Route path="/quality/panel" element={<QualityPanelPage />} />
@@ -105,13 +100,15 @@ function AppRoutes() {
         <Route path="/quality/qwall-dashboard" element={<QWallDashboardPage />} />
         <Route path="/quality/rejections" element={<RejectionReportPage />} />
 
+        {/* ════════════════════════════════════════════════════════════════ */}
+        {/* PROBLEM CONTROL ROUTES (NUEVO) */}
+        {/* ════════════════════════════════════════════════════════════════ */}
+        <Route path="/quality/problems" element={<ProblemListPage />} />
+        <Route path="/quality/problems/new" element={<ProblemWizardPage />} />
+        <Route path="/quality/problems/:id" element={<ProblemDetailPage />} />
+        <Route path="/quality/problems/:id/edit" element={<ProblemWizardPage />} />
 
-
-
-
-
-
-
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>
   );
@@ -139,6 +136,7 @@ export default function App() {
     </BrowserRouter>
   );
 }
+
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
     position: "relative",
