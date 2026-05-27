@@ -24,7 +24,9 @@ export default function Sidebar({ userRole }: SidebarProps) {
     toggleSection,
     setActive,
     toggleCollapse,
+    toggleSubGroup,
     isSectionExpanded,
+    isSubGroupExpanded,
     isItemActive,
     state,
   } = useSidebar(userRole);
@@ -86,28 +88,79 @@ export default function Sidebar({ userRole }: SidebarProps) {
 
               {expanded && !state.isCollapsed && (
                 <div style={styles.items}>
-                  {section.items.map((item) => (
-                    <button
-                      key={item.id}
-                      style={{
-                        ...styles.itemBtn,
-                        ...(isItemActive(item.id) ? styles.itemActive : {}),
-                      }}
-                      onClick={() =>
-                        handleItemClick(item.id, section.id, item.path)
-                      }
-                    >
-                      <span style={styles.itemIcon}>
-                        <DynamicIcon name={item.icon} />
-                      </span>
-                      <span style={styles.itemLabel}>
-                        {t(item.labelKey)}
-                      </span>
-                      {item.badge ? (
-                        <span style={styles.badge}>{item.badge}</span>
-                      ) : null}
-                    </button>
-                  ))}
+                  {section.items.map((item) => {
+                    if (item.children && item.children.length > 0) {
+                      const subExpanded = isSubGroupExpanded(item.id);
+                      return (
+                        <div key={item.id}>
+                          <button
+                            style={styles.subGroupBtn}
+                            onClick={() => toggleSubGroup(item.id)}
+                          >
+                            <span style={styles.itemIcon}>
+                              <DynamicIcon name={item.icon} />
+                            </span>
+                            <span style={styles.itemLabel}>{t(item.labelKey)}</span>
+                            <span style={styles.chevron}>
+                              {subExpanded
+                                ? <Icons.ChevronDown size={12} />
+                                : <Icons.ChevronRight size={12} />
+                              }
+                            </span>
+                          </button>
+                          {subExpanded && (
+                            <div style={styles.subItems}>
+                              {item.children.map((child) => (
+                                <button
+                                  key={child.id}
+                                  style={{
+                                    ...styles.itemBtn,
+                                    ...(isItemActive(child.id) ? styles.itemActive : {}),
+                                  }}
+                                  onClick={() =>
+                                    handleItemClick(child.id, section.id, child.path)
+                                  }
+                                >
+                                  <span style={styles.itemIcon}>
+                                    <DynamicIcon name={child.icon} />
+                                  </span>
+                                  <span style={styles.itemLabel}>
+                                    {t(child.labelKey)}
+                                  </span>
+                                  {child.badge ? (
+                                    <span style={styles.badge}>{child.badge}</span>
+                                  ) : null}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <button
+                        key={item.id}
+                        style={{
+                          ...styles.itemBtn,
+                          ...(isItemActive(item.id) ? styles.itemActive : {}),
+                        }}
+                        onClick={() =>
+                          handleItemClick(item.id, section.id, item.path)
+                        }
+                      >
+                        <span style={styles.itemIcon}>
+                          <DynamicIcon name={item.icon} />
+                        </span>
+                        <span style={styles.itemLabel}>
+                          {t(item.labelKey)}
+                        </span>
+                        {item.badge ? (
+                          <span style={styles.badge}>{item.badge}</span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -195,13 +248,31 @@ const styles: Record<string, React.CSSProperties> = {
   items: {
     paddingLeft: "1rem",
   },
+  subGroupBtn: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.625rem",
+    padding: "0.5rem 0.75rem",
+    backgroundColor: "transparent",
+    border: "none",
+    cursor: "pointer",
+    color: "var(--color-text-secondary)",
+    fontSize: "0.825rem",
+    fontWeight: "600",
+    borderRadius: "var(--radius-md)",
+    textAlign: "left" as const,
+  },
+  subItems: {
+    paddingLeft: "1rem",
+  },
   itemBtn: {
     width: "100%",
     display: "flex",
     alignItems: "center",
     gap: "0.625rem",
     padding: "0.5rem 0.75rem",
-    background: "transparent",
+    backgroundColor: "transparent",
     border: "none",
     cursor: "pointer",
     color: "var(--color-text-secondary)",

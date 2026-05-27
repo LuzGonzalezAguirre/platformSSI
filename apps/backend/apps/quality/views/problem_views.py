@@ -13,6 +13,18 @@ from apps.quality.serializers import (
     SeverityLevelSerializer,
     DefectTypeSerializer,
 )
+from apps.quality.models import (
+    ContainmentAction, FiveWhyAnalysis, RootCause,
+    CorrectiveAction, VerificationAction, PreventionAction,
+)
+from apps.quality.serializers.problem_serializer import (
+    ContainmentActionSerializer,
+    FiveWhyAnalysisSerializer,
+    RootCauseSerializer,
+    CorrectiveActionSerializer,
+    VerificationActionSerializer,
+    PreventionActionSerializer,
+)
 
 
 class ProblemListCreateView(APIView):
@@ -367,3 +379,507 @@ class QualityManagersListView(APIView):
             return Response(serializer.data)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ContainmentActionListCreateView(APIView):
+    """
+    GET  /quality/containment-actions/?problem_id=<id>
+    POST /quality/containment-actions/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        problem_id = request.query_params.get('problem_id')
+        qs = ContainmentAction.objects.filter(problem_id=problem_id) if problem_id else ContainmentAction.objects.none()
+        return Response(ContainmentActionSerializer(qs, many=True).data)
+
+    def post(self, request):
+        serializer = ContainmentActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ContainmentActionDetailView(APIView):
+    """
+    PUT    /quality/containment-actions/<id>/
+    DELETE /quality/containment-actions/<id>/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_object(self, pk):
+        try:
+            return ContainmentAction.objects.get(pk=pk)
+        except ContainmentAction.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ContainmentActionSerializer(obj, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# FIVE WHY ANALYSIS (Step 4)
+# ═════════════════════════════════════════════════════════════════════════
+
+class FiveWhyAnalysisListCreateView(APIView):
+    """
+    GET  /quality/five-why-analyses/?problem_id=<id>
+    POST /quality/five-why-analyses/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        problem_id = request.query_params.get('problem_id')
+        if not problem_id:
+            return Response({'detail': 'problem_id requerido'}, status=status.HTTP_400_BAD_REQUEST)
+        qs = FiveWhyAnalysis.objects.filter(problem_id=problem_id).prefetch_related('root_causes__created_by')
+        return Response(FiveWhyAnalysisSerializer(qs, many=True).data)
+
+    def post(self, request):
+        serializer = FiveWhyAnalysisSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(created_by=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class FiveWhyAnalysisDetailView(APIView):
+    """
+    PUT    /quality/five-why-analyses/<id>/
+    DELETE /quality/five-why-analyses/<id>/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_object(self, pk):
+        try:
+            return FiveWhyAnalysis.objects.get(pk=pk)
+        except FiveWhyAnalysis.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = FiveWhyAnalysisSerializer(obj, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# ROOT CAUSE (Step 4 sub-resource)
+# ═════════════════════════════════════════════════════════════════════════
+
+class RootCauseListCreateView(APIView):
+    """
+    GET  /quality/root-causes/?five_why_id=<id>
+    POST /quality/root-causes/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        five_why_id = request.query_params.get('five_why_id')
+        if not five_why_id:
+            return Response({'detail': 'five_why_id requerido'}, status=status.HTTP_400_BAD_REQUEST)
+        qs = RootCause.objects.filter(five_why_id=five_why_id).order_by('order')
+        return Response(RootCauseSerializer(qs, many=True).data)
+
+    def post(self, request):
+        serializer = RootCauseSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(created_by=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class RootCauseDetailView(APIView):
+    """
+    PUT    /quality/root-causes/<id>/
+    DELETE /quality/root-causes/<id>/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_object(self, pk):
+        try:
+            return RootCause.objects.get(pk=pk)
+        except RootCause.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = RootCauseSerializer(obj, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# CORRECTIVE ACTIONS (Step 5)
+# ═════════════════════════════════════════════════════════════════════════
+
+class CorrectiveActionListCreateView(APIView):
+    """
+    GET  /quality/corrective-actions/?problem_id=<id>
+    POST /quality/corrective-actions/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        problem_id = request.query_params.get('problem_id')
+        qs = (
+            CorrectiveAction.objects.filter(problem_id=problem_id).select_related('responsible', 'root_cause')
+            if problem_id
+            else CorrectiveAction.objects.none()
+        )
+        return Response(CorrectiveActionSerializer(qs, many=True).data)
+
+    def post(self, request):
+        serializer = CorrectiveActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class CorrectiveActionDetailView(APIView):
+    """
+    PUT    /quality/corrective-actions/<id>/
+    DELETE /quality/corrective-actions/<id>/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_object(self, pk):
+        try:
+            return CorrectiveAction.objects.get(pk=pk)
+        except CorrectiveAction.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = CorrectiveActionSerializer(obj, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# VERIFICATION ACTIONS (Step 6)
+# ═════════════════════════════════════════════════════════════════════════
+
+class VerificationActionListCreateView(APIView):
+    """
+    GET  /quality/verification-actions/?problem_id=<id>
+    POST /quality/verification-actions/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        problem_id = request.query_params.get('problem_id')
+        qs = (
+            VerificationAction.objects.filter(problem_id=problem_id).select_related('responsible')
+            if problem_id
+            else VerificationAction.objects.none()
+        )
+        return Response(VerificationActionSerializer(qs, many=True).data)
+
+    def post(self, request):
+        serializer = VerificationActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class VerificationActionDetailView(APIView):
+    """
+    PUT    /quality/verification-actions/<id>/
+    DELETE /quality/verification-actions/<id>/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_object(self, pk):
+        try:
+            return VerificationAction.objects.get(pk=pk)
+        except VerificationAction.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = VerificationActionSerializer(obj, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# PREVENTION ACTIONS (Step 7)
+# ═════════════════════════════════════════════════════════════════════════
+
+class PreventionActionListCreateView(APIView):
+    """
+    GET  /quality/prevention-actions/?problem_id=<id>
+    POST /quality/prevention-actions/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        problem_id = request.query_params.get('problem_id')
+        qs = (
+            PreventionAction.objects.filter(problem_id=problem_id).select_related('responsible')
+            if problem_id
+            else PreventionAction.objects.none()
+        )
+        return Response(PreventionActionSerializer(qs, many=True).data)
+
+    def post(self, request):
+        serializer = PreventionActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class PreventionActionDetailView(APIView):
+    """
+    PUT    /quality/prevention-actions/<id>/
+    DELETE /quality/prevention-actions/<id>/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_object(self, pk):
+        try:
+            return PreventionAction.objects.get(pk=pk)
+        except PreventionAction.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PreventionActionSerializer(obj, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self._get_object(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# ATTACHMENTS
+# ═════════════════════════════════════════════════════════════════════════
+
+class ProblemAttachmentUploadView(APIView):
+    """POST /quality/attachments/upload/"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        problem_id = request.data.get('problem_id')
+        step = request.data.get('step', 'general')
+        file = request.FILES.get('file')
+
+        if not problem_id or not file:
+            return Response(
+                {'detail': 'problem_id and file are required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.quality.models import Problem, ProblemAttachment
+
+        try:
+            problem = Problem.objects.get(pk=problem_id)
+        except Problem.DoesNotExist:
+            return Response({'detail': 'Problem not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        attachment = ProblemAttachment.objects.create(
+            problem=problem,
+            step=step,
+            file=file,
+            filename=file.name,
+            file_size=file.size,
+            uploaded_by=request.user,
+        )
+
+        from apps.quality.serializers.problem_serializer import ProblemAttachmentSerializer
+        return Response(
+            ProblemAttachmentSerializer(attachment).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ProblemAttachmentListView(APIView):
+    """GET /quality/attachments/?problem_id=<id>[&step=<step>]"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        problem_id = request.query_params.get('problem_id')
+        if not problem_id:
+            return Response({'detail': 'problem_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from apps.quality.models import ProblemAttachment
+        from apps.quality.serializers.problem_serializer import ProblemAttachmentSerializer
+
+        qs = ProblemAttachment.objects.filter(problem_id=problem_id).select_related('uploaded_by')
+        step = request.query_params.get('step')
+        if step:
+            qs = qs.filter(step=step)
+
+        return Response(ProblemAttachmentSerializer(qs.order_by('-uploaded_at'), many=True).data)
+
+
+class ProblemAttachmentDeleteView(APIView):
+    """DELETE /quality/attachments/<id>/"""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        from apps.quality.models import ProblemAttachment
+
+        try:
+            attachment = ProblemAttachment.objects.get(pk=pk)
+        except ProblemAttachment.DoesNotExist:
+            return Response({'detail': 'Attachment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if attachment.file:
+            attachment.file.delete(save=False)
+
+        attachment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# NOTES
+# ═════════════════════════════════════════════════════════════════════════
+
+class ProblemNoteListCreateView(APIView):
+    """GET /quality/notes/?problem_id=<id>[&step=<step>]  POST /quality/notes/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        problem_id = request.query_params.get('problem_id')
+        if not problem_id:
+            return Response({'detail': 'problem_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from apps.quality.models import ProblemNote
+        from apps.quality.serializers.problem_serializer import ProblemNoteSerializer
+
+        qs = ProblemNote.objects.filter(problem_id=problem_id).select_related('created_by')
+        step = request.query_params.get('step')
+        if step:
+            qs = qs.filter(step=step)
+
+        return Response(ProblemNoteSerializer(qs, many=True).data)
+
+    def post(self, request):
+        from apps.quality.models import Problem, ProblemNote
+        from apps.quality.serializers.problem_serializer import ProblemNoteSerializer
+
+        problem_id = request.data.get('problem')
+        step = request.data.get('step', 'general')
+        text = request.data.get('text', '').strip()
+
+        if not problem_id or not text:
+            return Response({'detail': 'problem and text are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            problem = Problem.objects.get(pk=problem_id)
+        except Problem.DoesNotExist:
+            return Response({'detail': 'Problem not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        note = ProblemNote.objects.create(
+            problem=problem,
+            step=step,
+            text=text,
+            created_by=request.user,
+        )
+        return Response(ProblemNoteSerializer(note).data, status=status.HTTP_201_CREATED)
+
+
+class ProblemNoteDetailView(APIView):
+    """PUT /quality/notes/<id>/  DELETE /quality/notes/<id>/"""
+    permission_classes = [IsAuthenticated]
+
+    def _get_note(self, pk):
+        from apps.quality.models import ProblemNote
+        try:
+            return ProblemNote.objects.get(pk=pk)
+        except ProblemNote.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        from apps.quality.serializers.problem_serializer import ProblemNoteSerializer
+        note = self._get_note(pk)
+        if not note:
+            return Response({'detail': 'Note not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        text = request.data.get('text', '').strip()
+        if not text:
+            return Response({'detail': 'text is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        note.text = text
+        note.save()
+        return Response(ProblemNoteSerializer(note).data)
+
+    def delete(self, request, pk):
+        note = self._get_note(pk)
+        if not note:
+            return Response({'detail': 'Note not found'}, status=status.HTTP_404_NOT_FOUND)
+        note.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

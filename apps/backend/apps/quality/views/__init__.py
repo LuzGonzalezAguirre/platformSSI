@@ -3,6 +3,7 @@ from .scrap_views import ScrapDetailView
 from .targets_views import QualityTargetView
 from .qwall_views import QWallReportView, QWallPartNumbersView
 from .rejection_views import RejectionReportView, RejectionPhotoView, RejectionReportPDFView
+from .failure_catalog_views import FailureCatalogView, CatalogStructureView
 from .problem_views import (
     ProblemListCreateView,
     ProblemDetailView,
@@ -16,9 +17,28 @@ from .problem_views import (
     DefectTypeListView,
     QualityUsersListView,
     QualityManagersListView,
+    ContainmentActionListCreateView,
+    ContainmentActionDetailView,
+    FiveWhyAnalysisListCreateView,
+    FiveWhyAnalysisDetailView,
+    RootCauseListCreateView,
+    RootCauseDetailView,
+    CorrectiveActionListCreateView,
+    CorrectiveActionDetailView,
+    VerificationActionListCreateView,
+    VerificationActionDetailView,
+    PreventionActionListCreateView,
+    PreventionActionDetailView,
+    ProblemAttachmentUploadView,
+    ProblemAttachmentListView,
+    ProblemAttachmentDeleteView,
+    ProblemNoteListCreateView,
+    ProblemNoteDetailView,
 )
 
 __all__ = [
+    'FailureCatalogView',
+    'CatalogStructureView',
     'ScrapDetailView',
     'QualityTargetView',
     'QWallReportView',
@@ -38,4 +58,21 @@ __all__ = [
     'DefectTypeListView',
     'QualityUsersListView',
     'QualityManagersListView',
+    'ContainmentActionListCreateView',
+    'ContainmentActionDetailView',
+    'FiveWhyAnalysisListCreateView',
+    'FiveWhyAnalysisDetailView',
+    'RootCauseListCreateView',
+    'RootCauseDetailView',
+    'CorrectiveActionListCreateView',
+    'CorrectiveActionDetailView',
+    'VerificationActionListCreateView',
+    'VerificationActionDetailView',
+    'PreventionActionListCreateView',
+    'PreventionActionDetailView',
+    'ProblemAttachmentUploadView',
+    'ProblemAttachmentListView',
+    'ProblemAttachmentDeleteView',
+    'ProblemNoteListCreateView',
+    'ProblemNoteDetailView',
 ]

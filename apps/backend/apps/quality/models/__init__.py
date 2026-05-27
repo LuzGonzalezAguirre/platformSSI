@@ -11,8 +11,9 @@ from .actions import (
     VerificationAction,
     PreventionAction,
 )
-from .attachment import ProblemAttachment
+from .attachment import ProblemAttachment, ProblemNote
 from .audit import ProblemAudit
+from .failure_catalog import FailureModeImage
 
 __all__ = [
     'QualityTarget',
@@ -27,5 +28,7 @@ __all__ = [
     'VerificationAction',
     'PreventionAction',
     'ProblemAttachment',
+    'ProblemNote',
     'ProblemAudit',
+    'FailureModeImage',
 ]

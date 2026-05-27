@@ -79,7 +79,7 @@ class Problem(models.Model):
         null=True,
         blank=True,
         db_index=True,
-        help_text="CA-WW-YY-XXXXX (generado al aprobar)"
+        help_text="CA-WW-YY-XXXXX (generado al crear)"
     )
 
     status = models.CharField(
@@ -470,8 +470,7 @@ class Problem(models.Model):
 
         # Auto-calculate initial_response_due
         if not self.initial_response_due:
-            self.initial_response_due = self.created_at + timedelta(
-                hours=self.sla_d3_hours
-            )
+            base = self.created_at or timezone.now()
+            self.initial_response_due = base + timedelta(hours=self.sla_d3_hours)
 
         super().save(*args, **kwargs)

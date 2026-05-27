@@ -18,7 +18,7 @@ class ProblemService:
     def get_all_problems(filters: dict = None, user: User = None) -> list[Problem]:
         """
         Obtener lista de problems con filtros.
-        RBAC: Solo usuarios con System Role "Quality" o "Administrator".
+        RBAC: Solo usuarios con System Role "quality_engineer" o "admin".
         """
         if not ProblemService._has_quality_access(user):
             raise PermissionDenied("User does not have Quality access")
@@ -55,8 +55,8 @@ class ProblemService:
         Crear nuevo problem en estado Draft.
         
         Validaciones:
-        - User debe tener System Role "Quality" o "Administrator"
-        - Champion debe tener System Role "Quality"
+        - User debe tener System Role "quality_engineer" o "admin"
+        - Champion debe tener System Role "quality_engineer"
         - Campos obligatorios: brief_description, full_description, 
           problem_type, severity_level, champion, date_of_occurrence
         """
@@ -66,7 +66,7 @@ class ProblemService:
         # Validar champion tiene rol Quality
         champion = data.get('champion')
         if not ProblemService._has_quality_role(champion):
-            raise ValidationError("Champion must have Quality system role")
+            raise ValidationError("Champion must have Quality Engineer system role")
 
         # Validar campos obligatorios
         required_fields = [
@@ -284,13 +284,12 @@ class ProblemService:
         """
         Cerrar problem (Approved → Closed).
         
-        Validaciones completas:
-        - Problem debe estar Approved
-        - FMEA completed (si required)
-        - Control Plan completed (si required)
-        - Cada Five Why Analysis tiene mínimo 3 Why's
-        - Cada Five Why Analysis tiene mínimo 3 Root Causes
-        - Cada Root Cause tiene mínimo 1 Corrective Action
+        Validaciones:
+        - Todos los steps completados
+        - FMEA/Control Plan actualizados si required
+        - Five Why completo (min 3 por categoría)
+        - Root Causes identificadas
+        - Corrective Actions por Root Cause
         """
         if not ProblemService._has_quality_access(user):
             raise PermissionDenied("User does not have Quality access")
@@ -304,10 +303,10 @@ class ProblemService:
                 f"Cannot close problem in {problem.status} status"
             )
 
-        # Validar cierre
-        success, error = ProblemRepository.close_problem(problem)
-        if not success:
-            raise ValidationError(f"Cannot close problem: {error}")
+        # Validar con SLAService
+        can_close, validation_error = ProblemRepository.close_problem(problem)
+        if not can_close:
+            raise ValidationError(validation_error)
 
         # Audit log
         ProblemService._create_audit(
@@ -323,17 +322,20 @@ class ProblemService:
     @transaction.atomic
     def request_override(problem_id: int, user: User, reason: str) -> Problem:
         """
-        Solicitar override para problem globally overdue (>30 días).
+        Solicitar override para continuar editando problem globally overdue.
         """
+        if not ProblemService._has_quality_access(user):
+            raise PermissionDenied("User does not have Quality access")
+
+        if not reason:
+            raise ValidationError("Override reason is required")
+
         problem = ProblemRepository.get_problem_by_id(problem_id)
         if not problem:
             raise ValidationError(f"Problem {problem_id} not found")
 
         if not problem.is_globally_overdue():
             raise ValidationError("Problem is not globally overdue")
-
-        if not reason:
-            raise ValidationError("Override reason is required")
 
         problem.override_requested = True
         problem.override_reason = reason
@@ -383,6 +385,7 @@ class ProblemService:
         return problem
 
     @staticmethod
+    @transaction.atomic
     def delete_problem(problem_id: int, user: User):
         """
         Eliminar problem (solo Draft).
@@ -390,20 +393,24 @@ class ProblemService:
         if not ProblemService._has_quality_access(user):
             raise PermissionDenied("User does not have Quality access")
 
-        problem = ProblemRepository.get_problem_by_id(problem_id)
-        if not problem:
+        try:
+            problem = Problem.objects.get(pk=problem_id)
+        except Problem.DoesNotExist:
             raise ValidationError(f"Problem {problem_id} not found")
 
-        # Solo Draft se puede eliminar
-        ProblemRepository.delete_problem(problem)
+        if problem.status != 'draft':
+            raise ValidationError("Only draft problems can be deleted")
 
-        # Audit log (crear antes de borrar)
+        # Audit log BEFORE deleting (so FK still valid)
         ProblemService._create_audit(
             problem=problem,
             user=user,
             action='deleted',
-            changes={'id': problem_id}
+            changes={'id': problem_id, 'problem_number': problem.problem_number}
         )
+
+        # CASCADE handles related objects
+        problem.delete()
 
     # ═════════════════════════════════════════════════════════════════════
     # HELPER METHODS
@@ -411,21 +418,24 @@ class ProblemService:
 
     @staticmethod
     def _has_quality_access(user: User) -> bool:
-        """Check if user has Quality or Administrator role"""
+        """
+        Check if user has Quality Engineer or Administrator role.
+        
+        ⚠️ CAMBIO CRÍTICO: Ahora busca 'quality_engineer' en lugar de 'quality'
+        """
         if not user or not user.is_authenticated:
             return False
         
         roles = user.user_roles.values_list('role__slug', flat=True)
-        return 'quality' in roles or 'admin' in roles
+        return 'quality_engineer' in roles or 'admin' in roles
 
     @staticmethod
     def _has_quality_role(user: User) -> bool:
-        """Check if user has Quality role specifically"""
+        """Check if user has quality_engineer system role."""
         if not user or not user.is_authenticated:
             return False
-        
         roles = user.user_roles.values_list('role__slug', flat=True)
-        return 'quality' in roles
+        return 'quality_engineer' in roles
 
     @staticmethod
     def _is_quality_manager(user: User) -> bool:
@@ -461,7 +471,11 @@ class ProblemService:
 
     @staticmethod
     def get_quality_users():
-        from apps.quality.repositories.problem_repository import ProblemRepository
+        """
+        Get users with quality_engineer role for Champion/Team selection.
+        
+        ⚠️ CAMBIO CRÍTICO: Ahora busca 'quality_engineer' en lugar de 'quality'
+        """
         return ProblemRepository.get_users_by_role('quality_engineer')
 
     @staticmethod

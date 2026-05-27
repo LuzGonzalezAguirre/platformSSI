@@ -6,6 +6,7 @@
     "maintenance": "Maintenance",
     "warehouse": "Warehouse",
     "administration": "Administration",
+    "ssi": "SSI - Chair Law",
     "warehouseBom": "BOM Explorer",
     "warehouseCtb": "Clear To Build",
     "warehouseDemand": "Demand",
@@ -28,6 +29,7 @@
     "adminUsers": "Users",
     "adminRoles": "Roles",
     "adminPlant": "Plant",
+    "adminAudit": "Audit",
     "warehouseBom": "BOM Explorer",
     "warehouseCtb": "Clear To Build",
     "warehouseDemand": "Demand",
@@ -38,9 +40,17 @@
     "qualityDashboard": "Dashboard",
     "qualityPanel": "Operational Panel",
     "maintenanceCorrectiveActions": "Corrective Actions",
+    "qualityQwallGroup": "Q-Wall",
+    "qualityQwallReport": "Report",
     "qualityQwall": "Q-Wall Report",
     "qualityQwallDashboard": "Q-Wall Dashboard",
-    "qualityRejections": "Rejections"
+    "qualityRejections": "Rejections",
+    "qualityQwallCatalog": "Failure Catalog",
+    "qualityQwallHelp": "Help / Tutorial",
+    "qualityProblems": "Problem Control",
+    "productionLeysilla": "Chair Law",
+    "ssiChairs": "Chair Law ",
+    "ssiAttendance": "Attendance"
 
 
 

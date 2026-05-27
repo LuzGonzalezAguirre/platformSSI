@@ -16,9 +16,13 @@ class LoginView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+            ip = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR")
             result = AuthService.login(
                 employee_id=serializer.validated_data["employee_id"],
                 password=serializer.validated_data["password"],
+                ip=ip,
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
         except ValueError as e:
             return Response(
@@ -44,7 +48,14 @@ class LogoutView(APIView):
                 {"detail": "Token de refresco requerido."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        AuthService.logout(refresh_token)
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+        ip = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR")
+        AuthService.logout(
+            refresh_token,
+            user=request.user,
+            ip=ip,
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        )
         return Response({"detail": "Sesión cerrada correctamente."}, status=status.HTTP_200_OK)
 
 

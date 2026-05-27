@@ -12,6 +12,7 @@ import { useAuthStore, UserPermissions, ModuleKey } from "../store/authStore";
 
 const initialState: SidebarState = {
   expandedSectionId: null,
+  expandedSubGroupId: null,
   activeItemId: null,
   isCollapsed: false,
 };
@@ -28,6 +29,12 @@ function sidebarReducer(state: SidebarState, action: SidebarAction): SidebarStat
       return { ...state, expandedSectionId: action.sectionId };
     case "SET_ACTIVE":
       return { ...state, activeItemId: action.itemId, expandedSectionId: action.sectionId };
+    case "TOGGLE_SUBGROUP":
+      return {
+        ...state,
+        expandedSubGroupId:
+          state.expandedSubGroupId === action.subGroupId ? null : action.subGroupId,
+      };
     case "TOGGLE_COLLAPSE":
       return {
         ...state,
@@ -66,7 +73,16 @@ function filterSectionsByPermissions(
     })
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => item.allowedRoles.includes(userRole)),
+      items: section.items
+        .filter((item) => item.allowedRoles.includes(userRole))
+        .map((item) =>
+          item.children
+            ? {
+                ...item,
+                children: item.children.filter((c) => c.allowedRoles.includes(userRole)),
+              }
+            : item,
+        ),
     }))
     .filter((section) => section.items.length > 0)
     .sort((a, b) => a.order - b.order);
@@ -74,15 +90,30 @@ function filterSectionsByPermissions(
 
 function findSectionByPath(sections: NavSection[], path: string): string | null {
   for (const section of sections) {
-    if (section.items.find((item) => path.startsWith(item.path))) return section.id;
+    for (const item of section.items) {
+      if (item.path && path.startsWith(item.path)) return section.id;
+      if (item.children?.find((c) => c.path && path.startsWith(c.path))) return section.id;
+    }
+  }
+  return null;
+}
+
+function findSubGroupByPath(sections: NavSection[], path: string): string | null {
+  for (const section of sections) {
+    for (const item of section.items) {
+      if (item.children?.find((c) => c.path && path.startsWith(c.path))) return item.id;
+    }
   }
   return null;
 }
 
 function findItemByPath(sections: NavSection[], path: string): string | null {
   for (const section of sections) {
-    const match = section.items.find((item) => path.startsWith(item.path));
-    if (match) return match.id;
+    for (const item of section.items) {
+      if (item.path && path.startsWith(item.path)) return item.id;
+      const child = item.children?.find((c) => c.path && path.startsWith(c.path));
+      if (child) return child.id;
+    }
   }
   return null;
 }
@@ -102,6 +133,11 @@ export function useSidebar(userRole: UserRole): UseSidebarReturn {
     [visibleSections, location.pathname],
   );
 
+  const activeSubGroupId = useMemo(
+    () => findSubGroupByPath(visibleSections, location.pathname),
+    [visibleSections, location.pathname],
+  );
+
   const activeItemId = useMemo(
     () => findItemByPath(visibleSections, location.pathname),
     [visibleSections, location.pathname],
@@ -110,6 +146,7 @@ export function useSidebar(userRole: UserRole): UseSidebarReturn {
   const effectiveState: SidebarState = {
     ...state,
     expandedSectionId: state.expandedSectionId ?? activeSectionId,
+    expandedSubGroupId: state.expandedSubGroupId ?? activeSubGroupId,
     activeItemId: state.activeItemId ?? activeItemId,
   };
 
@@ -125,9 +162,18 @@ export function useSidebar(userRole: UserRole): UseSidebarReturn {
     dispatch({ type: "TOGGLE_COLLAPSE" });
   }, []);
 
+  const toggleSubGroup = useCallback((subGroupId: string) => {
+    dispatch({ type: "TOGGLE_SUBGROUP", subGroupId });
+  }, []);
+
   const isSectionExpanded = useCallback(
     (sectionId: string) => effectiveState.expandedSectionId === sectionId,
     [effectiveState.expandedSectionId],
+  );
+
+  const isSubGroupExpanded = useCallback(
+    (subGroupId: string) => effectiveState.expandedSubGroupId === subGroupId,
+    [effectiveState.expandedSubGroupId],
   );
 
   const isItemActive = useCallback(
@@ -141,7 +187,9 @@ export function useSidebar(userRole: UserRole): UseSidebarReturn {
     toggleSection,
     setActive,
     toggleCollapse,
+    toggleSubGroup,
     isSectionExpanded,
+    isSubGroupExpanded,
     isItemActive,
   };
 }

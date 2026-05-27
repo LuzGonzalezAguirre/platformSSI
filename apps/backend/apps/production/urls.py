@@ -9,6 +9,12 @@ from apps.production.views.assistance_views import (
     PlantEmployeeListCreateView, PlantEmployeeDetailView,
     AttendanceView, EarnedHoursView,
 )
+from apps.production.views.ccs_views import (
+    CcsCheckInView, CcsCheckOutView, CcsOvertimeView, CcsTodayStatusView,
+    CcsAttendanceRecordsView, CcsAttendanceKpisView, CcsAttendanceDailyView,
+    CcsEmployeesView, CcsEmployeeDetailView,
+    ChairKpisView, ChairBreaksView, ChairDailyChartView, ChairTurnoChartView,
+)
 from apps.production.views.ops_report_views import OpsDailySummaryView, OpsWeeklyTableView
 from apps.production.views.ops_report_views import OpsDailyExportView
 from apps.production.views.ops_report_views import OpsDailyPDFExportView
@@ -30,6 +36,20 @@ urlpatterns = [
     path("ops/export/daily/", OpsDailyExportView.as_view()),
     path("ops/export/pdf/", OpsDailyPDFExportView.as_view()),
 
+    # CCS — Barcode attendance
+    path("ccs/check-in/",         CcsCheckInView.as_view()),
+    path("ccs/check-out/",        CcsCheckOutView.as_view()),
+    path("ccs/overtime/",         CcsOvertimeView.as_view()),
+    path("ccs/today-status/",     CcsTodayStatusView.as_view()),
+    path("ccs/attendance/daily/",   CcsAttendanceDailyView.as_view()),
+    path("ccs/attendance/records/", CcsAttendanceRecordsView.as_view()),
+    path("ccs/attendance/kpis/",    CcsAttendanceKpisView.as_view()),
+    path("ccs/employees/",           CcsEmployeesView.as_view()),
+    path("ccs/employees/<int:pk>/",  CcsEmployeeDetailView.as_view()),
 
-
+    # Chairs (Ley Silla NOM-036)
+    path("chairs/kpis/",         ChairKpisView.as_view()),
+    path("chairs/breaks/",       ChairBreaksView.as_view()),
+    path("chairs/daily-chart/",  ChairDailyChartView.as_view()),
+    path("chairs/turno-chart/",  ChairTurnoChartView.as_view()),
 ]

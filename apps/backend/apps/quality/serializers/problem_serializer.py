@@ -11,6 +11,7 @@ from apps.quality.models import (
     VerificationAction,
     PreventionAction,
     ProblemAttachment,
+    ProblemNote,
 )
 from apps.identity.models import User
 
@@ -40,28 +41,30 @@ class DefectTypeSerializer(serializers.ModelSerializer):
 
 class RootCauseSerializer(serializers.ModelSerializer):
     created_by = UserBasicSerializer(read_only=True)
-    
+
     class Meta:
         model = RootCause
         fields = [
-            'id', 'root_cause', 'order', 'is_final',
-            'created_at', 'created_by'
+            'id', 'five_why', 'order',
+            'why1', 'why2', 'why3', 'why4', 'why5',
+            'ca1', 'ca2', 'ca3', 'ca4', 'ca5',
+            'root_cause', 'is_final',
+            'created_at', 'created_by',
         ]
-        read_only_fields = ['created_at', 'created_by', 'is_final']
+        read_only_fields = ['created_at', 'created_by', 'root_cause', 'is_final']
 
 
 class FiveWhyAnalysisSerializer(serializers.ModelSerializer):
     root_causes = RootCauseSerializer(many=True, read_only=True)
     created_by = UserBasicSerializer(read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
-    
+
     class Meta:
         model = FiveWhyAnalysis
         fields = [
-            'id', 'category', 'category_display',
-            'why1', 'why2', 'why3', 'why4', 'why5',
+            'id', 'problem', 'category', 'category_display',
             'corrective_action', 'root_causes',
-            'created_at', 'created_by'
+            'created_at', 'created_by',
         ]
         read_only_fields = ['created_at', 'created_by']
 
@@ -75,11 +78,11 @@ class ContainmentActionSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
-    
+
     class Meta:
         model = ContainmentAction
         fields = [
-            'id', 'add_date', 'due_date', 'completion_date',
+            'id', 'problem', 'add_date', 'due_date', 'completion_date',
             'ongoing', 'action', 'response',
             'responsible', 'responsible_id'
         ]
@@ -98,15 +101,16 @@ class CorrectiveActionSerializer(serializers.ModelSerializer):
     root_cause_id = serializers.PrimaryKeyRelatedField(
         queryset=RootCause.objects.all(),
         source='root_cause',
-        write_only=True
     )
-    
+    root_cause_description = serializers.CharField(source='root_cause.root_cause', read_only=True)
+    due_date = serializers.DateField(required=False, allow_null=True)
+
     class Meta:
         model = CorrectiveAction
         fields = [
-            'id', 'root_cause_id', 'add_date', 'due_date',
-            'completion_date', 'ongoing', 'action', 'response',
-            'responsible', 'responsible_id'
+            'id', 'problem', 'root_cause_id', 'root_cause_description',
+            'add_date', 'due_date', 'completion_date', 'ongoing',
+            'action', 'response', 'responsible', 'responsible_id'
         ]
         read_only_fields = ['add_date']
 
@@ -120,11 +124,12 @@ class VerificationActionSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
-    
+    due_date = serializers.DateField(required=False, allow_null=True)
+
     class Meta:
         model = VerificationAction
         fields = [
-            'id', 'add_date', 'due_date', 'completion_date',
+            'id', 'problem', 'add_date', 'due_date', 'completion_date',
             'ongoing', 'action', 'response',
             'responsible', 'responsible_id'
         ]
@@ -140,11 +145,12 @@ class PreventionActionSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
-    
+    due_date = serializers.DateField(required=False, allow_null=True)
+
     class Meta:
         model = PreventionAction
         fields = [
-            'id', 'add_date', 'due_date', 'completion_date',
+            'id', 'problem', 'add_date', 'due_date', 'completion_date',
             'ongoing', 'action', 'response',
             'responsible', 'responsible_id'
         ]
@@ -154,7 +160,7 @@ class PreventionActionSerializer(serializers.ModelSerializer):
 class ProblemAttachmentSerializer(serializers.ModelSerializer):
     uploaded_by = UserBasicSerializer(read_only=True)
     step_display = serializers.CharField(source='get_step_display', read_only=True)
-    
+
     class Meta:
         model = ProblemAttachment
         fields = [
@@ -162,6 +168,16 @@ class ProblemAttachmentSerializer(serializers.ModelSerializer):
             'file_size', 'uploaded_by', 'uploaded_at', 'description'
         ]
         read_only_fields = ['filename', 'file_size', 'uploaded_by', 'uploaded_at']
+
+
+class ProblemNoteSerializer(serializers.ModelSerializer):
+    created_by = UserBasicSerializer(read_only=True)
+    step_display = serializers.CharField(source='get_step_display', read_only=True)
+
+    class Meta:
+        model = ProblemNote
+        fields = ['id', 'problem', 'step', 'step_display', 'text', 'created_by', 'created_at', 'updated_at']
+        read_only_fields = ['created_by', 'created_at', 'updated_at']
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -314,12 +330,29 @@ class ProblemCreateSerializer(serializers.ModelSerializer):
     Serializer para crear problems (Draft).
     Solo campos requeridos en Step 1 + opcionales.
     """
+    champion_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        source='champion',
+        write_only=True
+    )
+    severity_level_id = serializers.PrimaryKeyRelatedField(
+        queryset=SeverityLevel.objects.all(),
+        source='severity_level',
+        write_only=True
+    )
+    defect_type_id = serializers.PrimaryKeyRelatedField(
+        queryset=DefectType.objects.all(),
+        source='defect_type',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
     team_member_ids = serializers.ListField(
         child=serializers.IntegerField(),
         required=False,
         write_only=True
     )
-    
+
     class Meta:
         model = Problem
         fields = [

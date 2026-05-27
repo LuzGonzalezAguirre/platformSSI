@@ -16,8 +16,6 @@ urlpatterns = [
     path(f"{API_V1}production/", include("apps.production.urls")),
     path(f"{API_V1}maintenance/", include("apps.maintenance.urls")),
     path(f"{API_V1}quality/", include("apps.quality.urls")),
+    path(f"{API_V1}audit/", include("apps.audit.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-if settings.DEBUG:
-    import debug_toolbar
-    urlpatterns += [path("__debug__/", include(debug_toolbar.urls))]

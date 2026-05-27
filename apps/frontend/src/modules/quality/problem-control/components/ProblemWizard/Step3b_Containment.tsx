@@ -11,12 +11,13 @@ import {
   useContainmentActionDelete,
 } from '../../hooks/useContainmentActions';
 import type { ContainmentAction } from '../../types/problem.types';
+import { StepMediaBar } from '../shared/StepMediaBar';
 
 export const Step3b_Containment: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const problemId = id ? Number(id) : undefined;
 
-  const { setStepValidation } = useWizardStore();
+  const setStepValidation = useWizardStore((s) => s.setStepValidation);
   const { data: qualityUsers } = useQualityUsers();
   const { data: actions, isLoading } = useContainmentActions(problemId);
 
@@ -97,7 +98,11 @@ export const Step3b_Containment: React.FC = () => {
         await updateMutation.mutateAsync({
           id: editingId,
           data: {
-            ...formData,
+            action: formData.action,
+            response: formData.response,
+            ongoing: formData.ongoing,
+            due_date: formData.due_date || undefined,
+            completion_date: formData.completion_date || undefined,
             responsible_id: formData.responsible?.id,
           },
         });
@@ -134,7 +139,7 @@ export const Step3b_Containment: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.sectionTitle}>Step 3b - Containment Actions (D4)</h2>
+      <h2 style={styles.sectionTitle}>D3 — Containment Actions</h2>
       <p style={styles.description}>
         Define interim containment actions to isolate the problem and protect the customer.
       </p>
@@ -325,6 +330,8 @@ export const Step3b_Containment: React.FC = () => {
           </table>
         )}
       </div>
+
+      {problemId && <StepMediaBar problemId={problemId} step="step3b" />}
     </div>
   );
 };

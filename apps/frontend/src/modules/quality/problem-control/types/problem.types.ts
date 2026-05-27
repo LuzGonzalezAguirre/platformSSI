@@ -32,7 +32,17 @@ export type ShiftType = '' | '1st' | '2nd' | '3rd' | 'weekend' | 'a' | 'b';
 
 export type SeverityContext = 'customer' | 'internal' | 'supplier' | 'audit';
 
-export type AttachmentStep = 'general' | 'step1' | 'step3a' | 'step3b' | 'step5' | 'step6' | 'step7';
+export type AttachmentStep =
+  | 'general'
+  | 'step1'
+  | 'step2'
+  | 'step3a'
+  | 'step3b'
+  | 'step4'
+  | 'step5'
+  | 'step6'
+  | 'step7'
+  | 'step8';
 
 export type FiveWhyCategory = 'made' | 'escape' | 'systemic';
 
@@ -70,8 +80,19 @@ export interface DefectType {
 
 export interface RootCause {
   id: number;
-  root_cause: string;
+  five_why: number;
   order: number;
+  why1: string;
+  why2: string;
+  why3: string;
+  why4: string;
+  why5: string;
+  ca1: string;
+  ca2: string;
+  ca3: string;
+  ca4: string;
+  ca5: string;
+  root_cause: string;
   is_final: boolean;
   created_at: string;
   created_by: UserBasic;
@@ -79,13 +100,9 @@ export interface RootCause {
 
 export interface FiveWhyAnalysis {
   id: number;
+  problem: number;
   category: FiveWhyCategory;
   category_display: string;
-  why1: string;
-  why2: string;
-  why3: string;
-  why4: string;
-  why5: string;
   corrective_action: string;
   root_causes: RootCause[];
   created_at: string;
@@ -107,9 +124,11 @@ export interface ContainmentAction {
 
 export interface CorrectiveAction {
   id: number;
+  problem: number;
   root_cause_id: number;
+  root_cause_description?: string;
   add_date: string;
-  due_date: string;
+  due_date: string | null;
   completion_date: string | null;
   ongoing: boolean;
   action: string;
@@ -120,8 +139,9 @@ export interface CorrectiveAction {
 
 export interface VerificationAction {
   id: number;
+  problem: number;
   add_date: string;
-  due_date: string;
+  due_date: string | null;
   completion_date: string | null;
   ongoing: boolean;
   action: string;
@@ -132,8 +152,9 @@ export interface VerificationAction {
 
 export interface PreventionAction {
   id: number;
+  problem: number;
   add_date: string;
-  due_date: string;
+  due_date: string | null;
   completion_date: string | null;
   ongoing: boolean;
   action: string;
@@ -152,6 +173,17 @@ export interface ProblemAttachment {
   uploaded_by: UserBasic;
   uploaded_at: string;
   description: string;
+}
+
+export interface ProblemNote {
+  id: number;
+  problem: number;
+  step: AttachmentStep;
+  step_display: string;
+  text: string;
+  created_by: UserBasic;
+  created_at: string;
+  updated_at: string;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -241,9 +273,6 @@ export interface Problem {
   tracking_build_ship_date: string | null;
   d3_completed_at: string | null;
   
-  d3_initial_response?: string;
-  d3_tracking_info?: string;
-  d3_completed_date?: string; // ISO date string (YYYY-MM-DD)
   // Step 3b - Containment
   d4_completed_at: string | null;
   
@@ -398,4 +427,14 @@ export interface PlexDepartment {
 export interface PlexWorkcenter {
   code: string;
   name: string;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ATTACHMENT API
+// ══════════════════════════════════════════════════════════════════════════
+
+export interface AttachmentUploadRequest {
+  problem_id: number;
+  step: AttachmentStep;
+  file: File;
 }

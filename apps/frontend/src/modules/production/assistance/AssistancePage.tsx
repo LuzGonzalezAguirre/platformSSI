@@ -5,17 +5,16 @@ import { AssistanceService } from "./assistance.service";
 import {
   PlantEmployee, AttendanceRecord,
   AttendanceStatus, AttendanceShift,
-  PlantEmployeeCreatePayload,
   DEPARTMENTS, STATUS_LABELS, STATUS_COLORS,
   SHIFT_LABELS, DEFAULT_HOURS,
 } from "./types";
 
-type Tab = "attendance" | "employees"| "productivity";
+type Tab = "attendance" | "employees" | "productivity";
 
 interface EditModal {
   open: boolean;
   employee: PlantEmployee | null;
-  draft: { name: string; department: string; turno: "A" | "B" };
+  draft: { name: string; department: string; turno: "A" | "B"; barcode_id: string };
   saving: boolean;
 }
 
@@ -45,9 +44,7 @@ export default function AssistancePage() {
   const [empSearch, setEmpSearch]         = useState("");
   const [showInactive, setShowInactive]   = useState(false);
   const [showAddForm, setShowAddForm]     = useState(false);
-  const [newEmp, setNewEmp]               = useState<PlantEmployeeCreatePayload>({
-    name: "", department: "Assembly", turno: "A",
-  });
+  const [newEmp, setNewEmp]               = useState({ name: "", department: "Assembly", turno: "A" as "A" | "B", barcode_id: "" });
   const [addingEmp, setAddingEmp]   = useState(false);
   const [empMsg, setEmpMsg]         = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [error, setError]           = useState<string | null>(null);
@@ -55,7 +52,7 @@ export default function AssistancePage() {
   // Edit modal
   const [editModal, setEditModal] = useState<EditModal>({
     open: false, employee: null,
-    draft: { name: "", department: "Assembly", turno: "A" },
+    draft: { name: "", department: "Assembly", turno: "A", barcode_id: "" },
     saving: false,
   });
 
@@ -69,11 +66,10 @@ export default function AssistancePage() {
     setLoadingAtt(true);
     setError(null);
     try {
-      const data = await AssistanceService.getAttendance(
+      const data = await AssistanceService.getCcsAttendance(
         selectedDate, turnoFilter || undefined,
       );
       setRecords(data);
-      draft.map((r: AttendanceRecord) => ({ ...r }))
     } catch {
       setError(lang === "es" ? "Error cargando asistencia" : "Error loading attendance");
     } finally {
@@ -88,8 +84,8 @@ export default function AssistancePage() {
   const loadEmployees = useCallback(async () => {
     setLoadingEmp(true);
     try {
-      const data = await AssistanceService.listEmployees(undefined, showInactive);
-      setEmployees(data);
+      const data = await AssistanceService.getCcsEmployees({ include_inactive: showInactive });
+      setEmployees(data.map((e: any) => ({ ...e, is_active: !!e.is_active })));
     } catch {
       setError(lang === "es" ? "Error cargando empleados" : "Error loading employees");
     } finally {
@@ -102,6 +98,13 @@ export default function AssistancePage() {
     else loadEmployees();
   }, [activeTab, loadAttendance, loadEmployees]);
 
+  const defaultHoursForRow = (shift: AttendanceShift, turno: string): number => {
+    if (shift === "none")     return 0;
+    if (shift === "partial")  return DEFAULT_HOURS.partial;
+    if (shift === "overtime") return 8;
+    return turno === "B" ? 11 : 12;
+  };
+
   const updateDraftRow = (idx: number, field: keyof AttendanceRecord, value: string | number) => {
     setDraft((prev) => {
       const next = [...prev];
@@ -109,9 +112,8 @@ export default function AssistancePage() {
       if (field === "status" && value === "absent") {
         row.hours = "0"; row.shift = "none";
       }
-      if (field === "shift") {
-        const h = DEFAULT_HOURS[value as AttendanceShift];
-        if (row.status !== "absent") row.hours = String(h);
+      if (field === "shift" && row.status !== "absent") {
+        row.hours = String(defaultHoursForRow(value as AttendanceShift, row.turno));
       }
       next[idx] = row;
       return next;
@@ -121,15 +123,16 @@ export default function AssistancePage() {
   const saveAttendance = async () => {
     setSavingAtt(true); setAttMsg(null);
     try {
-      const result = await AssistanceService.saveAttendance({
-        records: draft.map((r) => ({
+      const result = await AssistanceService.saveCcsAttendance(
+        draft.map((r) => ({
           employee_id: r.employee_id,
           date:        r.date,
+          turno:       r.turno,
           status:      r.status,
           shift:       r.shift,
           hours:       parseFloat(r.hours) || 0,
-        })),
-      });
+        }))
+      );
       setAttMsg({
         type: "success",
         text: lang === "es"
@@ -151,12 +154,12 @@ export default function AssistancePage() {
     }
     setAddingEmp(true); setEmpMsg(null);
     try {
-      await AssistanceService.createEmployee(newEmp);
-      setEmpMsg({
-        type: "success",
-        text: lang === "es" ? `'${newEmp.name}' agregado` : `'${newEmp.name}' added`,
+      await AssistanceService.createCcsEmployee({
+        name: newEmp.name, department: newEmp.department, turno: newEmp.turno,
+        ...(newEmp.barcode_id.trim() ? { barcode_id: newEmp.barcode_id.trim() } : {}),
       });
-      setNewEmp({ name: "", department: "Assembly", turno: "A" });
+      setEmpMsg({ type: "success", text: lang === "es" ? `'${newEmp.name}' agregado` : `'${newEmp.name}' added` });
+      setNewEmp({ name: "", department: "Assembly", turno: "A", barcode_id: "" });
       setShowAddForm(false);
       loadEmployees();
     } catch {
@@ -170,7 +173,7 @@ export default function AssistancePage() {
     setEditModal({
       open: true,
       employee: emp,
-      draft: { name: emp.name, department: emp.department, turno: emp.turno },
+      draft: { name: emp.name, department: emp.department, turno: emp.turno, barcode_id: (emp as any).barcode_id ?? "" },
       saving: false,
     });
   };
@@ -179,11 +182,14 @@ export default function AssistancePage() {
     if (!editModal.employee) return;
     setEditModal((p) => ({ ...p, saving: true }));
     try {
-      const updated = await AssistanceService.updateEmployee(
-        editModal.employee.id, editModal.draft,
-      );
-      setEmployees((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
-      setEditModal({ open: false, employee: null, draft: { name: "", department: "Assembly", turno: "A" }, saving: false });
+      const updated = await AssistanceService.updateCcsEmployee(editModal.employee.id, {
+        name: editModal.draft.name,
+        department: editModal.draft.department,
+        turno: editModal.draft.turno,
+        ...(editModal.draft.barcode_id.trim() ? { barcode_id: editModal.draft.barcode_id.trim() } : {}),
+      });
+      setEmployees((prev) => prev.map((e) => (e.id === updated.id ? { ...updated, is_active: !!updated.is_active } : e)));
+      setEditModal({ open: false, employee: null, draft: { name: "", department: "Assembly", turno: "A", barcode_id: "" }, saving: false });
       setEmpMsg({ type: "success", text: lang === "es" ? "Empleado actualizado" : "Employee updated" });
     } catch {
       setEditModal((p) => ({ ...p, saving: false }));
@@ -193,14 +199,9 @@ export default function AssistancePage() {
 
   const handleDeactivate = async (emp: PlantEmployee) => {
     try {
-      const updated = await AssistanceService.deactivateEmployee(emp.id);
-      setEmployees((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
-      setEmpMsg({
-        type: "success",
-        text: lang === "es"
-          ? `'${emp.name}' desactivado`
-          : `'${emp.name}' deactivated`,
-      });
+      const updated = await AssistanceService.deactivateCcsEmployee(emp.id);
+      setEmployees((prev) => prev.map((e) => (e.id === updated.id ? { ...updated, is_active: false } : e)));
+      setEmpMsg({ type: "success", text: lang === "es" ? `'${emp.name}' desactivado` : `'${emp.name}' deactivated` });
     } catch {
       setEmpMsg({ type: "error", text: lang === "es" ? "Error desactivando" : "Error deactivating" });
     }
@@ -229,9 +230,9 @@ export default function AssistancePage() {
   const s = styles;
 
   const TABS = [
-    { key: "attendance" as Tab, label: { es: "Asistencia", en: "Attendance" } },
-    { key: "employees"  as Tab, label: { es: "Empleados",  en: "Employees"  } },
-    { key: "productivity" as Tab, label: { es: "Productividad", en: "Productivity" } },
+    { key: "attendance"   as Tab, label: { es: "Asistencia",    en: "Attendance"   } },
+    { key: "employees"    as Tab, label: { es: "Empleados",      en: "Employees"    } },
+    { key: "productivity" as Tab, label: { es: "Productividad",  en: "Productivity" } },
   ];
 const [prodDate, setProdDate]           = useState(todayStr());
 const [earnedHours, setEarnedHours]     = useState<number>(0);
@@ -573,6 +574,15 @@ const productivityPct = paidHoursRef > 0 && earnedHours > 0
                     <option value="B">Turno B</option>
                   </select>
                 </div>
+                <div style={s.fieldGroup}>
+                  <label style={s.fieldLabel}>Barcode ID</label>
+                  <input
+                    type="text" value={newEmp.barcode_id}
+                    onChange={(e) => setNewEmp((p) => ({ ...p, barcode_id: e.target.value }))}
+                    style={s.input}
+                    placeholder="ej. 900013955A"
+                  />
+                </div>
               </div>
               <div style={s.addFormActions}>
                 <button style={s.saveBtn} onClick={handleAddEmployee} disabled={addingEmp}>
@@ -731,6 +741,16 @@ const productivityPct = paidHoursRef > 0 && earnedHours > 0
                   <option value="A">Turno A</option>
                   <option value="B">Turno B</option>
                 </select>
+              </div>
+              <div style={s.fieldGroup}>
+                <label style={s.fieldLabel}>Barcode ID</label>
+                <input
+                  type="text"
+                  value={editModal.draft.barcode_id}
+                  onChange={(e) => setEditModal((p) => ({ ...p, draft: { ...p.draft, barcode_id: e.target.value } }))}
+                  style={s.input}
+                  placeholder="ej. 900013955A"
+                />
               </div>
             </div>
 

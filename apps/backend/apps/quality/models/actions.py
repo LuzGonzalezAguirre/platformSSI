@@ -15,7 +15,7 @@ class ContainmentAction(models.Model):
         related_name='containment_actions'
     )
     add_date = models.DateField(auto_now_add=True)
-    due_date = models.DateField()
+    due_date = models.DateField(null=True, blank=True)
     completion_date = models.DateField(null=True, blank=True)
     ongoing = models.BooleanField(default=False)
     action = models.TextField()
@@ -57,7 +57,7 @@ class CorrectiveAction(models.Model):
         help_text="Root Cause que origina esta acción correctiva"
     )
     add_date = models.DateField(auto_now_add=True)
-    due_date = models.DateField()
+    due_date = models.DateField(null=True, blank=True)
     completion_date = models.DateField(null=True, blank=True)
     ongoing = models.BooleanField(default=False)
     action = models.TextField()
@@ -95,7 +95,7 @@ class VerificationAction(models.Model):
         related_name='verification_actions'
     )
     add_date = models.DateField(auto_now_add=True)
-    due_date = models.DateField()
+    due_date = models.DateField(null=True, blank=True)
     completion_date = models.DateField(null=True, blank=True)
     ongoing = models.BooleanField(default=False)
     action = models.TextField()
@@ -130,7 +130,7 @@ class PreventionAction(models.Model):
         related_name='prevention_actions'
     )
     add_date = models.DateField(auto_now_add=True)
-    due_date = models.DateField()
+    due_date = models.DateField(null=True, blank=True)
     completion_date = models.DateField(null=True, blank=True)
     ongoing = models.BooleanField(default=False)
     action = models.TextField()

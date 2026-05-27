@@ -1,9 +1,13 @@
 // apps/frontend/src/modules/quality/problem-control/components/ProblemWizard/Step3a_InitialResponse.tsx
 
 import React, { useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useWizardStore } from '../../store/wizardStore';
+import { StepMediaBar } from '../shared/StepMediaBar';
 
 export const Step3a_InitialResponse: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const problemId = id ? Number(id) : undefined;
   const { formData, updateFormData, setStepValidation } = useWizardStore();
 
   // Validación: D3 fields son opcionales
@@ -22,7 +26,7 @@ export const Step3a_InitialResponse: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.sectionTitle}>Step 3a - Initial Response (D3)</h2>
+      <h2 style={styles.sectionTitle}>D3 — Initial Response</h2>
       <p style={styles.description}>
         Provide immediate containment actions and initial response within 48 hours of problem occurrence.
       </p>
@@ -52,8 +56,8 @@ export const Step3a_InitialResponse: React.FC = () => {
         <div style={styles.formGroup}>
           <label style={styles.label}>Initial Response Actions</label>
           <textarea
-            value={formData.d3_initial_response || ''}
-            onChange={(e) => handleChange('d3_initial_response', e.target.value)}
+            value={formData.initial_response || ''}
+            onChange={(e) => handleChange('initial_response', e.target.value)}
             placeholder="Describe the immediate actions taken to contain the problem..."
             rows={6}
             style={styles.textarea}
@@ -64,10 +68,10 @@ export const Step3a_InitialResponse: React.FC = () => {
         </div>
 
         <div style={styles.formGroup}>
-          <label style={styles.label}>Tracking Information</label>
+          <label style={styles.label}>Tracking Information (Lot/Batch No)</label>
           <textarea
-            value={formData.d3_tracking_info || ''}
-            onChange={(e) => handleChange('d3_tracking_info', e.target.value)}
+            value={formData.tracking_lot_batch_no || ''}
+            onChange={(e) => handleChange('tracking_lot_batch_no', e.target.value)}
             placeholder="Reference numbers, batch IDs, work orders, or other tracking information..."
             rows={4}
             style={styles.textarea}
@@ -82,8 +86,8 @@ export const Step3a_InitialResponse: React.FC = () => {
             <label style={styles.label}>D3 Completion Date</label>
             <input
               type="date"
-              value={formData.d3_completed_date || ''}
-              onChange={(e) => handleChange('d3_completed_date', e.target.value)}
+              value={formData.initial_response_date || ''}
+              onChange={(e) => handleChange('initial_response_date', e.target.value)}
               style={styles.input}
             />
             <div style={styles.helperText}>
@@ -100,23 +104,25 @@ export const Step3a_InitialResponse: React.FC = () => {
           <div style={styles.summaryRow}>
             <span style={styles.summaryLabel}>Status:</span>
             <span style={styles.summaryValue}>
-              {formData.d3_completed_date ? (
+              {formData.initial_response_date ? (
                 <span style={styles.completedBadge}>Completed</span>
               ) : (
                 <span style={styles.pendingBadge}>Pending</span>
               )}
             </span>
           </div>
-          {formData.d3_completed_date && (
+          {formData.initial_response_date && (
             <div style={styles.summaryRow}>
               <span style={styles.summaryLabel}>Completed:</span>
               <span style={styles.summaryValue}>
-                {new Date(formData.d3_completed_date).toLocaleDateString()}
+                {new Date(formData.initial_response_date).toLocaleDateString()}
               </span>
             </div>
           )}
         </div>
       </div>
+
+      {problemId && <StepMediaBar problemId={problemId} step="step3a" />}
     </div>
   );
 };

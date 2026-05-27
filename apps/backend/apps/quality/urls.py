@@ -1,6 +1,8 @@
 # apps/quality/urls.py
 from django.urls import path
 from apps.quality.views import (
+    FailureCatalogView,
+    CatalogStructureView,
     ScrapDetailView,
     QualityTargetView,
     QWallReportView,
@@ -20,6 +22,23 @@ from apps.quality.views import (
     DefectTypeListView,
     QualityUsersListView,
     QualityManagersListView,
+    ContainmentActionListCreateView,
+    ContainmentActionDetailView,
+    FiveWhyAnalysisListCreateView,
+    FiveWhyAnalysisDetailView,
+    RootCauseListCreateView,
+    RootCauseDetailView,
+    CorrectiveActionListCreateView,
+    CorrectiveActionDetailView,
+    VerificationActionListCreateView,
+    VerificationActionDetailView,
+    PreventionActionListCreateView,
+    PreventionActionDetailView,
+    ProblemAttachmentUploadView,
+    ProblemAttachmentListView,
+    ProblemAttachmentDeleteView,
+    ProblemNoteListCreateView,
+    ProblemNoteDetailView,
 )
 
 urlpatterns = [
@@ -60,4 +79,55 @@ urlpatterns = [
     path("defect-types/", DefectTypeListView.as_view(), name="defect-types"),
     path("quality-users/", QualityUsersListView.as_view(), name="quality-users"),
     path("quality-managers/", QualityManagersListView.as_view(), name="quality-managers"),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # ACTION ENDPOINTS
+    # ═════════════════════════════════════════════════════════════════════
+    path("containment-actions/", ContainmentActionListCreateView.as_view(), name="containment-action-list"),
+    path("containment-actions/<int:pk>/", ContainmentActionDetailView.as_view(), name="containment-action-detail"),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # FIVE WHY & ROOT CAUSE (Step 4)
+    # ═════════════════════════════════════════════════════════════════════
+    path("five-why-analyses/", FiveWhyAnalysisListCreateView.as_view(), name="five-why-list"),
+    path("five-why-analyses/<int:pk>/", FiveWhyAnalysisDetailView.as_view(), name="five-why-detail"),
+    path("root-causes/", RootCauseListCreateView.as_view(), name="root-cause-list"),
+    path("root-causes/<int:pk>/", RootCauseDetailView.as_view(), name="root-cause-detail"),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # CORRECTIVE ACTIONS (Step 5)
+    # ═════════════════════════════════════════════════════════════════════
+    path("corrective-actions/", CorrectiveActionListCreateView.as_view(), name="corrective-action-list"),
+    path("corrective-actions/<int:pk>/", CorrectiveActionDetailView.as_view(), name="corrective-action-detail"),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # VERIFICATION ACTIONS (Step 6)
+    # ═════════════════════════════════════════════════════════════════════
+    path("verification-actions/", VerificationActionListCreateView.as_view(), name="verification-action-list"),
+    path("verification-actions/<int:pk>/", VerificationActionDetailView.as_view(), name="verification-action-detail"),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # PREVENTION ACTIONS (Step 7)
+    # ═════════════════════════════════════════════════════════════════════
+    path("prevention-actions/", PreventionActionListCreateView.as_view(), name="prevention-action-list"),
+    path("prevention-actions/<int:pk>/", PreventionActionDetailView.as_view(), name="prevention-action-detail"),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # ATTACHMENTS
+    # ═════════════════════════════════════════════════════════════════════
+    path("attachments/upload/", ProblemAttachmentUploadView.as_view(), name="attachment-upload"),
+    path("attachments/", ProblemAttachmentListView.as_view(), name="attachment-list"),
+    path("attachments/<int:pk>/", ProblemAttachmentDeleteView.as_view(), name="attachment-delete"),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # NOTES
+    # ═════════════════════════════════════════════════════════════════════
+    path("notes/", ProblemNoteListCreateView.as_view(), name="note-list-create"),
+    path("notes/<int:pk>/", ProblemNoteDetailView.as_view(), name="note-detail"),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # CATÁLOGO DE FALLAS
+    # ═════════════════════════════════════════════════════════════════════
+    path("catalog/structure/", CatalogStructureView.as_view(), name="catalog-structure"),
+    path("catalog/", FailureCatalogView.as_view(), name="failure-catalog"),
 ]

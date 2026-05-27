@@ -12,6 +12,7 @@ import DemandPage from "./modules/warehouse/DemandPage";
 import TargetsPage from "./modules/production/targets/TargetsPage";
 import SafetyPage from "./modules/production/safety/SafetyPage";
 import AssistancePage from "./modules/production/assistance/AssistancePage";
+import LeysillaPage from "./modules/production/leysilla/LeysillaPage";
 import OpsReportPage from "./modules/production/ops-report/OpsReportPage";
 import OverviewPage from "./modules/maintenance/overview/OverviewPage"; 
 import WorkRequestsPage from "./modules/maintenance/work-requests/WorkRequestsPage";
@@ -29,6 +30,9 @@ import RejectionReportPage from "./modules/quality/RejectionReportPage";
 import { ProblemListPage } from "./modules/quality/problem-control/pages/ProlemListPage";
 import { ProblemWizardPage } from "./modules/quality/problem-control/pages/ProblemWizardPage";
 import { ProblemDetailPage } from "./modules/quality/problem-control/pages/ProblemDetailPage";
+import AuditPage from "./modules/admin/AuditPage";
+import FailureCatalogPage from "./modules/quality/qwall/catalog/FailureCatalogPage";
+
 
 const now = new Date();
 const hour = now.getHours();
@@ -80,9 +84,11 @@ function AppRoutes() {
         <Route path="/production/targets" element={<TargetsPage />} />
         <Route path="/production/safety" element={<SafetyPage />} />
         <Route path="/production/assistance" element={<AssistancePage />} />
+        <Route path="/production/leysilla"  element={<LeysillaPage />} />
         <Route path="/maintenance/orders" element={<div>Órdenes de Mantenimiento</div>} />
-        <Route path="/settings/users" element={<UsersPage />} />        
+        <Route path="/settings/users" element={<UsersPage />} />
         <Route path="/settings/roles" element={<RolesPage />} />
+        <Route path="/settings/audit" element={<AuditPage />} />
         <Route path="/settings/plant" element={<div>Planta</div>} />
         <Route path="/profile" element={<ProfilePage />} />        
         <Route path="/settings" element={<div>Configuración</div>} />
@@ -107,6 +113,7 @@ function AppRoutes() {
         <Route path="/quality/problems/new" element={<ProblemWizardPage />} />
         <Route path="/quality/problems/:id" element={<ProblemDetailPage />} />
         <Route path="/quality/problems/:id/edit" element={<ProblemWizardPage />} />
+        <Route path="/quality/qwall/catalog" element={<FailureCatalogPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

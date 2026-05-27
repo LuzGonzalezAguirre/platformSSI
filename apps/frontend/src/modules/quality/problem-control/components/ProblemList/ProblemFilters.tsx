@@ -151,11 +151,12 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({ onFilterChange }
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    backgroundColor: 'var(--color-bg-secondary)',
+    backgroundColor: 'var(--color-surface)',
     padding: '1rem',
-    borderRadius: '0.5rem',
+    borderRadius: 'var(--radius-md)',
     marginBottom: '1rem',
-    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+    boxShadow: 'var(--shadow-card)',
+    border: '1px solid var(--color-border)',
   },
   grid: {
     display: 'grid',
@@ -175,18 +176,18 @@ const styles: { [key: string]: React.CSSProperties } = {
   select: {
     padding: '0.5rem 0.75rem',
     border: '1px solid var(--color-border)',
-    borderRadius: '0.375rem',
+    borderRadius: 'var(--radius-sm)',
     fontSize: '0.875rem',
-    backgroundColor: 'var(--color-bg-primary)',
+    backgroundColor: 'var(--color-bg)',
     color: 'var(--color-text-primary)',
     cursor: 'pointer',
   },
   input: {
     padding: '0.5rem 0.75rem',
     border: '1px solid var(--color-border)',
-    borderRadius: '0.375rem',
+    borderRadius: 'var(--radius-sm)',
     fontSize: '0.875rem',
-    backgroundColor: 'var(--color-bg-primary)',
+    backgroundColor: 'var(--color-bg)',
     color: 'var(--color-text-primary)',
   },
   checkboxGroup: {
@@ -216,9 +217,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '0.875rem',
     fontWeight: 500,
     color: 'var(--color-text-secondary)',
-    backgroundColor: 'var(--color-bg-primary)',
+    backgroundColor: 'var(--color-bg)',
     border: '1px solid var(--color-border)',
-    borderRadius: '0.375rem',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     transition: 'background-color 0.2s',
   },

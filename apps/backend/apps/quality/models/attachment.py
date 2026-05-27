@@ -3,22 +3,28 @@ from django.db import models
 from apps.identity.models import User
 
 
+STEP_CHOICES = [
+    ('general', 'General'),
+    ('step1', 'D1 - Define Problem'),
+    ('step2', 'D2 - Define Team'),
+    ('step3a', 'D3 - Initial Response'),
+    ('step3b', 'D3 - Containment'),
+    ('step4', 'D4 - Five Why'),
+    ('step5', 'D5 - Corrective Actions'),
+    ('step6', 'D6 - Verification'),
+    ('step7', 'D7 - Control/Prevention'),
+    ('step8', 'D8 - Congratulate Team'),
+]
+
+
 class ProblemAttachment(models.Model):
     """
     Attachments vinculados a un problem.
     Pueden ser globales o específicos por step.
     Formatos: JPG, PNG, PDF, Excel, Word, etc.
     """
-    
-    STEP_CHOICES = [
-        ('general', 'General'),
-        ('step1', 'Step 1 - Define Problem'),
-        ('step3a', 'Step 3a - Initial Response'),
-        ('step3b', 'Step 3b - Containment'),
-        ('step5', 'Step 5 - Corrective Action'),
-        ('step6', 'Step 6 - Verification'),
-        ('step7', 'Step 7 - Prevention'),
-    ]
+
+    STEP_CHOICES = STEP_CHOICES
     
     problem = models.ForeignKey(
         'Problem',
@@ -66,3 +72,38 @@ class ProblemAttachment(models.Model):
             self.filename = self.file.name
             self.file_size = self.file.size
         super().save(*args, **kwargs)
+
+
+class ProblemNote(models.Model):
+    """Text notes associated with a problem step."""
+
+    STEP_CHOICES = STEP_CHOICES
+
+    problem = models.ForeignKey(
+        'Problem',
+        on_delete=models.CASCADE,
+        related_name='notes',
+    )
+    step = models.CharField(
+        max_length=20,
+        choices=STEP_CHOICES,
+        default='general',
+    )
+    text = models.TextField()
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='problem_notes_created',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'quality_problem_note'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['problem', 'step']),
+        ]
+
+    def __str__(self):
+        return f"{self.problem} - {self.step} note"

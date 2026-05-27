@@ -1,10 +1,14 @@
 // apps/frontend/src/modules/quality/problem-control/components/ProblemWizard/Step1_DefineProblem.tsx
 import React, { useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useWizardStore } from '../../store/wizardStore';
 import { useSeverityLevels, useDefectTypes, useQualityUsers } from '../../hooks/useCatalogs';
 import type { ProblemCategory, ProblemType, SeverityContext, ShiftType } from '../../types/problem.types';
+import { StepMediaBar } from '../shared/StepMediaBar';
 
 export const Step1_DefineProblem: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const problemId = id ? Number(id) : undefined;
   const { formData, updateFormData, setStepValidation } = useWizardStore();
 
   const { data: severityLevels } = useSeverityLevels();
@@ -71,7 +75,7 @@ export const Step1_DefineProblem: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.sectionTitle}>Step 1 - Define the Problem</h2>
+      <h2 style={styles.sectionTitle}>D1 — Define the Problem</h2>
 
       {/* Problem Description */}
       <div style={styles.section}>
@@ -427,6 +431,8 @@ export const Step1_DefineProblem: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {problemId && <StepMediaBar problemId={problemId} step="step1" />}
     </div>
   );
 };

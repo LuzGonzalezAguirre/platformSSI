@@ -109,15 +109,44 @@ class ProblemRepository:
 
     @staticmethod
     def create_problem(data: dict, user: User) -> Problem:
-        """Crear nuevo problem en Draft"""
-        return Problem.objects.create(**data, created_by=user, status='draft')
+        """Crear nuevo problem en Draft con problem_number generado en creación"""
+        from apps.quality.services.problem_number_service import ProblemNumberService
+        from django.db import transaction
+
+        data = dict(data)
+        team_member_ids = data.pop('team_member_ids', [])
+
+        with transaction.atomic():
+            problem_number = ProblemNumberService.generate_problem_number()
+            problem = Problem.objects.create(
+                **data,
+                created_by=user,
+                status='draft',
+                problem_number=problem_number,
+            )
+
+        if team_member_ids:
+            from apps.identity.models import User as UserModel
+            problem.team_members.set(UserModel.objects.filter(id__in=team_member_ids))
+        return problem
 
     @staticmethod
     def update_problem(problem: Problem, data: dict) -> Problem:
         """Actualizar problem existente"""
+        data = dict(data)
+        team_members = data.pop('team_members', None)
+        team_member_ids = data.pop('team_member_ids', None)
+
         for key, value in data.items():
             setattr(problem, key, value)
         problem.save()
+
+        if team_members is not None:
+            problem.team_members.set(team_members)
+        elif team_member_ids is not None:
+            from apps.identity.models import User as UserModel
+            problem.team_members.set(UserModel.objects.filter(id__in=team_member_ids))
+
         return problem
 
     @staticmethod
@@ -204,16 +233,15 @@ class ProblemRepository:
     @staticmethod
     def approve_problem(problem: Problem, manager: User, comments: str = ""):
         """
-        Aprobar problem y generar problem_number.
+        Aprobar problem. problem_number ya fue asignado en creación.
         """
         from django.utils import timezone
-        from apps.quality.services.problem_number_service import ProblemNumberService
 
         problem.status = 'approved'
         problem.approved_by = manager
         problem.approved_at = timezone.now()
         problem.approval_comments = comments
-        problem.problem_number = ProblemNumberService.generate_problem_number()
+        # problem_number already set at creation — do NOT regenerate
         problem.save()
         return problem
 

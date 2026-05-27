@@ -1,11 +1,67 @@
 // apps/frontend/src/modules/quality/problem-control/pages/ProblemWizardPage.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWizardStore } from '../store/wizardStore';
 import { WizardLayout } from '../components/ProblemWizard/WizardLayout';
 import { useProblemDetail } from '../hooks/useProblemDetail';
 import { useProblemCreate, useProblemUpdate, useProblemSubmit } from '../hooks/useProblemMutations';
-import type { ProblemCreateRequest } from '../types/problem.types';
+import type { Problem, ProblemCreateRequest } from '../types/problem.types';
+
+export interface StepError {
+  valid: boolean;
+  message: string;
+}
+
+function getStepValidation(problem: Problem | undefined): Record<number, StepError> {
+  const fail = (msg: string): StepError => ({ valid: false, message: msg });
+  const ok: StepError = { valid: true, message: '' };
+
+  if (!problem) {
+    return {
+      1: fail('Complete and save D1 fields first'),
+      2: ok,
+      3: fail('Save the problem, then add initial response or containment actions'),
+      4: fail('No Five Why analysis saved yet'),
+      5: fail('No corrective actions saved yet'),
+      6: fail('No verification actions saved yet'),
+      7: fail('No prevention actions saved yet'),
+      8: ok,
+    };
+  }
+
+  const d1 = !!(
+    problem.brief_description?.trim() &&
+    problem.full_description?.trim() &&
+    problem.problem_type &&
+    problem.severity_level_data?.id &&
+    problem.champion?.id &&
+    problem.date_of_occurrence
+  );
+
+  const d3 = !!(
+    problem.initial_response?.trim() ||
+    (problem.containment_actions?.length ?? 0) > 0
+  );
+
+  const d4 =
+    (problem.five_why_analyses?.length ?? 0) > 0 &&
+    problem.five_why_analyses.some(a => (a.root_causes?.length ?? 0) > 0);
+
+  const d5 = (problem.corrective_actions?.length ?? 0) > 0;
+  const d6 = (problem.verification_actions?.length ?? 0) > 0;
+  const d7 = (problem.prevention_actions?.length ?? 0) > 0;
+
+  return {
+    1: d1 ? ok : fail('D1: Brief description, full description, type, severity, champion and date are required'),
+    2: ok,
+    3: d3 ? ok : fail('D3: Add an initial response or at least one containment action'),
+    4: d4 ? ok : fail('D4: Add a Five Why analysis with at least one root cause'),
+    5: d5 ? ok : fail('D5: Add at least one corrective action'),
+    6: d6 ? ok : fail('D6: Add at least one verification action'),
+    7: d7 ? ok : fail('D7: Add at least one prevention action'),
+    8: ok,
+  };
+}
 
 export const ProblemWizardPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +73,12 @@ export const ProblemWizardPage: React.FC = () => {
   // Fetch existing problem if edit mode
   const { data: problem, isLoading: isLoadingProblem } = useProblemDetail(
     isEditMode ? Number(id) : undefined
+  );
+
+  const stepValidation = useMemo(() => getStepValidation(problem), [problem]);
+  const canSubmit = useMemo(
+    () => Object.values(stepValidation).every(v => v.valid),
+    [stepValidation]
   );
 
   // Mutations
@@ -141,7 +203,13 @@ export const ProblemWizardPage: React.FC = () => {
       </div>
 
       {/* Wizard */}
-      <WizardLayout onSave={handleSave} onSubmit={handleSubmit} isSaving={isSaving} />
+      <WizardLayout
+        onSave={handleSave}
+        onSubmit={handleSubmit}
+        isSaving={isSaving}
+        canSubmit={canSubmit}
+        stepValidation={stepValidation}
+      />
     </div>
   );
 };

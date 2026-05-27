@@ -1,4 +1,3 @@
-// apps/frontend/src/features/quality/problem-control/components/shared/ProblemNumberDisplay.tsx
 import React from 'react';
 
 interface ProblemNumberDisplayProps {
@@ -7,17 +6,17 @@ interface ProblemNumberDisplayProps {
 }
 
 export const ProblemNumberDisplay: React.FC<ProblemNumberDisplayProps> = ({ problemNumber, id }) => {
-  if (problemNumber) {
-    return (
-      <span className="font-mono text-sm font-semibold text-gray-900">
-        {problemNumber}
-      </span>
-    );
-  }
+  const display = problemNumber ?? (id ? `CA-00-00-${String(id).padStart(5, '0')}` : '—');
 
   return (
-    <span className="text-sm text-gray-500 italic">
-      Draft {id ? `#${id}` : ''}
+    <span style={{
+      fontFamily: 'monospace',
+      fontSize: '0.8125rem',
+      fontWeight: 600,
+      color: 'var(--color-text-primary)',
+      letterSpacing: '0.03em',
+    }}>
+      {display}
     </span>
   );
 };

@@ -1,5 +1,6 @@
 # apps/quality/serializers/__init__.py
 from .quality_target_serializer import QualityTargetSerializer
+from .failure_catalog_serializer import FailureModeImageSerializer
 from .problem_serializer import (
     ProblemListSerializer,
     ProblemDetailSerializer,
@@ -29,4 +30,5 @@ __all__ = [
     'ProblemAttachmentSerializer',
     'SeverityLevelSerializer',
     'DefectTypeSerializer',
+    'FailureModeImageSerializer',
 ]

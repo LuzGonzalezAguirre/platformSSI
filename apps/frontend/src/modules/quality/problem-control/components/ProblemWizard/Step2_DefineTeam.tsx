@@ -1,11 +1,15 @@
 // apps/frontend/src/modules/quality/problem-control/components/ProblemWizard/Step2_DefineTeam.tsx
 
 import React, { useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useWizardStore } from '../../store/wizardStore';
 import { useQualityUsers } from '../../hooks/useCatalogs';
 import type { UserBasic } from '../../types/problem.types';
+import { StepMediaBar } from '../shared/StepMediaBar';
 
 export const Step2_DefineTeam: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const problemId = id ? Number(id) : undefined;
   const { formData, updateFormData, setStepValidation } = useWizardStore();
   const { data: qualityUsers, isLoading } = useQualityUsers();
 
@@ -46,7 +50,7 @@ export const Step2_DefineTeam: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.sectionTitle}>Step 2 - Define Team</h2>
+      <h2 style={styles.sectionTitle}>D2 — Define Team</h2>
       <p style={styles.description}>
         Select the cross-functional team members who will work on this problem. 
         The champion is automatically included.
@@ -139,6 +143,8 @@ export const Step2_DefineTeam: React.FC = () => {
           )}
         </div>
       </div>
+
+      {problemId && <StepMediaBar problemId={problemId} step="step2" />}
     </div>
   );
 };

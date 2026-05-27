@@ -36,9 +36,6 @@ CELERY_BROKER_URL = env("REDIS_URL", default="redis://:mes_redis_pass@redis:6379
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-INSTALLED_APPS += ["debug_toolbar"]
-MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
-INTERNAL_IPS = ["127.0.0.1"]
 
 LOGGING = {
     "version": 1,
