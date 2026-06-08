@@ -135,6 +135,13 @@ export const sidebarConfig: NavSection[] = [
             icon: "HelpCircle",
             allowedRoles: ALL_ROLES,
           },
+          {
+            id: "quality.qwall-settings",
+            labelKey: "nav.items.qwallSettings",
+            path: "/quality/qwall/settings",
+            icon: "Settings2",
+            allowedRoles: ["admin", "ingeniero"],
+          },
         ],
       },
     ],

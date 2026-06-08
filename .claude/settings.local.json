@@ -24,7 +24,22 @@
       "Bash(Remove-Item \"c:\\\\Users\\\\Luz.Aguirre\\\\platformSSI\\\\apps\\\\backend\\\\apps\\\\quality\\\\migrations\\\\0009_catalog_master.py\" -Force)",
       "Bash(Remove-Item \"c:\\\\Users\\\\Luz.Aguirre\\\\platformSSI\\\\apps\\\\backend\\\\apps\\\\quality\\\\admin.py\" -Force)",
       "Bash(Write-Host \"Eliminados\")",
-      "Bash(dir \"C:\\\\Users\\\\Luz.Aguirre\\\\platformSSI\\\\apps\\\\frontend\\\\public\")"
+      "Bash(dir \"C:\\\\Users\\\\Luz.Aguirre\\\\platformSSI\\\\apps\\\\frontend\\\\public\")",
+      "Bash(sqlcmd -S AAS-PAC-FTP01 -d CCS -E -Q \"SELECT OBJECT_ID\\('ssi_Attendance'\\) AS table_exists\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('c:/Users/Luz.Aguirre/platformSSI/apps/frontend/src/i18n/locales/es/common.json','utf8'\\)\\); console.log\\('ES JSON valid'\\)\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('c:/Users/Luz.Aguirre/platformSSI/apps/frontend/src/i18n/locales/en/common.json','utf8'\\)\\); console.log\\('EN JSON valid'\\)\")",
+      "Bash(docker restart *)",
+      "Bash(curl -s -H \"Authorization: Bearer 7a31cd3e242533dfc1b2962b1d84c47ddb3065e2752654c7f23b2e06f3dd988e\" http://localhost:8002/settings/users)",
+      "Bash(curl -s -H \"Authorization: Bearer 7a31cd3e242533dfc1b2962b1d84c47ddb3065e2752654c7f23b2e06f3dd988e\" \"http://localhost:8002/settings/business-units\")",
+      "Bash(curl -s -H \"Authorization: Bearer 7a31cd3e242533dfc1b2962b1d84c47ddb3065e2752654c7f23b2e06f3dd988e\" http://localhost:8002/settings/schema-inspect)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('c:/Users/Luz.Aguirre/platformSSI/apps/frontend/src/i18n/locales/es/common.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('c:/Users/Luz.Aguirre/platformSSI/apps/frontend/src/i18n/locales/en/common.json','utf8'\\)\\); console.log\\('JSON validos'\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('OK, registros:', len\\(d.get\\('data',[]\\)\\), '| columnas:', list\\(d['data'][0].keys\\(\\)\\) if d.get\\('data'\\) else 'vacío'\\)\")",
+      "Bash(curl -s -H \"Authorization: Bearer 7a31cd3e242533dfc1b2962b1d84c47ddb3065e2752654c7f23b2e06f3dd988e\" http://localhost:8002/settings/part-numbers)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('c:/Users/Luz.Aguirre/platformSSI/apps/frontend/src/i18n/locales/es/common.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('c:/Users/Luz.Aguirre/platformSSI/apps/frontend/src/i18n/locales/en/common.json','utf8'\\)\\); console.log\\('OK'\\)\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Luz.Aguirre\\\\platformSSI\\\\apps\\\\quality\\\\models\" -ErrorAction SilentlyContinue)",
+      "Bash(Get-Content c:\\\\Users\\\\Luz.Aguirre\\\\platformSSI\\\\docker-compose.yml)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8002/settings/part-numbers-lookup -H \"Authorization: Bearer 7a31cd3e242533dfc1b2962b1d84c47ddb3065e2752654c7f23b2e06f3dd988e\")",
+      "Bash(curl -s http://localhost:8002/settings/part-numbers-lookup -H \"Authorization: Bearer 7a31cd3e242533dfc1b2962b1d84c47ddb3065e2752654c7f23b2e06f3dd988e\")"
     ]
   }
 }

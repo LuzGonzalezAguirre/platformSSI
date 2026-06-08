@@ -32,6 +32,7 @@ import { ProblemWizardPage } from "./modules/quality/problem-control/pages/Probl
 import { ProblemDetailPage } from "./modules/quality/problem-control/pages/ProblemDetailPage";
 import AuditPage from "./modules/admin/AuditPage";
 import FailureCatalogPage from "./modules/quality/qwall/catalog/FailureCatalogPage";
+import QWallSettingsPage from "./modules/qwall-settings/index";
 
 
 const now = new Date();
@@ -114,6 +115,7 @@ function AppRoutes() {
         <Route path="/quality/problems/:id" element={<ProblemDetailPage />} />
         <Route path="/quality/problems/:id/edit" element={<ProblemWizardPage />} />
         <Route path="/quality/qwall/catalog" element={<FailureCatalogPage />} />
+        <Route path="/quality/qwall/settings" element={<QWallSettingsPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

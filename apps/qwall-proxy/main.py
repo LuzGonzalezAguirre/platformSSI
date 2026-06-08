@@ -741,3 +741,590 @@ def catalog_structure():
     except Exception as e:
         tb = traceback.format_exc(); print(tb)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QWALL SETTINGS — Configuration CRUD
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/settings/schema-inspect", dependencies=[Depends(verify)])
+def settings_schema_inspect():
+    tables = ["ssi_Users", "ssi_PartNumbers", "ssi_InspectionPoints", "ssi_FailModes", "ssi_SystemConfig", "ssi_Roles", "ssi_BusinessUnits"]
+    result = {}
+    try:
+        conn = get_conn(); c = conn.cursor()
+        for tbl in tables:
+            c.execute(f"SELECT TOP 0 * FROM {tbl}")
+            result[tbl] = [d[0] for d in c.description]
+        conn.close()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class UserCreateBody(BaseModel):
+    name:          str
+    barcode_id:    str
+    password_hash: str
+    role_id:       int
+
+class UserUpdateBody(BaseModel):
+    name:          str | None = None
+    barcode_id:    str | None = None
+    password_hash: str | None = None
+    role_id:       int | None = None
+    is_active:     int | None = None
+
+class PartNumberCreateBody(BaseModel):
+    ssiPN:             str
+    volvoProductNumber: str
+    bu_id:             int
+
+class PartNumberUpdateBody(BaseModel):
+    ssiPN:             str | None = None
+    volvoProductNumber: str | None = None
+    bu_id:             int | None = None
+
+class InspectionPointCreateBody(BaseModel):
+    point_name:     str
+    bu_id:          int
+    sequence_order: int
+
+class InspectionPointUpdateBody(BaseModel):
+    point_name:     str | None = None
+    bu_id:          int | None = None
+    sequence_order: int | None = None
+    is_active:      int | None = None
+
+class FailModeCreateBody(BaseModel):
+    fail_code:   str
+    description: str
+
+class FailModeUpdateBody(BaseModel):
+    fail_code:   str | None = None
+    description: str | None = None
+    is_active:   int | None = None
+
+class AssignPointsBody(BaseModel):
+    point_ids: list[int]
+
+class SystemConfigUpdateBody(BaseModel):
+    value: str
+
+
+# ── Business Units & Roles (read-only, for dropdowns) ─────────────────────────
+
+@app.get("/settings/business-units", dependencies=[Depends(verify)])
+def settings_business_units():
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute("SELECT bu_id, bu_name FROM ssi_BusinessUnits ORDER BY bu_name")
+        rows = _rows_to_dicts(c); conn.close()
+        return {"data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/settings/qwall-roles", dependencies=[Depends(verify)])
+def settings_qwall_roles():
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute("SELECT role_id, role_name FROM ssi_Roles ORDER BY role_name")
+        rows = _rows_to_dicts(c); conn.close()
+        return {"data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Users (no BU filter — inspectors work globally) ───────────────────────────
+
+_USER_SELECT = """
+    SELECT u.user_id, u.name, u.barcode_id, u.role_id, r.role_name, u.is_active, u.created_at
+    FROM ssi_Users u
+    LEFT JOIN ssi_Roles r ON u.role_id = r.role_id
+"""
+
+
+@app.get("/settings/users", dependencies=[Depends(verify)])
+def settings_users():
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(_USER_SELECT + " ORDER BY u.name")
+        rows = _rows_to_dicts(c); conn.close()
+        return {"data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/settings/users", dependencies=[Depends(verify)])
+def settings_create_user(body: UserCreateBody):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(
+            """
+            INSERT INTO ssi_Users (name, barcode_id, password_hash, role_id, is_active, created_at)
+            OUTPUT INSERTED.user_id
+            VALUES (?, ?, HASHBYTES('SHA2_256', ?), ?, 1, GETDATE())
+            """,
+            body.name, body.barcode_id, body.password_hash, body.role_id,
+        )
+        row = c.fetchone()
+        new_id = int(row[0]) if row else None
+        conn.commit()
+        if new_id is None:
+            conn.close()
+            raise HTTPException(status_code=500, detail="INSERT did not return a user_id")
+        c.execute(_USER_SELECT + " WHERE u.user_id = ?", new_id)
+        rows = _rows_to_dicts(c); conn.close()
+        return rows[0] if rows else {}
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc(); print(tb)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/settings/users/{user_id}", dependencies=[Depends(verify)])
+def settings_update_user(user_id: int, body: UserUpdateBody):
+    sets: list[str] = []; params: list = []
+    if body.name          is not None: sets.append("name = ?");                            params.append(body.name)
+    if body.barcode_id    is not None: sets.append("barcode_id = ?");                    params.append(body.barcode_id)
+    if body.password_hash is not None: sets.append("password_hash = HASHBYTES('SHA2_256', ?)"); params.append(body.password_hash)
+    if body.role_id       is not None: sets.append("role_id = ?");                       params.append(body.role_id)
+    if body.is_active     is not None: sets.append("is_active = ?");                     params.append(body.is_active)
+    if not sets:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(f"UPDATE ssi_Users SET {', '.join(sets)} WHERE user_id = ?", params + [user_id])
+        conn.commit()
+        c.execute(_USER_SELECT + " WHERE u.user_id = ?", user_id)
+        rows = _rows_to_dicts(c); conn.close()
+        if not rows:
+            raise HTTPException(status_code=404, detail="User not found")
+        return rows[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/settings/users/{user_id}", dependencies=[Depends(verify)])
+def settings_deactivate_user(user_id: int):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute("UPDATE ssi_Users SET is_active = 0 WHERE user_id = ?", user_id)
+        conn.commit()
+        c.execute(_USER_SELECT + " WHERE u.user_id = ?", user_id)
+        rows = _rows_to_dicts(c); conn.close()
+        if not rows:
+            raise HTTPException(status_code=404, detail="User not found")
+        return rows[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Part Numbers ───────────────────────────────────────────────────────────────
+
+_PN_SELECT = """
+    SELECT pn.pn_id, pn.ssiPN, pn.volvoProductNumber, pn.bu_id, bu.bu_name
+    FROM ssi_PartNumbers pn
+    INNER JOIN ssi_BusinessUnits bu ON pn.bu_id = bu.bu_id
+"""
+
+
+@app.get("/settings/part-numbers", dependencies=[Depends(verify)])
+def settings_part_numbers(bu_id: int | None = None):
+    sql = _PN_SELECT
+    params: list = []
+    if bu_id is not None:
+        sql += " WHERE pn.bu_id = ?"
+        params.append(bu_id)
+    sql += " ORDER BY bu.bu_name, pn.ssiPN"
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(sql, params)
+        rows = _rows_to_dicts(c); conn.close()
+        return {"data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/settings/part-numbers", dependencies=[Depends(verify)])
+def settings_create_part_number(body: PartNumberCreateBody):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(
+            """
+            INSERT INTO ssi_PartNumbers (ssiPN, volvoProductNumber, bu_id)
+            OUTPUT INSERTED.pn_id
+            VALUES (?, ?, ?)
+            """,
+            body.ssiPN, body.volvoProductNumber, body.bu_id,
+        )
+        row = c.fetchone()
+        new_id = int(row[0]) if row else None
+        conn.commit()
+        if new_id is None:
+            conn.close(); raise HTTPException(status_code=500, detail="INSERT did not return id")
+        c.execute(_PN_SELECT + " WHERE pn.pn_id = ?", new_id)
+        rows = _rows_to_dicts(c); conn.close()
+        return rows[0] if rows else {}
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc(); print(tb)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/settings/part-numbers/{pn_id}", dependencies=[Depends(verify)])
+def settings_update_part_number(pn_id: int, body: PartNumberUpdateBody):
+    sets: list[str] = []; params: list = []
+    if body.ssiPN              is not None: sets.append("ssiPN = ?");              params.append(body.ssiPN)
+    if body.volvoProductNumber is not None: sets.append("volvoProductNumber = ?"); params.append(body.volvoProductNumber)
+    if body.bu_id              is not None: sets.append("bu_id = ?");              params.append(body.bu_id)
+    if not sets:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(f"UPDATE ssi_PartNumbers SET {', '.join(sets)} WHERE pn_id = ?", params + [pn_id])
+        conn.commit()
+        c.execute(_PN_SELECT + " WHERE pn.pn_id = ?", pn_id)
+        rows = _rows_to_dicts(c); conn.close()
+        if not rows:
+            raise HTTPException(status_code=404, detail="Part number not found")
+        return rows[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/settings/part-numbers/{pn_id}", dependencies=[Depends(verify)])
+def settings_delete_part_number(pn_id: int):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(_PN_SELECT + " WHERE pn.pn_id = ?", pn_id)
+        rows = _rows_to_dicts(c)
+        if not rows:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Part number not found")
+        deleted = rows[0]
+        c.execute("DELETE FROM ssi_PartNumbers WHERE pn_id = ?", pn_id)
+        conn.commit(); conn.close()
+        return deleted
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Inspection Points ──────────────────────────────────────────────────────────
+
+_IP_SELECT = """
+    SELECT
+        ip.inspection_point_id,
+        ip.point_name,
+        ip.bu_id,
+        bu.bu_name,
+        ip.sequence_order,
+        ip.is_active,
+        ISNULL(
+            STUFF((
+                SELECT ', ' + fm2.fail_code
+                FROM ssi_InspectionPointFailModes ipfm2
+                INNER JOIN ssi_FailModes fm2 ON ipfm2.fail_mode_id = fm2.fail_mode_id
+                WHERE ipfm2.inspection_point_id = ip.inspection_point_id
+                FOR XML PATH(''), TYPE
+            ).value('.', 'NVARCHAR(MAX)'), 1, 2, ''), ''
+        ) AS fail_modes_list
+    FROM ssi_InspectionPoints ip
+    INNER JOIN ssi_BusinessUnits bu ON ip.bu_id = bu.bu_id
+"""
+
+
+@app.get("/settings/inspection-points", dependencies=[Depends(verify)])
+def settings_inspection_points(bu_id: int | None = None):
+    sql = _IP_SELECT
+    params: list = []
+    if bu_id is not None:
+        sql += " WHERE ip.bu_id = ?"
+        params.append(bu_id)
+    sql += " ORDER BY ip.bu_id, ip.sequence_order"
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(sql, params)
+        rows = _rows_to_dicts(c); conn.close()
+        return {"data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/settings/inspection-points", dependencies=[Depends(verify)])
+def settings_create_inspection_point(body: InspectionPointCreateBody):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(
+            """
+            INSERT INTO ssi_InspectionPoints (point_name, bu_id, sequence_order, is_active)
+            OUTPUT INSERTED.inspection_point_id
+            VALUES (?, ?, ?, 1)
+            """,
+            body.point_name, body.bu_id, body.sequence_order,
+        )
+        row = c.fetchone()
+        new_id = int(row[0]) if row else None
+        conn.commit()
+        if new_id is None:
+            conn.close(); raise HTTPException(status_code=500, detail="INSERT did not return id")
+        c.execute(_IP_SELECT + " WHERE ip.inspection_point_id = ?", new_id)
+        rows = _rows_to_dicts(c); conn.close()
+        return rows[0] if rows else {}
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc(); print(tb)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/settings/inspection-points/{point_id}", dependencies=[Depends(verify)])
+def settings_update_inspection_point(point_id: int, body: InspectionPointUpdateBody):
+    sets: list[str] = []; params: list = []
+    if body.point_name     is not None: sets.append("point_name = ?");     params.append(body.point_name)
+    if body.bu_id          is not None: sets.append("bu_id = ?");          params.append(body.bu_id)
+    if body.sequence_order is not None: sets.append("sequence_order = ?"); params.append(body.sequence_order)
+    if body.is_active      is not None: sets.append("is_active = ?");      params.append(body.is_active)
+    if not sets:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(f"UPDATE ssi_InspectionPoints SET {', '.join(sets)} WHERE inspection_point_id = ?", params + [point_id])
+        conn.commit()
+        c.execute(_IP_SELECT + " WHERE ip.inspection_point_id = ?", point_id)
+        rows = _rows_to_dicts(c); conn.close()
+        if not rows:
+            raise HTTPException(status_code=404, detail="Inspection point not found")
+        return rows[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/settings/inspection-points/{point_id}", dependencies=[Depends(verify)])
+def settings_deactivate_inspection_point(point_id: int):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute("UPDATE ssi_InspectionPoints SET is_active = 0 WHERE inspection_point_id = ?", point_id)
+        conn.commit()
+        c.execute(_IP_SELECT + " WHERE ip.inspection_point_id = ?", point_id)
+        rows = _rows_to_dicts(c); conn.close()
+        if not rows:
+            raise HTTPException(status_code=404, detail="Inspection point not found")
+        return rows[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Fail Modes ─────────────────────────────────────────────────────────────────
+
+_FM_ASSIGNED_SUBQUERY = """
+    ISNULL(
+        STUFF((
+            SELECT ', ' + ip2.point_name
+            FROM ssi_InspectionPointFailModes ipfm2
+            INNER JOIN ssi_InspectionPoints ip2 ON ipfm2.inspection_point_id = ip2.inspection_point_id
+            WHERE ipfm2.fail_mode_id = fm.fail_mode_id
+            FOR XML PATH(''), TYPE
+        ).value('.', 'NVARCHAR(MAX)'), 1, 2, ''), ''
+    ) AS assigned_points
+"""
+
+
+@app.get("/settings/fail-modes", dependencies=[Depends(verify)])
+def settings_fail_modes(bu_id: int | None = None, point_id: int | None = None):
+    joins  = ""
+    wheres = []
+    params: list = []
+
+    if bu_id is not None or point_id is not None:
+        joins += " INNER JOIN ssi_InspectionPointFailModes ipfm ON fm.fail_mode_id = ipfm.fail_mode_id"
+        if bu_id is not None:
+            joins += " INNER JOIN ssi_InspectionPoints ip ON ipfm.inspection_point_id = ip.inspection_point_id"
+            wheres.append("ip.bu_id = ?")
+            params.append(bu_id)
+        if point_id is not None:
+            wheres.append("ipfm.inspection_point_id = ?")
+            params.append(point_id)
+
+    where_clause = ("WHERE " + " AND ".join(wheres)) if wheres else ""
+    distinct     = "DISTINCT" if joins else ""
+
+    sql = f"""
+        SELECT {distinct}
+            fm.fail_mode_id, fm.fail_code, fm.description, fm.is_active,
+            {_FM_ASSIGNED_SUBQUERY}
+        FROM ssi_FailModes fm
+        {joins}
+        {where_clause}
+        ORDER BY fm.fail_code
+    """
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(sql, params)
+        rows = _rows_to_dicts(c); conn.close()
+        return {"data": rows}
+    except Exception as e:
+        tb = traceback.format_exc(); print(tb)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/settings/fail-modes", dependencies=[Depends(verify)])
+def settings_create_fail_mode(body: FailModeCreateBody):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(
+            """
+            INSERT INTO ssi_FailModes (fail_code, description, is_active)
+            OUTPUT INSERTED.fail_mode_id
+            VALUES (?, ?, 1)
+            """,
+            body.fail_code, body.description,
+        )
+        row = c.fetchone()
+        new_id = int(row[0]) if row else None
+        conn.commit()
+        if new_id is None:
+            conn.close(); raise HTTPException(status_code=500, detail="INSERT did not return id")
+        c.execute(
+            "SELECT fail_mode_id, fail_code, description, is_active, '' AS assigned_points FROM ssi_FailModes WHERE fail_mode_id = ?",
+            new_id,
+        )
+        rows = _rows_to_dicts(c); conn.close()
+        return rows[0] if rows else {}
+    except HTTPException:
+        raise
+    except Exception as e:
+        tb = traceback.format_exc(); print(tb)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/settings/fail-modes/{fail_mode_id}", dependencies=[Depends(verify)])
+def settings_update_fail_mode(fail_mode_id: int, body: FailModeUpdateBody):
+    sets: list[str] = []; params: list = []
+    if body.fail_code   is not None: sets.append("fail_code = ?");   params.append(body.fail_code)
+    if body.description is not None: sets.append("description = ?"); params.append(body.description)
+    if body.is_active   is not None: sets.append("is_active = ?");   params.append(body.is_active)
+    if not sets:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(f"UPDATE ssi_FailModes SET {', '.join(sets)} WHERE fail_mode_id = ?", params + [fail_mode_id])
+        conn.commit()
+        c.execute(f"""
+            SELECT fm.fail_mode_id, fm.fail_code, fm.description, fm.is_active,
+                {_FM_ASSIGNED_SUBQUERY}
+            FROM ssi_FailModes fm
+            WHERE fm.fail_mode_id = ?
+        """, fail_mode_id)
+        rows = _rows_to_dicts(c); conn.close()
+        if not rows:
+            raise HTTPException(status_code=404, detail="Fail mode not found")
+        return rows[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/settings/fail-modes/{fail_mode_id}", dependencies=[Depends(verify)])
+def settings_deactivate_fail_mode(fail_mode_id: int):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute("UPDATE ssi_FailModes SET is_active = 0 WHERE fail_mode_id = ?", fail_mode_id)
+        conn.commit()
+        c.execute(
+            "SELECT fail_mode_id, fail_code, description, is_active, '' AS assigned_points FROM ssi_FailModes WHERE fail_mode_id = ?",
+            fail_mode_id,
+        )
+        rows = _rows_to_dicts(c); conn.close()
+        if not rows:
+            raise HTTPException(status_code=404, detail="Fail mode not found")
+        return rows[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/settings/fail-modes/{fail_mode_id}/assign-points", dependencies=[Depends(verify)])
+def settings_assign_fail_mode_points(fail_mode_id: int, body: AssignPointsBody):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute("DELETE FROM ssi_InspectionPointFailModes WHERE fail_mode_id = ?", fail_mode_id)
+        for pid in body.point_ids:
+            c.execute(
+                "INSERT INTO ssi_InspectionPointFailModes (inspection_point_id, fail_mode_id) VALUES (?, ?)",
+                pid, fail_mode_id,
+            )
+        conn.commit()
+        conn.close()
+        return {"success": True, "assigned": len(body.point_ids)}
+    except Exception as e:
+        tb = traceback.format_exc(); print(tb)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── System Config ──────────────────────────────────────────────────────────────
+
+@app.get("/settings/system-config", dependencies=[Depends(verify)])
+def settings_system_config():
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute("SELECT config_key, config_value FROM ssi_SystemConfig ORDER BY config_key")
+        rows = _rows_to_dicts(c); conn.close()
+        return {"data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/settings/system-config/{config_key}", dependencies=[Depends(verify)])
+def settings_update_system_config(config_key: str, body: SystemConfigUpdateBody):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute(
+            "UPDATE ssi_SystemConfig SET config_value = ? WHERE config_key = ?",
+            body.value, config_key,
+        )
+        conn.commit()
+        c.execute("SELECT config_key, config_value FROM ssi_SystemConfig WHERE config_key = ?", config_key)
+        rows = _rows_to_dicts(c); conn.close()
+        if not rows:
+            raise HTTPException(status_code=404, detail="Config key not found")
+        return rows[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Part Numbers Lookup (para formulario de reglas de escaneo) ────────────────
+
+@app.get("/settings/part-numbers-lookup", dependencies=[Depends(verify)])
+def settings_part_numbers_lookup():
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute("""
+            SELECT pn.pn_id, pn.ssiPN, pn.volvoProductNumber, pn.bu_id, bu.bu_name
+            FROM ssi_PartNumbers pn
+            LEFT JOIN ssi_BusinessUnits bu ON pn.bu_id = bu.bu_id
+            ORDER BY pn.ssiPN
+        """)
+        rows = _rows_to_dicts(c); conn.close()
+        return {"data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

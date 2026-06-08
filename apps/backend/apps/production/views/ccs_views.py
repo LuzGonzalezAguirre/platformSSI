@@ -64,13 +64,52 @@ def _proxy_delete(path: str) -> Response:
 
 class CcsAttendanceDailyView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        return _proxy_get("/attendance/daily", {
-            "date":  request.query_params.get("date"),
-            "turno": request.query_params.get("turno"),
-        })
+        date_str = request.query_params.get("date")
+        turno    = request.query_params.get("turno")
+
+        # 1. Employees from SQL Server via proxy (returns defaults for status/hours)
+        employees_resp = _proxy_get("/attendance/daily", {"date": date_str, "turno": turno})
+        if employees_resp.status_code != 200:
+            return employees_resp
+        employees = list(employees_resp.data)
+
+        # 2. Overlay PostgreSQL attendance records for that date
+        if date_str:
+            from apps.production.models import CcsAttendanceRecord
+            att_map = {
+                r.ccs_employee_id: r
+                for r in CcsAttendanceRecord.objects.filter(date=date_str)
+            }
+            for emp in employees:
+                rec = att_map.get(emp["employee_id"])
+                if rec:
+                    emp["id"]          = rec.id
+                    emp["status"]      = rec.status
+                    emp["hours"]       = str(rec.hours)
+                    emp["recorded_at"] = rec.recorded_at.isoformat() if rec.recorded_at else None
+
+        return Response(employees)
+
     def post(self, request):
-        return _proxy_post("/attendance/daily", request.data)
+        from apps.production.models import CcsAttendanceRecord
+        records = request.data.get("records", [])
+        saved = 0
+        for r in records:
+            h = 0.0 if r.get("status") == "absent" else float(r.get("hours", 12.0))
+            CcsAttendanceRecord.objects.update_or_create(
+                ccs_employee_id=r["employee_id"],
+                date=r["date"],
+                defaults={
+                    "turno":       r["turno"],
+                    "status":      r["status"],
+                    "hours":       h,
+                    "recorded_by": request.user,
+                },
+            )
+            saved += 1
+        return Response({"saved": saved})
 
 
 # ── Attendance (Barcode Check-In/Out) ─────────────────────────────────────────

@@ -1,5 +1,5 @@
 # apps/quality/urls.py
-from django.urls import path
+from django.urls import path, include
 from apps.quality.views import (
     FailureCatalogView,
     CatalogStructureView,
@@ -130,4 +130,14 @@ urlpatterns = [
     # ═════════════════════════════════════════════════════════════════════
     path("catalog/structure/", CatalogStructureView.as_view(), name="catalog-structure"),
     path("catalog/", FailureCatalogView.as_view(), name="failure-catalog"),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # QWALL SETTINGS CRUD
+    # ═════════════════════════════════════════════════════════════════════
+    path("qwall/settings/", include("apps.quality.qwall_settings_urls")),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # SCAN RULES (PostgreSQL — configuración de parseo de código de barras)
+    # ═════════════════════════════════════════════════════════════════════
+    path("scan-rules/", include("apps.quality.scan_rules_urls")),
 ]

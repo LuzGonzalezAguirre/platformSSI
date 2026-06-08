@@ -48,6 +48,7 @@
     "qualityQwallCatalog": "Failure Catalog",
     "qualityQwallHelp": "Help / Tutorial",
     "qualityProblems": "Problem Control",
+    "qwallSettings": "QWall Settings",
     "productionLeysilla": "Chair Law",
     "ssiChairs": "Chair Law ",
     "ssiAttendance": "Attendance"
@@ -211,6 +212,155 @@
   "columns": {
     "module": "Module",
     "all": "All"
+  }
+},
+"qwallSettings": {
+  "title": "QWall Settings",
+  "subtitle": "Manage Q-Wall system configuration tables",
+  "tabs": {
+    "users": "Users",
+    "partNumbers": "Part Numbers",
+    "inspectionPoints": "Inspection Points",
+    "failModes": "Fail Modes",
+    "scanRules": "Scan Rules",
+    "general": "General"
+  },
+  "filter": {
+    "label": "BU:",
+    "allBUs": "All",
+    "allRoles": "All roles",
+    "allStatuses": "All",
+    "allPoints": "All points"
+  },
+  "columns": {
+    "name": "Name",
+    "pin": "PIN",
+    "role": "Role",
+    "active": "Status",
+    "partNumber": "Part Number (SSI)",
+    "volvoPN": "Volvo Part Number",
+    "bu": "Business Unit",
+    "order": "Order",
+    "pointName": "Point Name",
+    "failModes": "Fail Modes",
+    "failCode": "Fail Code",
+    "description": "Description",
+    "assignedPoints": "Assigned Points",
+    "actions": "Actions"
+  },
+  "buttons": {
+    "new": "New",
+    "edit": "Edit",
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "search": "Search...",
+    "delete": "Delete"
+  },
+  "modal": {
+    "createUser": "Create User",
+    "editUser": "Edit User",
+    "createPN": "Create Part Number",
+    "editPN": "Edit Part Number",
+    "createPoint": "Create Inspection Point",
+    "editPoint": "Edit Inspection Point",
+    "createFailMode": "Create Fail Mode",
+    "editFailMode": "Edit Fail Mode",
+    "assignPoints": "Assigned Inspection Points",
+    "roleRequired": "You must select a role.",
+    "buRequired": "You must select a Business Unit.",
+    "changePassword": "Change Password",
+    "password": "Password",
+    "newPassword": "New password",
+    "passwordRequired": "Password is required."
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "messages": {
+    "saveSuccess": "Saved successfully.",
+    "saveError": "Error saving. Please try again.",
+    "deleteSuccess": "Deactivated successfully.",
+    "deleteError": "Error deactivating.",
+    "loading": "Loading...",
+    "noData": "No records found.",
+    "noPointsInBU": "No active inspection points for this BU.",
+    "duplicateName": "A record with that name already exists."
+  },
+  "general": {
+    "camera_enabled": "Camera Enabled",
+    "scrap_enabled": "Scrap Enabled",
+    "saveConfig": "Save Changes",
+    "configSaved": "Configuration saved."
+  },
+  "scanRules": {
+    "configureRule": "Scan Rule",
+    "createTitle": "Create Scan Rule",
+    "editTitle": "Edit Scan Rule",
+    "sectionGeneral": "General Settings",
+    "sectionFields": "Scan Fields",
+    "scanCount": "Expected scans",
+    "requiresMatch": "Requires cross-match (Volvo)",
+    "notes": "Notes",
+    "scanGroup": "Scan",
+    "displayLabel": "Field label",
+    "fieldTarget": "Field maps to",
+    "fieldTargets": {
+      "frameSN": "Internal serial (frameSN)",
+      "volvoSerialNumber": "Customer serial (volvoSerialNumber)",
+      "descartado": "Ignore — validation only"
+    },
+    "extractionModes": {
+      "completo": "Full value",
+      "por_separador": "Split by separator",
+      "pegado_longitud": "Concatenated prefix",
+      "segmento": "Segment by position"
+    },
+    "separators": {
+      "espacio": "Space ( )",
+      "apostrofe": "Apostrophe (')",
+      "guion": "Hyphen (-)",
+      "guion_bajo": "Underscore (_)",
+      "pipe": "Pipe (|)",
+      "ninguno": "None",
+      "custom": "Custom"
+    },
+    "valuePositions": {
+      "completo": "Full value",
+      "antes": "Before separator",
+      "despues": "After separator",
+      "segmento": "Segment"
+    },
+    "fieldForm": {
+      "extractionMode": "Extraction mode",
+      "separator": "Separator",
+      "customSeparator": "Custom separator",
+      "valuePosition": "Extract value",
+      "segmentIndex": "Segment position",
+      "segmentIndexHint": "0=first, 1=second...",
+      "fixedLength": "Expected length",
+      "fixedLengthHint": "Serial length after prefix",
+      "knownPrefix": "Known prefix",
+      "prefixHint": "Serial starts right after this prefix",
+      "preview": "Preview",
+      "previewIncomplete": "— complete required fields —",
+      "addField": "+ Add field",
+      "removeField": "Remove field"
+    },
+    "saveError": "Error saving scan rule."
+  },
+  "scanRulesTab": {
+    "columns": {
+      "fieldCount": "Fields configured",
+      "lastEdited": "Last edited"
+    },
+    "badges": {
+      "configured": "✓ Configured",
+      "notConfigured": "+ No rule"
+    }
   }
 },
 "warehouse": {

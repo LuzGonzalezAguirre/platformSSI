@@ -47,6 +47,7 @@
     "qualityQwallCatalog": "Catálogo de Fallas",
     "qualityQwallHelp": "Ayuda / Tutorial",
     "qualityProblems": "Control de Problemas",
+    "qwallSettings": "Config QWall",
     "productionLeysilla": "Ley Silla",
     "ssiChairs": "Ley Silla NOM-036",
     "ssiAttendance": "Asistencia"
@@ -209,6 +210,155 @@
   "columns": {
     "module": "Módulo",
     "all": "Todo"
+  }
+},
+"qwallSettings": {
+  "title": "Configuración Q-Wall",
+  "subtitle": "Administra las tablas de configuración del sistema Q-Wall",
+  "tabs": {
+    "users": "Usuarios",
+    "partNumbers": "Números de Parte",
+    "inspectionPoints": "Puntos de Inspección",
+    "failModes": "Modos de Falla",
+    "scanRules": "Reglas de Escaneo",
+    "general": "General"
+  },
+  "filter": {
+    "label": "BU:",
+    "allBUs": "Todos",
+    "allRoles": "Todos los roles",
+    "allStatuses": "Todos",
+    "allPoints": "Todos los puntos"
+  },
+  "columns": {
+    "name": "Nombre",
+    "pin": "PIN",
+    "role": "Rol",
+    "active": "Estado",
+    "partNumber": "Número de Parte (SSI)",
+    "volvoPN": "Número de Parte Volvo",
+    "bu": "Unidad de Negocio",
+    "order": "Orden",
+    "pointName": "Nombre del Punto",
+    "failModes": "Modos de Falla",
+    "failCode": "Código de Falla",
+    "description": "Descripción",
+    "assignedPoints": "Puntos Asignados",
+    "actions": "Acciones"
+  },
+  "buttons": {
+    "new": "Nuevo",
+    "edit": "Editar",
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "cancel": "Cancelar",
+    "deactivate": "Desactivar",
+    "activate": "Activar",
+    "search": "Buscar...",
+    "delete": "Eliminar"
+  },
+  "modal": {
+    "createUser": "Crear Usuario",
+    "editUser": "Editar Usuario",
+    "createPN": "Crear Número de Parte",
+    "editPN": "Editar Número de Parte",
+    "createPoint": "Crear Punto de Inspección",
+    "editPoint": "Editar Punto de Inspección",
+    "createFailMode": "Crear Modo de Falla",
+    "editFailMode": "Editar Modo de Falla",
+    "assignPoints": "Puntos de Inspección Asignados",
+    "roleRequired": "Debes seleccionar un rol.",
+    "buRequired": "Debes seleccionar una Unidad de Negocio.",
+    "changePassword": "Cambiar Contraseña",
+    "password": "Contraseña",
+    "newPassword": "Nueva contraseña",
+    "passwordRequired": "La contraseña es requerida."
+  },
+  "status": {
+    "active": "Activo",
+    "inactive": "Inactivo"
+  },
+  "messages": {
+    "saveSuccess": "Guardado correctamente.",
+    "saveError": "Error al guardar. Intenta de nuevo.",
+    "deleteSuccess": "Desactivado correctamente.",
+    "deleteError": "Error al desactivar.",
+    "loading": "Cargando...",
+    "noData": "No se encontraron registros.",
+    "noPointsInBU": "No hay puntos de inspección activos para esta BU.",
+    "duplicateName": "Ya existe un registro con ese nombre."
+  },
+  "general": {
+    "camera_enabled": "Cámara Habilitada",
+    "scrap_enabled": "Scrap Habilitado",
+    "saveConfig": "Guardar Cambios",
+    "configSaved": "Configuración guardada."
+  },
+  "scanRules": {
+    "configureRule": "Regla de Escaneo",
+    "createTitle": "Crear Regla de Escaneo",
+    "editTitle": "Editar Regla de Escaneo",
+    "sectionGeneral": "Configuración General",
+    "sectionFields": "Campos de Escaneo",
+    "scanCount": "Escaneos esperados",
+    "requiresMatch": "Requiere coincidencia cruzada (Volvo)",
+    "notes": "Notas",
+    "scanGroup": "Escaneo",
+    "displayLabel": "Nombre del campo",
+    "fieldTarget": "Este campo corresponde a",
+    "fieldTargets": {
+      "frameSN": "Serial interno (frameSN)",
+      "volvoSerialNumber": "Serial del cliente (volvoSerialNumber)",
+      "descartado": "Ignorar — solo validación"
+    },
+    "extractionModes": {
+      "completo": "Valor completo",
+      "por_separador": "Dividir por separador",
+      "pegado_longitud": "Prefijo pegado",
+      "segmento": "Segmento por posición"
+    },
+    "separators": {
+      "espacio": "Espacio ( )",
+      "apostrofe": "Apóstrofo (')",
+      "guion": "Guión (-)",
+      "guion_bajo": "Guión bajo (_)",
+      "pipe": "Pipe (|)",
+      "ninguno": "Ninguno",
+      "custom": "Personalizado"
+    },
+    "valuePositions": {
+      "completo": "Valor completo",
+      "antes": "Antes del separador",
+      "despues": "Después del separador",
+      "segmento": "Segmento"
+    },
+    "fieldForm": {
+      "extractionMode": "Modo de extracción",
+      "separator": "Separador",
+      "customSeparator": "Separador personalizado",
+      "valuePosition": "Extraer valor",
+      "segmentIndex": "Posición del segmento",
+      "segmentIndexHint": "0=primero, 1=segundo...",
+      "fixedLength": "Longitud esperada",
+      "fixedLengthHint": "Longitud del serial tras el prefijo",
+      "knownPrefix": "Prefijo conocido",
+      "prefixHint": "El serial empieza justo después",
+      "preview": "Vista previa",
+      "previewIncomplete": "— completa los campos requeridos —",
+      "addField": "+ Agregar campo",
+      "removeField": "Eliminar campo"
+    },
+    "saveError": "Error al guardar la regla de escaneo."
+  },
+  "scanRulesTab": {
+    "columns": {
+      "fieldCount": "Campos configurados",
+      "lastEdited": "Última edición"
+    },
+    "badges": {
+      "configured": "✓ Configurada",
+      "notConfigured": "+ Sin regla"
+    }
   }
 },
 "warehouse": {

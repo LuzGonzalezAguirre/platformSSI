@@ -68,6 +68,34 @@ class AttendanceRecord(models.Model):
     def __str__(self):
         return f"{self.employee.name} — {self.date} ({self.status})"
 
+class CcsAttendanceRecord(models.Model):
+    class Status(models.TextChoices):
+        PRESENT = "present", "Present"
+        ABSENT  = "absent",  "Absent"
+        LEAVE   = "leave",   "Leave"
+        SICK    = "sick",    "Sick"
+
+    ccs_employee_id = models.IntegerField(verbose_name="SQL Server employee ID")
+    date            = models.DateField(verbose_name="Fecha")
+    turno           = models.CharField(max_length=1)
+    status          = models.CharField(max_length=20, choices=Status.choices, default=Status.PRESENT)
+    hours           = models.DecimalField(max_digits=5, decimal_places=2, default=12.0)
+    recorded_by     = models.ForeignKey(
+        "identity.User", null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ccs_attendance_records",
+    )
+    recorded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table        = "production_ccs_attendance"
+        unique_together = ("ccs_employee_id", "date")
+        ordering        = ["-date"]
+
+    def __str__(self):
+        return f"CCS {self.ccs_employee_id} — {self.date} ({self.status})"
+
+
 class EarnedHoursRecord(models.Model):
     date        = models.DateField(unique=True, verbose_name="Fecha")
     earned_hours = models.DecimalField(max_digits=7, decimal_places=1, default=0.0)
