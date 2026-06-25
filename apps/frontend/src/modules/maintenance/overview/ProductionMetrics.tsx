@@ -32,7 +32,7 @@ const MTBF_TARGET = 7;  // ≥ 40 hrs  → higherBetter
 
 export default function ProductionMetrics({ kpis, lang }: Props) {
   const planHours = kpis
-    ? (kpis.operating_hours ?? 0) + (kpis.downtime_hours ?? 0)
+    ? (kpis.operating_hours ?? 0) + (kpis.down_hours ?? 0)
     : null;
 
   const mttrColor = metricColor(kpis?.mttr_hours ?? null, MTTR_TARGET, true);
