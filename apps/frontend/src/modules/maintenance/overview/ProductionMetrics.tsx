@@ -47,7 +47,7 @@ export default function ProductionMetrics({ kpis, lang }: Props) {
       {/* Horas principales */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.875rem", marginBottom: "1rem" }}>
         <MetricCard label={lang === "es" ? "Horas Operando" : "Operating Hours"} value={kpis?.operating_hours ?? null} accent="#10b981" />
-        <MetricCard label={lang === "es" ? "Horas de Paro"  : "Downtime Hours"}  value={kpis?.downtime_hours  ?? null} accent="#ef4444" />
+        <MetricCard label={lang === "es" ? "Horas de Paro"  : "Downtime Hours"}  value={kpis?.down_hours  ?? null} accent="#ef4444" />
         <MetricCard label={lang === "es" ? "Horas Plan"     : "Plan Hours"}      value={planHours}                     accent="#3b82f6" />
       </div>
 

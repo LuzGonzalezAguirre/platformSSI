@@ -3,11 +3,12 @@
 import os
 import base64
 import pyodbc
-import traceback  
+import traceback
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
+from scan_rules_router import router as scan_rules_router
 
 app    = FastAPI()
 bearer = HTTPBearer()
@@ -24,6 +25,14 @@ def verify(creds: HTTPAuthorizationCredentials = Depends(bearer)):
 
 def get_conn():
     return pyodbc.connect(CONN_STR, timeout=10)
+
+
+app.include_router(scan_rules_router, prefix="/scan-rules", tags=["Scan Rules"])
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 # ── Models ────────────────────────────────────────────────────────────────────

@@ -244,7 +244,7 @@ function TrendChart({ points, lang = "es" }: { points: DayPoint[]; lang?: "es" |
 
   const W      = isFullscreen ? 1100 : 560;
   const H      = isFullscreen ? 320  : 120;
-  const padL   = 36; const padR = 12;
+  const padL   = 36; const padR = 34;
   const padT   = labelMode === "fixed" ? 28 : 10;
   const padB   = 24;
   const chartW = W - padL - padR;
@@ -312,6 +312,20 @@ function TrendChart({ points, lang = "es" }: { points: DayPoint[]; lang?: "es" |
       {/* Ejes */}
       <line x1={padL} x2={padL}     y1={padT} y2={padT + chartH} stroke="var(--color-border)" strokeWidth={1} />
       <line x1={padL} x2={W - padR} y1={padT + chartH} y2={padT + chartH} stroke="var(--color-border)" strokeWidth={1} />
+
+      {/* Eje derecho: Pass Rate % */}
+      <line x1={W - padR} x2={W - padR} y1={padT} y2={padT + chartH} stroke="#10b981" strokeWidth={0.8} />
+      {[0, 25, 50, 75, 100].map(pct => {
+        const y = padT + chartH * (1 - pct / 100);
+        return (
+          <g key={`rax${pct}`}>
+            <line x1={W - padR} x2={W - padR + 3} y1={y} y2={y} stroke="#10b981" strokeWidth={0.8} />
+            <text x={W - padR + 5} y={y + 3} textAnchor="start" fontSize={7} fill="#10b981">
+              {pct}%
+            </text>
+          </g>
+        );
+      })}
 
       {/* Líneas */}
       <polyline points={totalLine}    fill="none" stroke="#3b82f6" strokeWidth={2}   strokeLinejoin="round" />

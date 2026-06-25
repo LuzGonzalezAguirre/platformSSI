@@ -1,15 +1,13 @@
 import os
-import requests
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import ValidationError as DRFValidationError
 
+import requests
+from rest_framework.exceptions import ValidationError as DRFValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.quality.serializers.scan_rules_serializers import PartNumberScanRuleSerializer
 from apps.quality.services.scan_rules_service import ScanRulesService
-from apps.quality.serializers.scan_rules_serializers import (
-    PartNumberScanRuleSerializer,
-    PartNumberScanRuleListSerializer,
-)
 
 PROXY_URL   = os.getenv("QWALL_PROXY_URL",   "http://host.docker.internal:8002")
 PROXY_TOKEN = os.getenv("QWALL_PROXY_TOKEN", "")
@@ -28,7 +26,13 @@ def _forbidden():
     return Response({"detail": "Forbidden"}, status=403)
 
 
-# ── List / Create ─────────────────────────────────────────────────────────────
+def _proxy_error(exc: Exception):
+    if isinstance(exc, requests.HTTPError):
+        return Response({"error": exc.response.text}, status=exc.response.status_code)
+    return Response({"error": str(exc)}, status=502)
+
+
+# ── List / Create ──────────────────────────────────────────────────────────────
 
 class ScanRuleListCreateView(APIView):
     permission_classes = [IsAuthenticated]
@@ -56,31 +60,37 @@ class ScanRuleListCreateView(APIView):
         if is_active is not None:
             is_active = is_active.lower() in ("1", "true")
 
-        if pn_id is not None:
-            rule = ScanRulesService.get_rule_by_pn(pn_id)
-            if rule is None:
-                return Response([])
-            return Response([PartNumberScanRuleSerializer(rule).data])
+        try:
+            if pn_id is not None:
+                rule = ScanRulesService.get_rule_by_pn(pn_id)
+                return Response([rule] if rule else [])
 
-        rules = ScanRulesService.get_all_rules(bu_id=bu_id, is_active=is_active)
-        return Response(PartNumberScanRuleListSerializer(rules, many=True).data)
+            rules = ScanRulesService.get_all_rules(bu_id=bu_id, is_active=is_active)
+            return Response(rules)
+        except Exception as exc:
+            return _proxy_error(exc)
 
     def post(self, request):
         if not _has_access(request):
             return _forbidden()
+
         serializer = PartNumberScanRuleSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
+
         try:
             rule = ScanRulesService.create_rule(
                 dict(serializer.validated_data), request.user
             )
         except DRFValidationError as exc:
             return Response({"detail": exc.detail}, status=400)
-        return Response(PartNumberScanRuleSerializer(rule).data, status=201)
+        except Exception as exc:
+            return _proxy_error(exc)
+
+        return Response(rule, status=201)
 
 
-# ── Detail (GET / PATCH / DELETE) ────────────────────────────────────────────
+# ── Detail (GET / PATCH / DELETE) ─────────────────────────────────────────────
 
 class ScanRuleDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -88,38 +98,48 @@ class ScanRuleDetailView(APIView):
     def get(self, request, pk):
         if not _has_access(request):
             return _forbidden()
-        rule = ScanRulesService.get_rule(pk)
+        try:
+            rule = ScanRulesService.get_rule(pk)
+        except Exception as exc:
+            return _proxy_error(exc)
         if rule is None:
             return Response({"detail": "Not found."}, status=404)
-        return Response(PartNumberScanRuleSerializer(rule).data)
+        return Response(rule)
 
     def patch(self, request, pk):
         if not _has_access(request):
             return _forbidden()
-        rule = ScanRulesService.get_rule(pk)
-        if rule is None:
-            return Response({"detail": "Not found."}, status=404)
-        serializer = PartNumberScanRuleSerializer(rule, data=request.data, partial=True)
+
+        serializer = PartNumberScanRuleSerializer(data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
+
         try:
             updated = ScanRulesService.update_rule(
                 pk, dict(serializer.validated_data), request.user
             )
         except DRFValidationError as exc:
             return Response({"detail": exc.detail}, status=400)
-        return Response(PartNumberScanRuleSerializer(updated).data)
+        except Exception as exc:
+            return _proxy_error(exc)
+
+        if updated is None:
+            return Response({"detail": "Not found."}, status=404)
+        return Response(updated)
 
     def delete(self, request, pk):
         if not _has_access(request):
             return _forbidden()
-        found = ScanRulesService.delete_rule(pk)
+        try:
+            found = ScanRulesService.delete_rule(pk)
+        except Exception as exc:
+            return _proxy_error(exc)
         if not found:
             return Response({"detail": "Not found."}, status=404)
         return Response(status=204)
 
 
-# ── Toggle active ─────────────────────────────────────────────────────────────
+# ── Toggle active ──────────────────────────────────────────────────────────────
 
 class ScanRuleToggleView(APIView):
     permission_classes = [IsAuthenticated]
@@ -127,13 +147,16 @@ class ScanRuleToggleView(APIView):
     def patch(self, request, pk):
         if not _has_access(request):
             return _forbidden()
-        rule = ScanRulesService.toggle_active(pk, request.user)
-        if rule is None:
+        try:
+            result = ScanRulesService.toggle_active(pk, request.user)
+        except Exception as exc:
+            return _proxy_error(exc)
+        if result is None:
             return Response({"detail": "Not found."}, status=404)
-        return Response({"id": rule.id, "is_active": rule.is_active})
+        return Response(result)
 
 
-# ── PN lookup (proxy pass-through for the form selector) ─────────────────────
+# ── PN lookup (proxy pass-through) ────────────────────────────────────────────
 
 class PartNumberLookupView(APIView):
     permission_classes = [IsAuthenticated]

@@ -137,7 +137,7 @@ urlpatterns = [
     path("qwall/settings/", include("apps.quality.qwall_settings_urls")),
 
     # ═════════════════════════════════════════════════════════════════════
-    # SCAN RULES (PostgreSQL — configuración de parseo de código de barras)
+    # SCAN RULES (SQL Server CCS via QWall Proxy)
     # ═════════════════════════════════════════════════════════════════════
     path("scan-rules/", include("apps.quality.scan_rules_urls")),
 ]

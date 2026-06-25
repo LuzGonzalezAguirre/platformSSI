@@ -273,30 +273,23 @@ class QWallReportView(APIView):
 
 
 class QWallPartNumbersView(APIView):
-    """
-    Catálogo de part numbers desde Q-Wall.
-    TEMPORAL: Devolver array vacío mientras se arregla qwall-proxy.
-    """
+    """Catálogo de part numbers desde Q-Wall (vía qwall-proxy)."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # TEMPORAL: Devolver array vacío para que no bloquee frontend
-        return Response([])
-        
-        # CÓDIGO ORIGINAL (comentado hasta arreglar qwall-proxy):
-        # cache_key = "qwall:part_numbers_catalog"
-        # cached = cache.get(cache_key)
-        # if cached:
-        #     return Response(cached)
-        # try:
-        #     resp = requests.get(
-        #         f"{PROXY_URL}/part-numbers",
-        #         headers=HEADERS,
-        #         timeout=15,
-        #     )
-        #     resp.raise_for_status()
-        #     data = resp.json().get("data", [])
-        #     cache.set(cache_key, data, 3600)
-        #     return Response(data)
-        # except Exception as e:
-        #     return Response({"detail": str(e)}, status=502)
+        cache_key = "qwall:part_numbers_catalog"
+        cached = cache.get(cache_key)
+        if cached:
+            return Response(cached)
+        try:
+            resp = requests.get(
+                f"{PROXY_URL}/part-numbers",
+                headers=HEADERS,
+                timeout=15,
+            )
+            resp.raise_for_status()
+            data = resp.json().get("data", [])
+            cache.set(cache_key, data, 3600)
+            return Response(data)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=502)

@@ -2,11 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { MaintenanceService } from "./overview.service";
 import { MaintenanceKPIs, DowntimeReason, DateRange, OEEData, OEETrendPoint, DowntimeByMonth } from "./types";
 
-function lastDayOfRange(end: string): string {
-  const d = new Date(end + "T12:00:00");
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().split("T")[0];
-}
 
 export function useMaintenanceData(range: DateRange) {
   const [kpis,          setKpis]          = useState<MaintenanceKPIs | null>(null);
@@ -15,7 +10,7 @@ export function useMaintenanceData(range: DateRange) {
   const [oee,           setOee]           = useState<OEEData | null>(null);
   const [oeeTrend,      setOeeTrend]      = useState<OEETrendPoint[]>([]);
   const [downtimeMonth, setDowntimeMonth] = useState<DowntimeByMonth[]>([]);
-  const [loading,       setLoading]       = useState(false);
+  const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState<string | null>(null);
 
   const load = useCallback(async () => {

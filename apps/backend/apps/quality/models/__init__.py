@@ -14,8 +14,6 @@ from .actions import (
 from .attachment import ProblemAttachment, ProblemNote
 from .audit import ProblemAudit
 from .failure_catalog import FailureModeImage
-from .scan_rules import PartNumberScanRule, ScanField
-
 __all__ = [
     'QualityTarget',
     'Problem',
@@ -32,6 +30,4 @@ __all__ = [
     'ProblemNote',
     'ProblemAudit',
     'FailureModeImage',
-    'PartNumberScanRule',
-    'ScanField',
 ]
