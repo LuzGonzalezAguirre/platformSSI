@@ -25,6 +25,13 @@ BOLD = Font(bold=True)
 CENTER = Alignment(horizontal="center", vertical="center")
 
 
+def _get_locale(request) -> str:
+    """Reusa el mecanismo ya existente en el proyecto: el frontend manda el
+    idioma activo (i18next) en el header Accept-Language ("es"/"en")."""
+    lang = request.headers.get("Accept-Language", "es")
+    return (lang.split(",")[0].split("-")[0].strip().lower() or "es")
+
+
 def _fmt_duration(seconds) -> str:
     if not seconds:
         return "0:00"
@@ -152,7 +159,7 @@ def _build_excel(data: dict, start_date: date, end_date: date, include_test: boo
         ("WO", "work_order", 14),
         ("Part Number", "part_number", 20),
         ("Serial SSI", "serial_ssi", 20),
-        ("Serial Volvo", "serial_volvo", 20),
+        ("Serial Client", "serial_volvo", 20),
         ("Fallas", "fail_modes", 40),
     ]
 
@@ -203,7 +210,7 @@ def _build_excel(data: dict, start_date: date, end_date: date, include_test: boo
         ws.column_dimensions[piv_col_next_letter].width = 12
 
         for i, fm in enumerate(fail_modes, start=3):
-            ws.cell(row=i, column=pivot_col, value=fm["fail_mode"])
+            ws.cell(row=i, column=pivot_col, value=f"{fm['code']} — {fm['name']}")
             ws.cell(row=i, column=pivot_col + 1, value=fm["count"])
 
         total_row = len(fail_modes) + 3
@@ -237,12 +244,19 @@ class QWallReportView(APIView):
         end_raw = request.query_params.get("end_date", str(today))
         fmt = request.query_params.get("export", "json")
         include_test = request.query_params.get("include_test", "false").lower() == "true"
+        bu_raw = request.query_params.get("bu_id")
+        locale = _get_locale(request)
 
         try:
             start_date = date.fromisoformat(start_raw)
             end_date = date.fromisoformat(end_raw)
         except ValueError:
             return Response({"error": "Formato de fecha inválido. Use YYYY-MM-DD."}, status=400)
+
+        try:
+            bu_id = int(bu_raw) if bu_raw else None
+        except ValueError:
+            return Response({"error": "bu_id inválido."}, status=400)
 
         if end_date < start_date:
             return Response({"error": "end_date no puede ser anterior a start_date."}, status=400)
@@ -253,7 +267,7 @@ class QWallReportView(APIView):
         # ═══════════════════════════════════════════════════════════════════════
         # IMPORTANTE: QWallService.get_report es ESTÁTICO
         # ═══════════════════════════════════════════════════════════════════════
-        data = QWallService.get_report(start_date, end_date, include_test=include_test)
+        data = QWallService.get_report(start_date, end_date, include_test=include_test, bu_id=bu_id, locale=locale)
 
         if fmt == "xlsx":
             try:
@@ -269,6 +283,179 @@ class QWallReportView(APIView):
                 import traceback
                 return Response({"error": str(e), "trace": traceback.format_exc()}, status=500)
 
+        return Response(data)
+
+
+class QWallTrendView(APIView):
+    """Tendencia de Pass Rate (diaria/semanal/mensual) contra el target vigente."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        today = date.today()
+        granularity = request.query_params.get("granularity", "daily")
+        if granularity not in ("daily", "weekly", "monthly"):
+            return Response({"error": "granularity debe ser daily, weekly o monthly."}, status=400)
+
+        start_raw = request.query_params.get("start_date", str(today - timedelta(days=7)))
+        end_raw = request.query_params.get("end_date", str(today))
+        include_test = request.query_params.get("include_test", "false").lower() == "true"
+        bu_raw = request.query_params.get("bu_id")
+
+        try:
+            start_date = date.fromisoformat(start_raw)
+            end_date = date.fromisoformat(end_raw)
+        except ValueError:
+            return Response({"error": "Formato de fecha inválido. Use YYYY-MM-DD."}, status=400)
+
+        try:
+            bu_id = int(bu_raw) if bu_raw else None
+        except ValueError:
+            return Response({"error": "bu_id inválido."}, status=400)
+
+        if end_date < start_date:
+            return Response({"error": "end_date no puede ser anterior a start_date."}, status=400)
+
+        data = QWallService.get_trend(
+            start_date, end_date, granularity=granularity, include_test=include_test, bu_id=bu_id,
+        )
+        return Response(data)
+
+
+class QWallParetoView(APIView):
+    """Top Fail Modes (80/20) — un solo ranking agregado sobre la ventana de
+    la granularidad pedida (no es una serie temporal)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        today = date.today()
+        granularity = request.query_params.get("granularity", "daily")
+        if granularity not in ("daily", "weekly", "monthly"):
+            return Response({"error": "granularity debe ser daily, weekly o monthly."}, status=400)
+
+        start_raw = request.query_params.get("start_date", str(today - timedelta(days=7)))
+        end_raw = request.query_params.get("end_date", str(today))
+        include_test = request.query_params.get("include_test", "false").lower() == "true"
+        bu_raw = request.query_params.get("bu_id")
+        limit_raw = request.query_params.get("limit", "10")
+        locale = _get_locale(request)
+
+        try:
+            start_date = date.fromisoformat(start_raw)
+            end_date = date.fromisoformat(end_raw)
+        except ValueError:
+            return Response({"error": "Formato de fecha inválido. Use YYYY-MM-DD."}, status=400)
+
+        try:
+            bu_id = int(bu_raw) if bu_raw else None
+        except ValueError:
+            return Response({"error": "bu_id inválido."}, status=400)
+
+        try:
+            limit = int(limit_raw)
+            if limit < 1 or limit > 50:
+                raise ValueError
+        except ValueError:
+            return Response({"error": "limit inválido (1-50)."}, status=400)
+
+        if end_date < start_date:
+            return Response({"error": "end_date no puede ser anterior a start_date."}, status=400)
+
+        data = QWallService.get_pareto(
+            start_date, end_date, granularity=granularity, include_test=include_test,
+            bu_id=bu_id, locale=locale, limit=limit,
+        )
+        return Response(data)
+
+
+class QWallFailByPointView(APIView):
+    """Distribución de FALLAS entre puntos de inspección (de las piezas que
+    fallaron, en qué punto ocurrió cada falla) — no % de fail por punto."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        today = date.today()
+        start_raw = request.query_params.get("start_date", str(today - timedelta(days=7)))
+        end_raw = request.query_params.get("end_date", str(today))
+        include_test = request.query_params.get("include_test", "false").lower() == "true"
+        bu_raw = request.query_params.get("bu_id")
+
+        try:
+            start_date = date.fromisoformat(start_raw)
+            end_date = date.fromisoformat(end_raw)
+        except ValueError:
+            return Response({"error": "Formato de fecha inválido. Use YYYY-MM-DD."}, status=400)
+
+        try:
+            bu_id = int(bu_raw) if bu_raw else None
+        except ValueError:
+            return Response({"error": "bu_id inválido."}, status=400)
+
+        if end_date < start_date:
+            return Response({"error": "end_date no puede ser anterior a start_date."}, status=400)
+
+        data = QWallService.get_fail_by_point(
+            start_date, end_date, include_test=include_test, bu_id=bu_id,
+        )
+        return Response(data)
+
+
+class QWallBuSummaryView(APIView):
+    """Resumen agregado por Business Unit — usado por el dashboard cuando el
+    filtro general está en 'Todas las BU' (Modo A del Part Number Summary)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        today = date.today()
+        start_raw = request.query_params.get("start_date", str(today - timedelta(days=7)))
+        end_raw = request.query_params.get("end_date", str(today))
+        include_test = request.query_params.get("include_test", "false").lower() == "true"
+
+        try:
+            start_date = date.fromisoformat(start_raw)
+            end_date = date.fromisoformat(end_raw)
+        except ValueError:
+            return Response({"error": "Formato de fecha inválido. Use YYYY-MM-DD."}, status=400)
+
+        if end_date < start_date:
+            return Response({"error": "end_date no puede ser anterior a start_date."}, status=400)
+
+        data = QWallService.get_bu_summary(start_date, end_date, include_test=include_test)
+        return Response(data)
+
+
+class QWallPartNumberSummaryView(APIView):
+    """Resumen de Part Numbers para UNA Business Unit específica. business_unit_id
+    es obligatorio — este endpoint nunca regresa part numbers de todas las BU
+    mezclados. Usado tanto en Modo B (filtro general ya en una BU) como al
+    expandir una barra de BU en Modo A."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        today = date.today()
+        start_raw = request.query_params.get("start_date", str(today - timedelta(days=7)))
+        end_raw = request.query_params.get("end_date", str(today))
+        include_test = request.query_params.get("include_test", "false").lower() == "true"
+        bu_raw = request.query_params.get("business_unit_id")
+
+        try:
+            start_date = date.fromisoformat(start_raw)
+            end_date = date.fromisoformat(end_raw)
+        except ValueError:
+            return Response({"error": "Formato de fecha inválido. Use YYYY-MM-DD."}, status=400)
+
+        if end_date < start_date:
+            return Response({"error": "end_date no puede ser anterior a start_date."}, status=400)
+
+        if not bu_raw:
+            return Response({"error": "business_unit_id es obligatorio."}, status=400)
+        try:
+            business_unit_id = int(bu_raw)
+        except ValueError:
+            return Response({"error": "business_unit_id inválido."}, status=400)
+
+        data = QWallService.get_part_number_summary(
+            start_date, end_date, business_unit_id, include_test=include_test,
+        )
         return Response(data)
 
 

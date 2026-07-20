@@ -1,15 +1,16 @@
 import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Download } from "lucide-react";
+import { Download, Flag as FlagIcon } from "lucide-react";
 import {
   QWallService,
   QWallReport,
   QWallRow,
   QWallInspectorRow,
   QWallPartRow,
-  QWallFailMode,
   QWallPartNumber,
 } from "../services/qwall.service";
+
+interface LegacyFailMode { fail_mode: string; count: number; }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -195,7 +196,7 @@ function deriveByPart(rows: QWallRow[]): QWallPartRow[] {
   })).sort((a, b) => b.total - a.total);
 }
 
-function deriveFailModes(rows: QWallRow[]): QWallFailMode[] {
+function deriveFailModes(rows: QWallRow[]): LegacyFailMode[] {
   const map: Record<string, number> = {};
   for (const r of rows) {
     if (r.result === "FAIL" && r.fail_modes) {
@@ -213,7 +214,7 @@ function deriveFailModes(rows: QWallRow[]): QWallFailMode[] {
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function QWallPage() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const l        = i18n.language === "es";
 
   const [startDate,   setStartDate]   = useState<string>(daysAgo(7));
@@ -237,25 +238,32 @@ export default function QWallPage() {
     ? partCatalog.filter((p) => p.bu_name === buFilter).map((p) => p.ssiPN)
     : partCatalog.map((p) => p.ssiPN);
 
+  // bu_id correspondiente al nombre de BU seleccionado — el backend filtra por
+  // bu_id (mismo mecanismo que QWallDashboardPage), para que flag_count y el
+  // resto de campos calculados en backend salgan correctos para la BU activa.
+  const buId: number | undefined = buFilter
+    ? partCatalog.find((p) => p.bu_name === buFilter)?.bu_id
+    : undefined;
+
   const load = useCallback(async () => {
   setLoading(true);
   setError(null);
   try {
-    const result = await QWallService.getReport(startDate, endDate, includeTest);
+    const result = await QWallService.getReport(startDate, endDate, includeTest, buId);
     setData(result);
   } catch {
     setError(l ? "Error al cargar datos de Q-Wall." : "Failed to load Q-Wall data.");
   } finally {
     setLoading(false);
   }
-}, [startDate, endDate, includeTest, l]);
+}, [startDate, endDate, includeTest, buId, l]);
 
-// Auto-reload cuando cambia el toggle (solo si ya hay datos)
+// Auto-reload cuando cambia el toggle o el filtro de BU (solo si ya hay datos)
 useEffect(() => {
   if (data !== null) {
     load();
   }
-}, [includeTest]);
+}, [includeTest, buId]);
 
   const filters = useTableFilters(data?.rows ?? [], pnForBu);
 
@@ -398,6 +406,11 @@ useEffect(() => {
               value={String(kpis.inspectors)}
             />
             <KPI label="Part Numbers" value={String(kpis.part_numbers)} />
+            <KPI
+              label={l ? "Piezas con Flag" : "Flagged Pieces"}
+              value={(data.flag_count ?? 0).toLocaleString()}
+              color="#f59e0b"
+            />
           </div>
 
           {/* Inspector + Fail modes */}
@@ -456,7 +469,7 @@ useEffect(() => {
                       </tr>
                     </thead>
                     <tbody>
-                      {failModes.map((fm: QWallFailMode) => (
+                      {failModes.map((fm: LegacyFailMode) => (
                         <tr key={fm.fail_mode}>
                           <td style={s.td}>{fm.fail_mode}</td>
                           <td style={{ ...s.td, fontWeight: 700 }}>{fm.count}</td>
@@ -561,9 +574,10 @@ useEffect(() => {
                       "WO",
                       "Part No.",
                       "Serial SSI",
-                      "Serial Volvo",
+                      t("qwallSettings.columns.serialClient"),
                       l ? "Duración"  : "Duration",
                       l ? "Fallas"    : "Fail modes",
+                      "Flag",
                     ].map((h: string) => (
                       <th key={h} style={s.th}>{h}</th>
                     ))}
@@ -593,6 +607,22 @@ useEffect(() => {
                         maxWidth: "220px",
                       }}>
                         {row.fail_modes || "—"}
+                      </td>
+                      <td style={{ ...s.td, maxWidth: "180px" }}>
+                        {row.flag_id != null ? (
+                          <span
+                            title={row.flag_comment || row.flag_fail_mode_name || undefined}
+                            style={{
+                              display: "flex", alignItems: "center", gap: "0.3rem",
+                              color: "#f59e0b", overflow: "hidden",
+                            }}
+                          >
+                            <FlagIcon size={12} style={{ flexShrink: 0 }} />
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {row.flag_comment || row.flag_fail_mode_name || ""}
+                            </span>
+                          </span>
+                        ) : null}
                       </td>
                     </tr>
                   ))}

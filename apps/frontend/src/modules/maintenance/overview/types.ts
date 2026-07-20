@@ -61,6 +61,15 @@ export interface DowntimeByMonth {
   total_hours:  number;
 }
 
+export interface DashboardTarget {
+  metric_key:   string;
+  target_value: number;
+  comparison:   "gte" | "lte";
+  label_es:     string;
+  label_en:     string;
+  unit:         string;
+}
+
 export interface WRKpis {
   total_wr:       number;
   total_hours:    number;

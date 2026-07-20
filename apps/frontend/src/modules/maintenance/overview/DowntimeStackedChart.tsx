@@ -1,9 +1,46 @@
 import { useState } from "react";
-import { DowntimeByMonth } from "./types";
+import { Loader2 } from "lucide-react";
+import { DowntimeByMonth, DateRange } from "./types";
+import { usePeriodicSeries, ChartPeriod } from "./usePeriodicSeries";
+import { MaintenanceService } from "./overview.service";
 
 interface Props {
   data: DowntimeByMonth[];
   lang: string;
+  compact?: boolean;
+  dayRange: DateRange;
+}
+
+// Bucketea por semana/mes sumando total_hours y total_events por razón —
+// el endpoint solo devuelve granularidad diaria, y una ventana de 6 meses
+// sin agregar produciría ~180 barras ilegibles.
+function bucketKey(dateStr: string, mode: "week" | "month"): string {
+  const date = new Date(dateStr + "T12:00:00");
+  if (mode === "month") return dateStr.slice(0, 7);
+  const day  = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  const mon  = new Date(date.getFullYear(), date.getMonth(), diff);
+  return mon.toISOString().split("T")[0];
+}
+
+function bucketData(data: DowntimeByMonth[], mode: "week" | "month"): DowntimeByMonth[] {
+  const buckets = new Map<string, Map<string, { total_events: number; total_hours: number }>>();
+  for (const row of data) {
+    const key = bucketKey(row.date, mode);
+    if (!buckets.has(key)) buckets.set(key, new Map());
+    const reasonMap = buckets.get(key)!;
+    const cur = reasonMap.get(row.reason) ?? { total_events: 0, total_hours: 0 };
+    cur.total_events += row.total_events;
+    cur.total_hours  += row.total_hours;
+    reasonMap.set(row.reason, cur);
+  }
+  const result: DowntimeByMonth[] = [];
+  for (const [date, reasonMap] of buckets) {
+    for (const [reason, agg] of reasonMap) {
+      result.push({ date, reason, ...agg });
+    }
+  }
+  return result.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 interface TooltipInfo {
@@ -29,10 +66,37 @@ function formatDate(d: string): string {
   return new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export default function DowntimeStackedChart({ data, lang }: Props) {
-  const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
+function formatLabel(d: string, period: ChartPeriod): string {
+  if (period === "month") {
+    const [y, m] = d.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  }
+  return formatDate(d);
+}
 
-  if (data.length === 0) return null;
+export default function DowntimeStackedChart({ data: dayData, lang, compact = false, dayRange }: Props) {
+  const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
+  const [period,  setPeriod]  = useState<ChartPeriod>("day");
+
+  const { data: periodData, loading: periodLoading } = usePeriodicSeries(
+    period, dayRange, dayData,
+    (start, end) => MaintenanceService.getDowntimeByMonth(start, end).then((r) => r.data)
+  );
+
+  const data = period === "day" ? periodData : bucketData(periodData, period);
+
+  if (data.length === 0) return (
+    <div style={card}>
+      <div style={sectionTitle}>
+        {lang === "es" ? "Desglose de Paros por Razón" : "Downtime Breakdown by Reason"}
+      </div>
+      <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
+        {periodLoading
+          ? (lang === "es" ? "Cargando..." : "Loading...")
+          : (lang === "es" ? "Sin registros en el rango seleccionado" : "No records in selected range")}
+      </div>
+    </div>
+  );
 
   const dates   = [...new Set(data.map((d) => d.date))].sort();
   const reasons = [...new Set(data.map((d) => d.reason))];
@@ -46,14 +110,17 @@ export default function DowntimeStackedChart({ data, lang }: Props) {
   const totals   = dates.map((d) => Object.values(byDate[d]).reduce((a, b) => a + b, 0));
   const maxTotal = Math.max(...totals, 0.1);
 
-  const padL   = 48;
+  const padL   = compact ? 32 : 48;
   const padR   = 16;
-  const padT   = 20;
-  const padB   = 40;
+  const padT   = compact ? 10 : 20;
+  const padB   = compact ? 26 : 40;
   const w      = 760;
-  const h      = 260;
+  const h      = compact ? 190 : 260;
   const chartW = w - padL - padR;
   const chartH = h - padT - padB;
+  const axisFontSize  = compact ? 7 : 9;
+  const labelFontSize = compact ? 7 : 8;
+  const totalFontSize = compact ? 6 : 7;
 
   const barW      = Math.max(4, Math.min(40, (chartW / dates.length) * 0.7));
   const groupW    = chartW / dates.length;
@@ -68,10 +135,21 @@ export default function DowntimeStackedChart({ data, lang }: Props) {
         <div style={sectionTitle}>
           {lang === "es" ? "Desglose de Paros por Razón" : "Downtime Breakdown by Reason"}
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "flex-end", alignItems: "center" }}>
+          <div style={{ display: "flex", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+            {(["day", "week", "month"] as ChartPeriod[]).map((p) => (
+              <button key={p} onClick={() => setPeriod(p)} style={{
+                padding: "0.25rem 0.625rem", fontSize: "0.72rem", fontWeight: 600, border: "none", cursor: "pointer",
+                background: period === p ? "var(--color-border)" : "transparent",
+                color: period === p ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+              }}>
+                {p === "day" ? (lang === "es" ? "Día" : "Day") : p === "week" ? (lang === "es" ? "Semana" : "Week") : (lang === "es" ? "Mes" : "Month")}
+              </button>
+            ))}
+          </div>
           {reasons.map((r) => (
-            <div key={r} style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: getColor(r), flexShrink: 0 }} />
+            <div key={r} style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: compact ? "0.65rem" : "0.75rem", color: "var(--color-text-secondary)" }}>
+              <div style={{ width: compact ? 8 : 10, height: compact ? 8 : 10, borderRadius: 2, background: getColor(r), flexShrink: 0 }} />
               {r}
             </div>
           ))}
@@ -79,8 +157,14 @@ export default function DowntimeStackedChart({ data, lang }: Props) {
       </div>
 
       <div style={{ position: "relative" }}>
+        {periodLoading && (
+          <div style={spinnerOverlay}>
+            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: "var(--color-text-secondary)" }} />
+          </div>
+        )}
         <svg
-          width="100%" viewBox={`0 0 ${w} ${h}`}
+          width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none"
+          style={{ display: "block" }}
           onMouseLeave={() => setTooltip(null)}
         >
           {/* Y grid */}
@@ -91,7 +175,7 @@ export default function DowntimeStackedChart({ data, lang }: Props) {
               <g key={i}>
                 <line x1={padL} x2={padL + chartW} y1={y} y2={y}
                   stroke="var(--color-border)" strokeWidth={0.5} strokeDasharray="3,3" />
-                <text x={padL - 6} y={y + 3} textAnchor="end" fontSize={9} fill="var(--color-text-secondary)">
+                <text x={padL - 6} y={y + 3} textAnchor="end" fontSize={axisFontSize} fill="var(--color-text-secondary)">
                   {Math.round(val)}
                 </text>
               </g>
@@ -147,16 +231,16 @@ export default function DowntimeStackedChart({ data, lang }: Props) {
                 {/* Total encima */}
                 {totals[di] > 0 && (
                   <text x={cx} y={toY(totals[di]) - 3} textAnchor="middle"
-                    fontSize={7} fontWeight="700" fill="var(--color-text-primary)">
+                    fontSize={totalFontSize} fontWeight="700" fill="var(--color-text-primary)">
                     {totals[di].toFixed(1)}
                   </text>
                 )}
 
                 {/* X label */}
-                {di % labelStep === 0 && (
+                {di % labelStep === 0 && !compact && (
                   <text x={cx} y={padT + chartH + 16} textAnchor="middle"
-                    fontSize={8} fill="var(--color-text-secondary)">
-                    {formatDate(date)}
+                    fontSize={labelFontSize} fill="var(--color-text-secondary)">
+                    {formatLabel(date, period)}
                   </text>
                 )}
               </g>
@@ -186,7 +270,7 @@ export default function DowntimeStackedChart({ data, lang }: Props) {
             minWidth: 160,
           }}>
             <div style={{ fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "0.375rem", borderBottom: "1px solid var(--color-border)", paddingBottom: "0.25rem" }}>
-              {formatDate(tooltip.date)}
+              {formatLabel(tooltip.date, period)}
             </div>
             {tooltip.entries.map((e) => (
               <div key={e.reason} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", marginBottom: "0.2rem" }}>
@@ -206,6 +290,7 @@ export default function DowntimeStackedChart({ data, lang }: Props) {
           </div>
         )}
       </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
@@ -216,4 +301,8 @@ const card: React.CSSProperties = {
 };
 const sectionTitle: React.CSSProperties = {
   fontSize: "0.875rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0,
+};
+const spinnerOverlay: React.CSSProperties = {
+  position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+  background: "color-mix(in srgb, var(--color-surface) 70%, transparent)", zIndex: 5,
 };

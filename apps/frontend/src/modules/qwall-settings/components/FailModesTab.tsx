@@ -1,21 +1,25 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import * as Icons from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
-  useFailModes, useInspectionPoints,
+  useInspectionPoints,
   useCreateFailMode, useUpdateFailMode, useDeactivateFailMode, useAssignFailModePoints,
+  useFailModeTranslations, useMissingFailModeTranslations, useUpsertFailModeTranslation,
 } from "../hooks/useQWallSettings";
-import type { FailMode } from "../types";
+import type { FailMode, FailModeWithTranslation } from "../types";
+
+const TRANSLATION_LOCALE = "en";
 
 type ModalMode = "create" | "edit";
 
 interface FormState {
   fail_code: string;
   description: string;
+  english_name: string;
   pointIds: number[];
 }
 
-const EMPTY: FormState = { fail_code: "", description: "", pointIds: [] };
+const EMPTY: FormState = { fail_code: "", description: "", english_name: "", pointIds: [] };
 
 interface Props { buId?: number; }
 
@@ -28,12 +32,30 @@ export default function FailModesTab({ buId }: Props) {
   const { data: allPoints = [] } = useInspectionPoints(buId);
   const activePoints = useMemo(() => allPoints.filter(p => Boolean(p.is_active)), [allPoints]);
 
-  const { data: items = [], isLoading, error } = useFailModes(buId, filterPointId || undefined);
+  const { data: items = [], isLoading, error } = useFailModeTranslations(TRANSLATION_LOCALE, buId, filterPointId || undefined);
+  const { data: missingCodes = [] } = useMissingFailModeTranslations(TRANSLATION_LOCALE);
+  const missingSet = useMemo(() => new Set(missingCodes), [missingCodes]);
 
-  const create       = useCreateFailMode();
-  const update       = useUpdateFailMode();
-  const deactivate   = useDeactivateFailMode();
-  const assignPoints = useAssignFailModePoints();
+  const create           = useCreateFailMode();
+  const update            = useUpdateFailMode();
+  const deactivate        = useDeactivateFailMode();
+  const assignPoints      = useAssignFailModePoints();
+  const upsertTranslation = useUpsertFailModeTranslation();
+
+  const [englishNames, setEnglishNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const map: Record<string, string> = {};
+    items.forEach(fm => { map[fm.fail_code] = fm.translated_name ?? ""; });
+    setEnglishNames(map);
+  }, [items]);
+
+  const handleEnglishNameBlur = (fail_code: string) => {
+    const value = (englishNames[fail_code] ?? "").trim();
+    const original = items.find(fm => fm.fail_code === fail_code)?.translated_name ?? "";
+    if (!value || value === original) return;
+    upsertTranslation.mutate({ fail_mode_code: fail_code, locale: TRANSLATION_LOCALE, name: value });
+  };
 
   const [search, setSearch]       = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -64,7 +86,7 @@ export default function FailModesTab({ buId }: Props) {
         ).filter((id): id is number => id !== undefined)
       : [];
     setSelected(fm);
-    setForm({ fail_code: fm.fail_code, description: fm.description, pointIds: currentIds });
+    setForm({ fail_code: fm.fail_code, description: fm.description, english_name: "", pointIds: currentIds });
     setMode("edit"); setModalOpen(true); setFormError(null);
   };
 
@@ -76,11 +98,17 @@ export default function FailModesTab({ buId }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "create" && !form.english_name.trim()) {
+      setFormError(t("qwallSettings.messages.englishNameRequired"));
+      return;
+    }
     setSaving(true); setFormError(null);
     try {
       let fmId: number;
       if (mode === "create") {
-        const created = await create.mutateAsync({ fail_code: form.fail_code, description: form.description });
+        const created = await create.mutateAsync({
+          fail_code: form.fail_code, description: form.description, english_name: form.english_name.trim(),
+        });
         fmId = created.fail_mode_id;
       } else {
         if (!selected) return;
@@ -143,6 +171,7 @@ export default function FailModesTab({ buId }: Props) {
             <tr>
               <th style={s.th}>{t("qwallSettings.columns.failCode")}</th>
               <th style={s.th}>{t("qwallSettings.columns.description")}</th>
+              <th style={s.th}>{t("qwallSettings.columns.englishName")}</th>
               <th style={s.th}>{t("qwallSettings.columns.assignedPoints")}</th>
               <th style={s.th}>{t("qwallSettings.columns.active")}</th>
               <th style={s.th}>{t("qwallSettings.columns.actions")}</th>
@@ -150,15 +179,33 @@ export default function FailModesTab({ buId }: Props) {
           </thead>
           <tbody>
             {isLoading ? (
-              [1,2,3].map(i => <tr key={i}><td colSpan={5} style={s.skeletonCell}><div style={s.skeleton} /></td></tr>)
+              [1,2,3].map(i => <tr key={i}><td colSpan={6} style={s.skeletonCell}><div style={s.skeleton} /></td></tr>)
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} style={s.empty}>{t("qwallSettings.messages.noData")}</td></tr>
-            ) : filtered.map(fm => {
-              const active = Boolean(fm.is_active);
+              <tr><td colSpan={6} style={s.empty}>{t("qwallSettings.messages.noData")}</td></tr>
+            ) : filtered.map((fm: FailModeWithTranslation) => {
+              const active  = Boolean(fm.is_active);
+              const missing = missingSet.has(fm.fail_code);
               return (
                 <tr key={fm.fail_mode_id} style={s.tr}>
                   <td style={s.td}><code style={s.code}>{fm.fail_code}</code></td>
                   <td style={s.td}><span style={s.bold}>{fm.description}</span></td>
+                  <td style={s.td}>
+                    <div style={s.englishNameCell}>
+                      {missing && (
+                        <span title={t("qwallSettings.messages.missingTranslation")}>
+                          <Icons.AlertCircle size={14} color="var(--color-stopped)" />
+                        </span>
+                      )}
+                      <input
+                        style={s.input}
+                        placeholder={t("qwallSettings.placeholders.englishName")}
+                        value={englishNames[fm.fail_code] ?? ""}
+                        onChange={e => setEnglishNames(m => ({ ...m, [fm.fail_code]: e.target.value }))}
+                        onBlur={() => handleEnglishNameBlur(fm.fail_code)}
+                        onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                      />
+                    </div>
+                  </td>
                   <td style={s.td}>
                     <div style={s.chips}>
                       {fm.assigned_points ? fm.assigned_points.split(", ").map(pt => (
@@ -204,6 +251,18 @@ export default function FailModesTab({ buId }: Props) {
                 <label style={s.label}>{t("qwallSettings.columns.description")} *</label>
                 <input style={s.input} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} required />
               </div>
+              {mode === "create" && (
+                <div style={s.field}>
+                  <label style={s.label}>{t("qwallSettings.columns.englishName")} *</label>
+                  <input
+                    style={s.input}
+                    placeholder={t("qwallSettings.placeholders.englishName")}
+                    value={form.english_name}
+                    onChange={e => setForm(f => ({ ...f, english_name: e.target.value }))}
+                    required
+                  />
+                </div>
+              )}
               <div style={s.field}>
                 <label style={s.label}>{t("qwallSettings.modal.assignPoints")}</label>
                 <div style={s.checkboxList}>
@@ -225,7 +284,10 @@ export default function FailModesTab({ buId }: Props) {
               {formError && <p style={s.formError}>{formError}</p>}
               <div style={s.modalActions}>
                 <button type="button" style={s.cancelBtn} onClick={() => setModalOpen(false)}>{t("qwallSettings.buttons.cancel")}</button>
-                <button type="submit" style={s.saveBtn} disabled={saving}>
+                <button
+                  type="submit" style={s.saveBtn}
+                  disabled={saving || (mode === "create" && !form.english_name.trim())}
+                >
                   {saving ? t("qwallSettings.buttons.saving") : t("qwallSettings.buttons.save")}
                 </button>
               </div>
@@ -253,6 +315,7 @@ const s: Record<string, React.CSSProperties> = {
   td:           { padding: "0.75rem 1rem", color: "var(--color-text-primary)", verticalAlign: "middle" },
   bold:         { fontWeight: "600" },
   code:         { fontFamily: "monospace", fontSize: "0.85rem", color: "var(--color-text-secondary)" },
+  englishNameCell: { display: "flex", alignItems: "center", gap: "0.4rem" },
   chips:        { display: "flex", flexWrap: "wrap", gap: "0.25rem" },
   chip:         { padding: "0.15rem 0.5rem", borderRadius: "99px", fontSize: "0.7rem", fontWeight: "600", backgroundColor: "rgba(10,110,189,0.1)", color: "var(--color-primary)", whiteSpace: "nowrap" },
   none:         { color: "var(--color-text-secondary)", fontSize: "0.8rem" },

@@ -13,6 +13,10 @@ from apps.quality.views.qwall_settings_views import (
     QWallFailModeAssignPointsView,
     QWallSystemConfigView,
     QWallSystemConfigDetailView,
+    QWallFailModeTranslationsView,
+    QWallFailModeTranslationsMissingView,
+    QWallFailModeTranslationDetailView,
+    QWallPassRateTargetView,
 )
 
 urlpatterns = [
@@ -29,4 +33,8 @@ urlpatterns = [
     path("fail-modes/<int:fail_mode_id>/assign-points/", QWallFailModeAssignPointsView.as_view()),
     path("system-config/",                               QWallSystemConfigView.as_view()),
     path("system-config/<str:config_key>/",              QWallSystemConfigDetailView.as_view()),
+    path("fail-mode-translations/",                      QWallFailModeTranslationsView.as_view()),
+    path("fail-mode-translations/missing/",              QWallFailModeTranslationsMissingView.as_view()),
+    path("fail-mode-translations/<str:fail_mode_code>/", QWallFailModeTranslationDetailView.as_view()),
+    path("pass-rate-target/",                             QWallPassRateTargetView.as_view()),
 ]

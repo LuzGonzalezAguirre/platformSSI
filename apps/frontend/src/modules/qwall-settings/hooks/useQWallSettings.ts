@@ -109,7 +109,11 @@ export const useCreateFailMode = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: svc.createFailMode,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["qwall-fail-modes"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["qwall-fail-modes"] });
+      qc.invalidateQueries({ queryKey: ["qwall-fail-mode-translations"] });
+      qc.invalidateQueries({ queryKey: ["qwall-fail-mode-translations-missing"] });
+    },
   });
 };
 
@@ -118,7 +122,11 @@ export const useUpdateFailMode = () => {
   return useMutation({
     mutationFn: ({ fail_mode_id, body }: { fail_mode_id: number; body: Parameters<typeof svc.updateFailMode>[1] }) =>
       svc.updateFailMode(fail_mode_id, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["qwall-fail-modes"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["qwall-fail-modes"] });
+      qc.invalidateQueries({ queryKey: ["qwall-fail-mode-translations"] });
+      qc.invalidateQueries({ queryKey: ["qwall-fail-mode-translations-missing"] });
+    },
   });
 };
 
@@ -126,7 +134,11 @@ export const useDeactivateFailMode = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: svc.deactivateFailMode,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["qwall-fail-modes"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["qwall-fail-modes"] });
+      qc.invalidateQueries({ queryKey: ["qwall-fail-mode-translations"] });
+      qc.invalidateQueries({ queryKey: ["qwall-fail-mode-translations-missing"] });
+    },
   });
 };
 
@@ -135,7 +147,11 @@ export const useAssignFailModePoints = () => {
   return useMutation({
     mutationFn: ({ fail_mode_id, point_ids }: { fail_mode_id: number; point_ids: number[] }) =>
       svc.assignFailModePoints(fail_mode_id, point_ids),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["qwall-fail-modes"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["qwall-fail-modes"] });
+      qc.invalidateQueries({ queryKey: ["qwall-fail-mode-translations"] });
+      qc.invalidateQueries({ queryKey: ["qwall-fail-mode-translations-missing"] });
+    },
   });
 };
 
@@ -150,6 +166,45 @@ export const useUpdateSystemConfig = () => {
     mutationFn: ({ config_key, value }: { config_key: string; value: string }) =>
       svc.updateSystemConfig(config_key, value),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["qwall-system-config"] }),
+  });
+};
+
+// ── Fail Mode Translations ───────────────────────────────────────────────────
+
+export const useFailModeTranslations = (locale: string, bu_id?: number, point_id?: number) =>
+  useQuery({
+    queryKey: ["qwall-fail-mode-translations", locale, bu_id, point_id],
+    queryFn:  () => svc.fetchFailModeTranslations(locale, bu_id, point_id),
+  });
+
+export const useMissingFailModeTranslations = (locale: string) =>
+  useQuery({
+    queryKey: ["qwall-fail-mode-translations-missing", locale],
+    queryFn:  () => svc.fetchMissingFailModeTranslations(locale),
+  });
+
+export const useUpsertFailModeTranslation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fail_mode_code, locale, name }: { fail_mode_code: string; locale: string; name: string }) =>
+      svc.upsertFailModeTranslation(fail_mode_code, locale, name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["qwall-fail-mode-translations"] });
+      qc.invalidateQueries({ queryKey: ["qwall-fail-mode-translations-missing"] });
+    },
+  });
+};
+
+// ── Pass Rate Target ─────────────────────────────────────────────────────────
+
+export const usePassRateTarget = () =>
+  useQuery({ queryKey: ["qwall-pass-rate-target"], queryFn: svc.fetchPassRateTarget });
+
+export const useUpdatePassRateTarget = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (pass_rate_target: number) => svc.updatePassRateTarget(pass_rate_target),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["qwall-pass-rate-target"] }),
   });
 };
 

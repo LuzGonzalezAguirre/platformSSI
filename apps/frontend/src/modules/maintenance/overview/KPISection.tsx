@@ -1,9 +1,10 @@
-import { MaintenanceKPIs, OEEData } from "./types";
+import { MaintenanceKPIs, OEEData, DashboardTarget } from "./types";
 
 interface Props {
   kpis: MaintenanceKPIs | null;
   oee:  OEEData | null;
   lang: string;
+  getTarget: (metricKey: string) => DashboardTarget | undefined;
 }
 
 function kpiColor(value: number, target: number, lowerBetter = false): string {
@@ -38,29 +39,7 @@ function KPIBar({ label, value, target, unit = "%", lowerBetter = false }: {
   );
 }
 
-function DonutChart({ value, color, size = 140 }: { value: number | null; color: string; size?: number }) {
-  const r    = 52;
-  const circ = 2 * Math.PI * r;
-  const safe = value ?? 0;
-  const fill = Math.min((safe / 100) * circ, circ);
-  const cx   = size / 2;
-  return (
-    <div style={{ position: "relative", width: size, height: size }}>
-      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--color-border)" strokeWidth={11} />
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke={color} strokeWidth={11}
-          strokeDasharray={`${fill} ${circ - fill}`} strokeLinecap="round" />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--color-text-primary)" }}>
-          {value != null ? `${safe.toFixed(0)}%` : "—"}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-export default function KPISection({ kpis, oee, lang }: Props) {
+export default function KPISection({ kpis, oee, lang, getTarget }: Props) {
   // Lee valores reales del prop oee (OEEData tiene strings → parseFloat)
   const avail       = oee?.availability_pct != null ? parseFloat(oee.availability_pct as unknown as string) : null;
   const performance = oee?.performance_pct  != null ? parseFloat(oee.performance_pct  as unknown as string) : null;
@@ -68,10 +47,10 @@ export default function KPISection({ kpis, oee, lang }: Props) {
   const oeePct      = oee?.oee_pct          != null ? parseFloat(oee.oee_pct          as unknown as string) : null;
 
   const items = [
-    { label: lang === "es" ? "Disponibilidad" : "Availability", value: avail,       target: 90,  color: "#3b82f6" },
-    { label: "SSI Performance",                                  value: performance, target: 85,  color: "#8b5cf6" },
-    { label: lang === "es" ? "Calidad" : "Quality",             value: quality,     target: 98,  color: "#10b981" },
-    { label: "OEE",                                              value: oeePct,      target: 65,  color: "#f59e0b" },
+    { label: lang === "es" ? "Disponibilidad" : "Availability", value: avail,       target: getTarget("availability")?.target_value ?? 90 },
+    { label: "SSI Performance",                                  value: performance, target: getTarget("performance")?.target_value  ?? 85 },
+    { label: lang === "es" ? "Calidad" : "Quality",             value: quality,     target: getTarget("quality")?.target_value      ?? 98 },
+    { label: "OEE",                                              value: oeePct,      target: getTarget("oee")?.target_value          ?? 65 },
   ];
 
   return (
@@ -79,14 +58,9 @@ export default function KPISection({ kpis, oee, lang }: Props) {
       <div style={sectionTitle}>
         {lang === "es" ? "Indicadores Clave de Desempeño" : "Key Performance Metrics"}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1.5rem", alignItems: "center" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1.5rem", alignItems: "stretch" }}>
         {items.map((item) => (
-          <div key={item.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
-            <DonutChart value={item.value} color={item.color} size={140} />
-            <div style={{ width: "100%" }}>
-              <KPIBar label={item.label} value={item.value} target={item.target} />
-            </div>
-          </div>
+          <KPIBar key={item.label} label={item.label} value={item.value} target={item.target} />
         ))}
       </div>
     </div>

@@ -49,6 +49,11 @@ export interface SystemConfig {
   config_value: string;
 }
 
+export interface FailModeWithTranslation extends FailMode {
+  translated_name: string | null;
+  has_translation: boolean;
+}
+
 // ── Scan Rules ────────────────────────────────────────────────────────────────
 
 export type FieldTarget = 'frameSN' | 'volvoSerialNumber' | 'descartado'

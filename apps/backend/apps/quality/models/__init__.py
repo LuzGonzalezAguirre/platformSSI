@@ -14,6 +14,14 @@ from .actions import (
 from .attachment import ProblemAttachment, ProblemNote
 from .audit import ProblemAudit
 from .failure_catalog import FailureModeImage
+from .fail_mode_translation import FailModeTranslation
+from .qwall_settings import QWallSettings
+from .incoming_inspection import (
+    IncomingContainerSnapshot,
+    IncomingContainerHistory,
+    IncomingInspectionSLAConfig,
+    IncomingInspectionSyncState,
+)
 __all__ = [
     'QualityTarget',
     'Problem',
@@ -30,4 +38,10 @@ __all__ = [
     'ProblemNote',
     'ProblemAudit',
     'FailureModeImage',
+    'FailModeTranslation',
+    'QWallSettings',
+    'IncomingContainerSnapshot',
+    'IncomingContainerHistory',
+    'IncomingInspectionSLAConfig',
+    'IncomingInspectionSyncState',
 ]

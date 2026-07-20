@@ -2,8 +2,11 @@ import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   QWallService, QWallReport, QWallRow, QWallInspectorRow,
-  QWallFailMode, QWallPartRow, QWallPartNumber,
+  QWallPartNumber, QWallPartNumberSummary, QWallFailByPointResponse, QWallFailByPointItem,
+  QWallBuSummaryItem, QWallPartNumberSummaryResponse,
 } from "../services/qwall.service";
+import ParetoChart from "./ParetoChart";
+import TrendChart from "./TrendChart";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -35,23 +38,6 @@ function isTestWo(wo: string | number | null | undefined): boolean {
   return false;
 }
 
-// ── Tendencia diaria desde rows ───────────────────────────────────────────────
-
-interface DayPoint { date: string; total: number; pass: number; fail: number; pass_rate: number; }
-
-function buildTrend(rows: QWallRow[]): DayPoint[] {
-  const map: Record<string, { total: number; pass: number; fail: number }> = {};
-  for (const r of rows) {
-    if (!map[r.inspection_date]) map[r.inspection_date] = { total: 0, pass: 0, fail: 0 };
-    map[r.inspection_date].total++;
-    if (r.result === "PASS") map[r.inspection_date].pass++;
-    else map[r.inspection_date].fail++;
-  }
-  return Object.entries(map)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, v]) => ({ date, ...v, pass_rate: v.total ? (v.pass / v.total) * 100 : 0 }));
-}
-
 // ── Derivar agregados desde subset de rows ────────────────────────────────────
 
 function deriveFromRows(rows: QWallRow[]) {
@@ -61,7 +47,6 @@ function deriveFromRows(rows: QWallRow[]) {
   const pass_rate  = total ? (pass / total) * 100 : 0;
   const durs       = rows.map(r => r.duration_seconds).filter(Boolean);
   const avg_duration = durs.length ? durs.reduce((a, b) => a + b, 0) / durs.length : 0;
-  const inspectors = new Set(rows.map(r => r.inspector)).size;
   const part_numbers = new Set(rows.map(r => r.part_number)).size;
 
   // by_inspector
@@ -78,37 +63,9 @@ function deriveFromRows(rows: QWallRow[]) {
     avg_duration: s.total ? s.dur / s.total : 0,
   }));
 
-  // by_part
-  const pmap: Record<string, { total: number; pass: number }> = {};
-  for (const r of rows) {
-    if (!pmap[r.part_number]) pmap[r.part_number] = { total: 0, pass: 0 };
-    pmap[r.part_number].total += 1;
-    if (r.result === "PASS") pmap[r.part_number].pass += 1;
-  }
-  const by_part: QWallPartRow[] = Object.entries(pmap).map(([part_number, s]) => ({
-    part_number, total: s.total, pass: s.pass, fail: s.total - s.pass,
-    pass_rate: s.total ? Math.round((s.pass / s.total) * 10000) / 100 : 0,
-  })).sort((a, b) => b.total - a.total);
-
-  // fail_modes
-  const fmap: Record<string, number> = {};
-  for (const r of rows) {
-    if (r.result === "FAIL" && r.fail_modes) {
-      for (const fm of r.fail_modes.split(",")) {
-        const k = fm.trim();
-        if (k) fmap[k] = (fmap[k] ?? 0) + 1;
-      }
-    }
-  }
-  const fail_modes: QWallFailMode[] = Object.entries(fmap)
-    .map(([fail_mode, count]) => ({ fail_mode, count }))
-    .sort((a, b) => b.count - a.count);
-
   return {
-    summary: { total, pass, fail, pass_rate, avg_duration, inspectors, part_numbers },
+    summary: { total, pass, fail, pass_rate, avg_duration, part_numbers },
     by_inspector,
-    by_part,
-    fail_modes,
     rows,
   };
 }
@@ -125,6 +82,17 @@ const card: React.CSSProperties = {
 const cardTitle: React.CSSProperties = {
   fontSize: "0.8125rem", fontWeight: 700,
   color: "var(--color-text-primary)", marginBottom: "0.875rem",
+};
+
+const thStyle: React.CSSProperties = {
+  textAlign: "left", padding: "0.35rem 0.5rem", fontWeight: 700,
+  color: "var(--color-text-secondary)", borderBottom: "1px solid var(--color-border)",
+  whiteSpace: "nowrap",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "0.35rem 0.5rem", color: "var(--color-text-primary)",
+  borderBottom: "1px solid var(--color-border)", whiteSpace: "nowrap",
 };
 
 // ── KPI Tile ──────────────────────────────────────────────────────────────────
@@ -189,317 +157,443 @@ function HBar({ data, color = "#3b82f6", maxVal }: {
   );
 }
 
-// ── PieChart ──────────────────────────────────────────────────────────────────
+const PASS_RATE_TARGET = 95;
 
-function PieChart({ slices }: { slices: { label: string; value: number; color: string }[] }) {
-  const total = slices.reduce((a, s) => a + s.value, 0) || 1;
-  let angle   = -90;
-  const paths: JSX.Element[] = [];
-  const cx = 70; const cy = 70; const r = 60;
-  for (const s of slices) {
-    const sweep = (s.value / total) * 360;
-    const rad1  = (angle * Math.PI) / 180;
-    const rad2  = ((angle + sweep) * Math.PI) / 180;
-    const x1 = cx + r * Math.cos(rad1); const y1 = cy + r * Math.sin(rad1);
-    const x2 = cx + r * Math.cos(rad2); const y2 = cy + r * Math.sin(rad2);
-    const large = sweep > 180 ? 1 : 0;
-    paths.push(
-      <path key={s.label}
-        d={`M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`}
-        fill={s.color} stroke="var(--color-surface)" strokeWidth={1.5} />
-    );
-    angle += sweep;
+// Paleta categórica validada (skill dataviz, orden fijo, luz) — usada para el
+// donut de distribución por part number. Un 9° slice nunca genera un hue nuevo:
+// se pliega en "Otros" (ver buildDistributionSlices).
+const CATEGORICAL_PALETTE = [
+  "#2a78d6", "#1baf7a", "#eda100", "#008300",
+  "#4a3aa7", "#e34948", "#e87ba4", "#eb6834",
+];
+const OTHER_SLICE_COLOR = "#898781";
+const MAX_DISTRIBUTION_SLICES = 8;
+
+function buildDistributionSlices(items: QWallPartNumberSummary[], otherLabel: string) {
+  const sorted = [...items].sort((a, b) => b.inspection_count - a.inspection_count);
+  if (sorted.length <= MAX_DISTRIBUTION_SLICES) {
+    return sorted.map((it, i) => ({ label: it.part_number, value: it.inspection_count, color: CATEGORICAL_PALETTE[i] }));
   }
+  const head  = sorted.slice(0, MAX_DISTRIBUTION_SLICES - 1);
+  const rest  = sorted.slice(MAX_DISTRIBUTION_SLICES - 1);
+  const other = rest.reduce((sum, it) => sum + it.inspection_count, 0);
+  return [
+    ...head.map((it, i) => ({ label: it.part_number, value: it.inspection_count, color: CATEGORICAL_PALETTE[i] })),
+    { label: otherLabel, value: other, color: OTHER_SLICE_COLOR },
+  ];
+}
+
+// ── VBarSingle: barras verticales de una sola serie (mismo lenguaje visual que
+// VBar — geometría, padding y truncado de labels — pero sin par pass/fail) ──────
+
+function VBarSingle({ data, color = "#8b5cf6" }: { data: { label: string; value: number }[]; color?: string }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  if (data.length === 0) return null;
+
+  const max = Math.max(...data.map(d => d.value), 1);
+  const W = 480; const H = 120;
+  const padL = 8; const padR = 8; const padT = 14; const padB = 30;
+  const chartH = H - padT - padB;
+  const bw = Math.min(32, (W - padL - padR) / data.length - 4);
+  const spacing = (W - padL - padR) / data.length;
+  const barX = (i: number) => padL + i * spacing + spacing / 2 - bw / 2;
+  const barCenterX = (i: number) => padL + i * spacing + spacing / 2;
+  const barTopY = (i: number) => padT + chartH - (data[i].value / max) * chartH;
+
+  const hovered = hoverIdx !== null ? data[hoverIdx] : null;
+
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-      <svg width={140} height={140} viewBox="0 0 140 140">{paths}</svg>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-        {slices.map(s => (
-          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.72rem" }}>
-            <div style={{ width: 10, height: 10, borderRadius: 2, background: s.color, flexShrink: 0 }} />
-            <span style={{ color: "var(--color-text-secondary)" }}>{s.label}</span>
-            <span style={{ fontWeight: 700, color: "var(--color-text-primary)", marginLeft: "auto", paddingLeft: "0.5rem" }}>
-              {((s.value / total) * 100).toFixed(1)}%
-            </span>
-          </div>
-        ))}
+    <div style={{ position: "relative" }}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: "visible" }}>
+        {data.map((d, i) => {
+          const h = (d.value / max) * chartH;
+          const isHov = hoverIdx === i;
+          return (
+            <g key={d.label}
+              onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}
+              style={{ cursor: "pointer" }}
+            >
+              <rect x={barX(i)} y={padT + chartH - h} width={bw} height={h} fill={color} opacity={isHov ? 1 : 0.85} rx={2} />
+              <text x={barCenterX(i)} y={padT + chartH - h - 3} textAnchor="middle" fontSize={8} fontWeight={700} fill="var(--color-text-primary)">
+                {d.value}
+              </text>
+              <text x={barCenterX(i)} y={H - 4} textAnchor="middle" fontSize={7.5} fill="var(--color-text-secondary)">
+                {d.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      {hovered && hoverIdx !== null && (
+        <div style={{
+          position: "absolute",
+          left: `${(barCenterX(hoverIdx) / W) * 100}%`,
+          top: `${((barTopY(hoverIdx) - 10) / H) * 100}%`,
+          transform: "translate(-50%, -100%)",
+          background: "var(--color-surface)", border: "1px solid var(--color-border)",
+          borderRadius: "8px", padding: "0.4rem 0.6rem", fontSize: "0.7rem",
+          color: "var(--color-text-primary)", pointerEvents: "none", zIndex: 20,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)", whiteSpace: "nowrap",
+        }}>
+          <div style={{ fontWeight: 700 }}>{hovered.label}</div>
+          <div>{hovered.value.toLocaleString()}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Callout: parte con menor pass rate (no es una gráfica) ─────────────────────
+
+function LowestPassRateCallout({ item }: { item: QWallPartNumberSummary | null }) {
+  const { t } = useTranslation();
+  if (!item) {
+    return <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>{t("qwallDashboard.partNumberSummary.noData")}</p>;
+  }
+  const color = semaphore(item.pass_rate, PASS_RATE_TARGET);
+  return (
+    <div style={{ ...card, borderTop: `3px solid ${color}`, padding: "1rem 1.25rem" }}>
+      <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--color-text-primary)", marginBottom: "0.3rem" }}>
+        {item.part_number}
+      </div>
+      <div style={{ fontSize: "1.75rem", fontWeight: 800, color, lineHeight: 1 }}>
+        {item.pass_rate.toFixed(1)}%
+      </div>
+      <div style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)", marginTop: "0.375rem" }}>
+        {item.inspection_count} {t("qwallDashboard.partNumberSummary.columns.inspections")} · {item.run_count} {t("qwallDashboard.partNumberSummary.columns.runs")}
       </div>
     </div>
   );
 }
 
-// ── TrendChart ────────────────────────────────────────────────────────────────
+// ── Modo A: KPI block por BU (mismo patrón visual que KPITile de Fila 1) ───────
 
-function TrendChart({ points, lang = "es" }: { points: DayPoint[]; lang?: "es" | "en" }) {
-
-  const [tooltip,      setTooltip]      = useState<{ idx: number; point: DayPoint } | null>(null);
-  const [labelMode,    setLabelMode]    = useState<"hover" | "fixed">("hover");
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const l = lang === "es";
-  if (points.length < 2) return (
-    <div style={{ color: "var(--color-text-secondary)", fontSize: "0.8rem", padding: "1rem" }}>
-      {l ? "Sin suficientes datos" : "Not enough data"}
-    </div>
-  );
-
-  const W      = isFullscreen ? 1100 : 560;
-  const H      = isFullscreen ? 320  : 120;
-  const padL   = 36; const padR = 34;
-  const padT   = labelMode === "fixed" ? 28 : 10;
-  const padB   = 24;
-  const chartW = W - padL - padR;
-  const chartH = H - padT - padB;
-  const n      = points.length;
-
-  const toX = (i: number) => padL + (i / (n - 1)) * chartW;
-  const maxTotal = Math.max(...points.map(p => p.total), 1);
-  const toY = (v: number) => padT + chartH * (1 - v / maxTotal);
-
-  const passRateLine = points.map((p, i) =>
-    `${toX(i).toFixed(1)},${(padT + chartH * (1 - p.pass_rate / 100)).toFixed(1)}`
-  ).join(" ");
-  const totalLine = points.map((p, i) =>
-    `${toX(i).toFixed(1)},${toY(p.total).toFixed(1)}`
-  ).join(" ");
-  const failLine = points.map((p, i) =>
-    `${toX(i).toFixed(1)},${toY(p.fail).toFixed(1)}`
-  ).join(" ");
-
-  const step      = Math.max(1, Math.floor(n / (isFullscreen ? 12 : 6)));
-  const labels    = points.filter((_, i) => i % step === 0 || i === n - 1);
-  const fixedStep = Math.max(1, Math.floor(n / (isFullscreen ? 20 : 8)));
-  const fixedLabels = points.filter((_, i) => i % fixedStep === 0 || i === n - 1);
-
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (labelMode === "fixed") return;
-    const rect   = e.currentTarget.getBoundingClientRect();
-    const scaleX = W / rect.width;
-    const mouseX = (e.clientX - rect.left) * scaleX;
-    let closest = 0; let minDist = Infinity;
-    points.forEach((_, i) => {
-      const dist = Math.abs(toX(i) - mouseX);
-      if (dist < minDist) { minDist = dist; closest = i; }
-    });
-    setTooltip({ idx: closest, point: points[closest] });
-  };
-
-  const btnBase: React.CSSProperties = {
-    fontSize: "0.7rem", fontWeight: 600, padding: "0.2rem 0.6rem",
-    borderRadius: 5, cursor: "pointer", border: "1px solid var(--color-border)",
-  };
-
-  const svgContent = (
-    <svg
-      width="100%"
-      viewBox={`0 0 ${W} ${H}`}
-      style={{ overflow: "visible", cursor: labelMode === "hover" ? "crosshair" : "default" }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={() => setTooltip(null)}
-    >
-      {/* Grid */}
-      {[0, 0.25, 0.5, 0.75, 1].map(pct => {
-        const y = padT + chartH * (1 - pct);
-        return (
-          <g key={pct}>
-            <line x1={padL} x2={W - padR} y1={y} y2={y} stroke="var(--color-border)" strokeWidth={0.5} />
-            <text x={padL - 4} y={y + 3} textAnchor="end" fontSize={8} fill="var(--color-text-secondary)">
-              {Math.round(maxTotal * pct)}
-            </text>
-          </g>
-        );
-      })}
-
-      {/* Ejes */}
-      <line x1={padL} x2={padL}     y1={padT} y2={padT + chartH} stroke="var(--color-border)" strokeWidth={1} />
-      <line x1={padL} x2={W - padR} y1={padT + chartH} y2={padT + chartH} stroke="var(--color-border)" strokeWidth={1} />
-
-      {/* Eje derecho: Pass Rate % */}
-      <line x1={W - padR} x2={W - padR} y1={padT} y2={padT + chartH} stroke="#10b981" strokeWidth={0.8} />
-      {[0, 25, 50, 75, 100].map(pct => {
-        const y = padT + chartH * (1 - pct / 100);
-        return (
-          <g key={`rax${pct}`}>
-            <line x1={W - padR} x2={W - padR + 3} y1={y} y2={y} stroke="#10b981" strokeWidth={0.8} />
-            <text x={W - padR + 5} y={y + 3} textAnchor="start" fontSize={7} fill="#10b981">
-              {pct}%
-            </text>
-          </g>
-        );
-      })}
-
-      {/* Líneas */}
-      <polyline points={totalLine}    fill="none" stroke="#3b82f6" strokeWidth={2}   strokeLinejoin="round" />
-      <polyline points={failLine}     fill="none" stroke="#ef4444" strokeWidth={1.5} strokeLinejoin="round" strokeDasharray="4 2" />
-      <polyline points={passRateLine} fill="none" stroke="#10b981" strokeWidth={1.5} strokeLinejoin="round" />
-
-      {/* Dots */}
-      {points.map((p, i) => {
-        const isHov = tooltip?.idx === i;
-        return (
-          <circle key={i} cx={toX(i)} cy={toY(p.total)}
-            r={isHov ? 5 : 2.5}
-            fill={isHov ? "#fff" : "#3b82f6"}
-            stroke="#3b82f6" strokeWidth={isHov ? 2 : 0}
-          />
-        );
-      })}
-
-      {/* Línea vertical hover */}
-      {labelMode === "hover" && tooltip && (
-        <line
-          x1={toX(tooltip.idx)} x2={toX(tooltip.idx)}
-          y1={padT} y2={padT + chartH}
-          stroke="var(--color-border)" strokeWidth={1} strokeDasharray="3 2"
-        />
-      )}
-
-      {/* Etiquetas fijas */}
-      {labelMode === "fixed" && fixedLabels.map(p => {
-        const i     = points.indexOf(p);
-        const x     = toX(i);
-        const isEdge = i === 0 || i === n - 1;
-        const anchor = isEdge ? (i === 0 ? "start" : "end") : "middle";
-        return (
-          <g key={p.date}>
-            <line x1={x} x2={x} y1={padT} y2={padT + chartH}
-              stroke="var(--color-border)" strokeWidth={0.5} strokeDasharray="2 2" />
-            <rect x={x - 14} y={padT - 22} width={28} height={16} rx={3}
-              fill="var(--color-surface)" stroke="var(--color-border)" strokeWidth={0.7} />
-            <text x={x} y={padT - 11} textAnchor="middle" fontSize={8} fontWeight={700} fill="#3b82f6">
-              {p.total}
-            </text>
-            {p.fail > 0 && (
-              <text x={x} y={toY(p.fail) - 5} textAnchor={anchor} fontSize={7} fontWeight={600} fill="#ef4444">
-                {p.fail}F
-              </text>
-            )}
-            <text x={x} y={padT + chartH * (1 - p.pass_rate / 100) - 5}
-              textAnchor={anchor} fontSize={7} fill="#10b981">
-              {p.pass_rate.toFixed(0)}%
-            </text>
-          </g>
-        );
-      })}
-
-      {/* Eje X */}
-      {labels.map(p => (
-        <text key={p.date} x={toX(points.indexOf(p))} y={H - 4}
-          textAnchor="middle" fontSize={8} fill="var(--color-text-secondary)">
-          {p.date.slice(5)}
-        </text>
-      ))}
-
-      {/* Leyenda */}
-      <rect x={padL}      y={H - 22} width={6} height={6} fill="#3b82f6" />
-      <text x={padL + 9}  y={H - 16} fontSize={8} fill="var(--color-text-secondary)">Total</text>
-      <rect x={padL + 45} y={H - 22} width={6} height={6} fill="#ef4444" />
-      <text x={padL + 54} y={H - 16} fontSize={8} fill="var(--color-text-secondary)">FAIL</text>
-      <rect x={padL + 85} y={H - 22} width={6} height={6} fill="#10b981" />
-      <text x={padL + 94} y={H - 16} fontSize={8} fill="var(--color-text-secondary)">Pass Rate</text>
-    </svg>
-  );
-
-  const toolbar = (
-    <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.4rem", marginBottom: "0.5rem" }}>
-      <button
-        onClick={() => { setLabelMode(m => m === "hover" ? "fixed" : "hover"); setTooltip(null); }}
-        style={{
-          ...btnBase,
-          background: labelMode === "fixed" ? "rgba(59,130,246,0.12)" : "var(--color-surface)",
-          color:      labelMode === "fixed" ? "#3b82f6"               : "var(--color-text-secondary)",
-        }}
-      >
-        {labelMode === "hover" ? (l ? "Etiquetas fijas" : "Fixed labels") : (l ? "Tooltip hover" : "Hover tooltip")}
-      </button>
-      <button
-        onClick={() => setIsFullscreen(v => !v)}
-        style={{
-          ...btnBase,
-          background: isFullscreen ? "rgba(139,92,246,0.12)" : "var(--color-surface)",
-          color:      isFullscreen ? "#8b5cf6"               : "var(--color-text-secondary)",
-        }}
-      >
-        {isFullscreen ? (l ? "Reducir" : "Reduce") : (l ? "Pantalla completa" : "Full screen")}
-      </button>
-    </div>
-  );
-
-  // Tooltip flotante
-  const tooltipEl = labelMode === "hover" && tooltip ? (
-    <div style={{
-      position: "absolute",
-      left: `${(toX(tooltip.idx) / W) * 100}%`,
-      top: "2rem",
-      transform: "translate(-50%, 0)",
-      background: "var(--color-surface)",
-      border: "1px solid var(--color-border)",
-      borderRadius: "8px", padding: "0.5rem 0.75rem",
-      fontSize: "0.75rem", color: "var(--color-text-primary)",
-      pointerEvents: "none", zIndex: 20,
-      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-      whiteSpace: "nowrap",
-    }}>
-      <div style={{ fontWeight: 700, marginBottom: "0.25rem", color: "var(--color-text-secondary)" }}>
-        {tooltip.point.date}
-      </div>
-      {([["#3b82f6","Total",tooltip.point.total],["#10b981","PASS",tooltip.point.pass],["#ef4444","FAIL",tooltip.point.fail]] as [string,string,number][]).map(([c,lb,v]) => (
-        <div key={lb} style={{ display: "flex", justifyContent: "space-between", gap: "1rem" }}>
-          <span style={{ color: c }}>{lb}</span>
-          <span style={{ fontWeight: 700 }}>{v}</span>
+function BuKpiRow({ item, onViewDetail }: { item: QWallBuSummaryItem; onViewDetail: () => void }) {
+  const { t } = useTranslation();
+  const color = semaphore(item.pass_rate, PASS_RATE_TARGET);
+  return (
+    <div style={{ ...card, display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-text-primary)" }}>
+          {item.business_unit_name}
         </div>
-      ))}
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem",
-        borderTop: "1px solid var(--color-border)", paddingTop: "0.15rem", marginTop: "0.1rem" }}>
-        <span style={{ color: "#10b981" }}>Pass Rate</span>
-        <span style={{ fontWeight: 700 }}>{tooltip.point.pass_rate.toFixed(1)}%</span>
+        <button
+          onClick={onViewDetail}
+          style={{
+            fontSize: "0.7rem", fontWeight: 600, padding: "0.25rem 0.6rem", cursor: "pointer",
+            borderRadius: "var(--radius-sm, 6px)", border: "1px solid var(--color-border)",
+            background: "var(--color-surface)", color: "var(--color-text-secondary)",
+          }}
+        >
+          {t("qwallDashboard.partNumberSummary.detail.viewDetail")}
+        </button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "0.6rem" }}>
+        <KPITile label={t("qwallDashboard.partNumberSummary.kpi.totalInspections")} value={item.inspection_count.toLocaleString()} accent="#3b82f6" />
+        <KPITile label="PASS" value={item.pass.toLocaleString()} color="#10b981" accent="#10b981" />
+        <KPITile label="FAIL" value={item.fail.toLocaleString()} color={item.fail > 0 ? "#ef4444" : "#10b981"} accent="#ef4444" />
+        <KPITile label={t("qwallDashboard.partNumberSummary.kpi.passRate")} value={`${item.pass_rate.toFixed(1)}%`} color={color} accent={color} />
       </div>
     </div>
-  ) : null;
+  );
+}
 
-  if (isFullscreen) {
-    return (
-      <div style={{
-        position: "fixed", inset: 0, zIndex: 500,
-        background: "var(--color-bg)",
-        display: "flex", flexDirection: "column",
-        padding: "1.5rem",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <span style={{ fontWeight: 700, fontSize: "1rem", color: "var(--color-text-primary)" }}>
-            {l ? "Tendencia diaria" : "Daily trend"}
-          </span>
-          <div style={{ display: "flex", gap: "0.4rem" }}>
-            <button
-              onClick={() => { setLabelMode(m => m === "hover" ? "fixed" : "hover"); setTooltip(null); }}
-              style={{
-                ...btnBase,
-                background: labelMode === "fixed" ? "rgba(59,130,246,0.12)" : "var(--color-surface)",
-                color:      labelMode === "fixed" ? "#3b82f6"               : "var(--color-text-secondary)",
-              }}
-            >
-              {labelMode === "hover" ? (l ? "Etiquetas fijas" : "Fixed labels") : (l ? "Tooltip hover" : "Hover tooltip")}
-            </button>
-            <button
-              onClick={() => setIsFullscreen(false)}
-              style={{ ...btnBase, background: "var(--color-surface)", color: "var(--color-text-secondary)" }}
-            >
-              {l ? "✕ Cerrar" : "✕ Close"}
-            </button>
-          </div>
-        </div>
-        <div style={{ position: "relative", flex: 1 }}>
-          {tooltipEl}
-          {svgContent}
-        </div>
-      </div>
-    );
-  }
+// ── Modal genérico (no existía uno reusable en el proyecto — cada modal previo
+// reimplementa su propio overlay; este sigue esa misma convención visual —
+// overlay fixed/rgba/flex-center/zIndex — pero con los tokens de este archivo) ──
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
-    <div style={{ position: "relative" }}>
-      {toolbar}
-      {tooltipEl}
-      {svgContent}
+    <div
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        zIndex: 2000, padding: "1rem",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "var(--color-surface)", border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius-lg, 10px)", padding: "1.25rem",
+          maxWidth: 720, width: "100%", maxHeight: "85vh", overflowY: "auto",
+          boxShadow: "0 12px 32px rgba(0,0,0,0.25)",
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--color-text-primary)" }}>{title}</div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              border: "none", background: "transparent", cursor: "pointer",
+              fontSize: "1.1rem", color: "var(--color-text-secondary)", lineHeight: 1, padding: "0.25rem",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── Tabla de detalle por Part Number (usada dentro del modal de "Ver detalle") ─
+// Hace su propio fetch por business_unit_id, igual que el resto de widgets de
+// Modo B — solo se monta (y solo fetchea) cuando el modal está abierto.
+
+function BuDetailTable({ businessUnitId, startDate, endDate, includeTest }: {
+  businessUnitId: number; startDate: string; endDate: string; includeTest: boolean;
+}) {
+  const { t }     = useTranslation();
+  const [items,   setItems]   = useState<QWallPartNumberSummary[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    QWallService.getPartNumberSummary(startDate, endDate, businessUnitId, includeTest)
+      .then(res => { if (!cancelled) setItems(res.items); })
+      .catch(() => { if (!cancelled) setError(t("qwallDashboard.partNumberSummary.error")); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [businessUnitId, startDate, endDate, includeTest, t]);
+
+  if (loading) return <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>{t("qwallDashboard.partNumberSummary.loading")}</p>;
+  if (error)   return <p style={{ fontSize: "0.8rem", color: "#ef4444" }}>{error}</p>;
+  if (items.length === 0) return <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>{t("qwallDashboard.partNumberSummary.noData")}</p>;
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+        <thead>
+          <tr>
+            <th style={thStyle}>{t("qwallDashboard.partNumberSummary.detail.columns.partNumber")}</th>
+            <th style={{ ...thStyle, textAlign: "right" }}>{t("qwallDashboard.partNumberSummary.detail.columns.inspections")}</th>
+            <th style={{ ...thStyle, textAlign: "right" }}>{t("qwallDashboard.partNumberSummary.detail.columns.runs")}</th>
+            <th style={{ ...thStyle, textAlign: "right" }}>{t("qwallDashboard.partNumberSummary.detail.columns.passRate")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(row => (
+            <tr key={row.part_number}>
+              <td style={tdStyle}>{row.part_number}</td>
+              <td style={{ ...tdStyle, textAlign: "right" }}>{row.inspection_count}</td>
+              <td style={{ ...tdStyle, textAlign: "right" }}>{row.run_count}</td>
+              <td style={{ ...tdStyle, textAlign: "right", fontWeight: 700, color: semaphore(row.pass_rate, PASS_RATE_TARGET) }}>
+                {row.pass_rate.toFixed(1)}%
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Sección Part Number Summary: Modo A (KPI por BU, sin interactividad) y
+// Modo B (hilera de 4 widgets para la BU activa en el filtro general) ──────────
+
+const widgetTitle: React.CSSProperties = {
+  fontSize: "0.72rem", fontWeight: 700, color: "var(--color-text-secondary)",
+  marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.02em",
+};
+
+function PartNumberSummarySection({ buId, startDate, endDate, includeTest, pass, fail }: {
+  buId?: number; startDate: string; endDate: string; includeTest: boolean;
+  pass: number; fail: number;
+}) {
+  const { t } = useTranslation();
+
+  // Modo A
+  const [buItems, setBuItems]     = useState<QWallBuSummaryItem[]>([]);
+  const [buLoading, setBuLoading] = useState(false);
+  const [buError, setBuError]     = useState<string | null>(null);
+  const [detailBu, setDetailBu]   = useState<{ id: number; name: string } | null>(null);
+
+  useEffect(() => {
+    if (buId !== undefined) return;
+    let cancelled = false;
+    setBuLoading(true);
+    setBuError(null);
+    QWallService.getBuSummary(startDate, endDate, includeTest)
+      .then(res => { if (!cancelled) setBuItems(res.items); })
+      .catch(() => { if (!cancelled) setBuError(t("qwallDashboard.partNumberSummary.error")); })
+      .finally(() => { if (!cancelled) setBuLoading(false); });
+    return () => { cancelled = true; };
+  }, [buId, startDate, endDate, includeTest, t]);
+
+  // Modo B
+  const [pnSummary, setPnSummary] = useState<QWallPartNumberSummaryResponse | null>(null);
+  const [pnLoading, setPnLoading] = useState(false);
+  const [pnError, setPnError]     = useState<string | null>(null);
+
+  useEffect(() => {
+    if (buId === undefined) return;
+    let cancelled = false;
+    setPnLoading(true);
+    setPnError(null);
+    QWallService.getPartNumberSummary(startDate, endDate, buId, includeTest)
+      .then(res => { if (!cancelled) setPnSummary(res); })
+      .catch(() => { if (!cancelled) setPnError(t("qwallDashboard.partNumberSummary.error")); })
+      .finally(() => { if (!cancelled) setPnLoading(false); });
+    return () => { cancelled = true; };
+  }, [buId, startDate, endDate, includeTest, t]);
+
+  return (
+    <div style={card}>
+      <div style={cardTitle}>{t("qwallDashboard.partNumberSummary.title")}</div>
+
+      {buId === undefined ? (
+        buLoading ? (
+          <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>{t("qwallDashboard.partNumberSummary.loading")}</p>
+        ) : buError ? (
+          <p style={{ fontSize: "0.8rem", color: "#ef4444" }}>{buError}</p>
+        ) : buItems.length === 0 ? (
+          <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>{t("qwallDashboard.partNumberSummary.noData")}</p>
+        ) : (
+          // 2 columnas siempre que quepan (minmax basado en % del contenedor, no
+          // en un ancho fijo) — nunca más de 2 por hilera sin importar qué tan
+          // ancho sea el contenedor, y colapsa a 1 en viewports angostos.
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(max(320px, calc(50% - 0.5rem)), 1fr))", gap: "1rem" }}>
+            {buItems.map(bu => (
+              <BuKpiRow
+                key={bu.business_unit_id}
+                item={bu}
+                onViewDetail={() => setDetailBu({ id: bu.business_unit_id, name: bu.business_unit_name })}
+              />
+            ))}
+          </div>
+        )
+      ) : pnLoading ? (
+        <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>{t("qwallDashboard.partNumberSummary.loading")}</p>
+      ) : pnError ? (
+        <p style={{ fontSize: "0.8rem", color: "#ef4444" }}>{pnError}</p>
+      ) : !pnSummary || pnSummary.items.length === 0 ? (
+        <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>{t("qwallDashboard.partNumberSummary.noData")}</p>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+          <div>
+            <div style={widgetTitle}>{t("qwallDashboard.partNumberSummary.widgets.distribution")}</div>
+            <PieChart slices={buildDistributionSlices(pnSummary.items, t("qwallDashboard.partNumberSummary.widgets.other"))} />
+          </div>
+          <div>
+            <div style={widgetTitle}>{t("qwallDashboard.partNumberSummary.widgets.runsPerPart")}</div>
+            <VBarSingle data={pnSummary.items.map(it => ({ label: it.part_number, value: it.run_count }))} />
+          </div>
+          <div>
+            <div style={widgetTitle}>{t("qwallDashboard.partNumberSummary.widgets.passVsFail")}</div>
+            <PieChart slices={[
+              { label: "PASS", value: pass, color: "#10b981" },
+              { label: "FAIL", value: fail, color: "#ef4444" },
+            ]} />
+          </div>
+          <div>
+            <div style={widgetTitle}>{t("qwallDashboard.partNumberSummary.widgets.lowestPassRate")}</div>
+            <LowestPassRateCallout item={pnSummary.lowest_pass_rate_part} />
+          </div>
+        </div>
+      )}
+
+      {detailBu && (
+        <Modal
+          title={`${t("qwallDashboard.partNumberSummary.detail.title")} — ${detailBu.name}`}
+          onClose={() => setDetailBu(null)}
+        >
+          <BuDetailTable
+            businessUnitId={detailBu.id} startDate={startDate} endDate={endDate} includeTest={includeTest}
+          />
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── PieChart ──────────────────────────────────────────────────────────────────
+
+function PieChart({ slices, size = 140 }: { slices: { label: string; value: number; color: string }[]; size?: number }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  const total = slices.reduce((a, s) => a + s.value, 0) || 1;
+  let angle   = -90;
+  const paths: JSX.Element[] = [];
+  const midAngles: number[] = [];
+  const cx = size / 2; const cy = size / 2; const r = size / 2 - 10;
+
+  slices.forEach((s, i) => {
+    const sweep = (s.value / total) * 360;
+    midAngles.push(angle + sweep / 2);
+
+    // FIX: un slice al 100% del total tiene sweep=360 — el punto final del arco
+    // coincide matemáticamente con el inicial (ángulo módulo 360), y el <path>
+    // de arco degenera a longitud cero (no dibuja nada). Se renderiza un
+    // <circle> completo en su lugar. Aplica a CUALQUIER donut que use este
+    // componente compartido (distribución por parte, Pass vs Fail, etc.).
+    if (sweep >= 359.99) {
+      paths.push(
+        <circle key={s.label} cx={cx} cy={cy} r={r} fill={s.color} stroke="var(--color-surface)" strokeWidth={1.5}
+          onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)} style={{ cursor: "pointer" }} />
+      );
+    } else if (sweep > 0) {
+      const rad1 = (angle * Math.PI) / 180;
+      const rad2 = ((angle + sweep) * Math.PI) / 180;
+      const x1 = cx + r * Math.cos(rad1); const y1 = cy + r * Math.sin(rad1);
+      const x2 = cx + r * Math.cos(rad2); const y2 = cy + r * Math.sin(rad2);
+      const large = sweep > 180 ? 1 : 0;
+      paths.push(
+        <path key={s.label}
+          d={`M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`}
+          fill={s.color} stroke="var(--color-surface)" strokeWidth={1.5}
+          onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)} style={{ cursor: "pointer" }} />
+      );
+    }
+    angle += sweep;
+  });
+
+  const hovered = hoverIdx !== null ? slices[hoverIdx] : null;
+  const tipAngleRad = hoverIdx !== null ? (midAngles[hoverIdx] * Math.PI) / 180 : 0;
+  const tipX = cx + r * 0.65 * Math.cos(tipAngleRad);
+  const tipY = cy + r * 0.65 * Math.sin(tipAngleRad);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+      <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>{paths}</svg>
+        {hovered && (
+          <div style={{
+            position: "absolute", left: `${(tipX / size) * 100}%`, top: `${(tipY / size) * 100}%`,
+            transform: "translate(-50%, -100%)",
+            background: "var(--color-surface)", border: "1px solid var(--color-border)",
+            borderRadius: "8px", padding: "0.4rem 0.6rem", fontSize: "0.7rem",
+            color: "var(--color-text-primary)", pointerEvents: "none", zIndex: 20,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)", whiteSpace: "nowrap",
+          }}>
+            <div style={{ fontWeight: 700 }}>{hovered.label}</div>
+            <div>{hovered.value.toLocaleString()} ({((hovered.value / total) * 100).toFixed(1)}%)</div>
+          </div>
+        )}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+        {slices.map(s => (
+          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.68rem" }}>
+            <div style={{ width: 9, height: 9, borderRadius: 2, background: s.color, flexShrink: 0 }} />
+            <span style={{ color: "var(--color-text-secondary)" }}>{s.label}</span>
+            <span style={{ fontWeight: 700, color: "var(--color-text-primary)", marginLeft: "auto", paddingLeft: "0.4rem" }}>
+              {((s.value / total) * 100).toFixed(1)}%
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -556,6 +650,7 @@ export default function QWallDashboardPage() {
   const [includeTest, setIncludeTest] = useState<boolean>(false);
   const [partCatalog, setPartCatalog] = useState<QWallPartNumber[]>([]);
   const [buFilter,    setBuFilter]    = useState<string>("");
+  const [failByPoint, setFailByPoint] = useState<QWallFailByPointResponse | null>(null);
 
   // Cargar catálogo BU/PN una sola vez
   useEffect(() => {
@@ -564,10 +659,10 @@ export default function QWallDashboardPage() {
 
   const buList: string[] = [...new Set(partCatalog.map(p => p.bu_name))].sort();
 
-  // Part numbers válidos para la BU seleccionada
-  const pnForBu: string[] = buFilter
-    ? partCatalog.filter(p => p.bu_name === buFilter).map(p => p.ssiPN)
-    : partCatalog.map(p => p.ssiPN);
+  // bu_id correspondiente al nombre de BU seleccionado (el backend filtra por bu_id)
+  const buId: number | undefined = buFilter
+    ? partCatalog.find(p => p.bu_name === buFilter)?.bu_id
+    : undefined;
 
   const applyPreset = (m: TimeMode) => {
     setMode(m);
@@ -580,33 +675,31 @@ export default function QWallDashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      setData(await QWallService.getReport(s, e, includeTest));
+      const [report, pointFails] = await Promise.all([
+        QWallService.getReport(s, e, includeTest, buId),
+        QWallService.getFailByPoint(s, e, includeTest, buId),
+      ]);
+      setData(report);
+      setFailByPoint(pointFails);
     } catch {
       setError(l ? "Error cargando datos." : "Failed to load data.");
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, includeTest, l]);
+  }, [startDate, endDate, includeTest, buId, l]);
 
-  // Auto-reload cuando cambia el toggle (solo si ya hay datos)
+  // Auto-reload cuando cambia el toggle de pruebas/producción o el filtro de BU
+  // (el backend ya filtra por bu_id, no se re-deriva client-side)
   useEffect(() => {
     if (data !== null) load(startDate, endDate);
-  }, [includeTest]);
+  }, [includeTest, buId]);
 
-  // Filtrar rows por BU y derivar todos los agregados client-side
-  const filteredRows: QWallRow[] = data
-    ? (pnForBu.length > 0
-        ? data.rows.filter(r => pnForBu.includes(r.part_number))
-        : data.rows)
-    : [];
-
-  const derived     = data ? deriveFromRows(filteredRows) : null;
-  const trend       = derived ? buildTrend(derived.rows) : [];
-  const passRate    = derived?.summary.pass_rate ?? 0;
-  const failCount   = derived?.summary.fail ?? 0;
-  const topFails    = (derived?.fail_modes ?? []).slice(0, 8);
-  const inspectors  = derived?.by_inspector ?? [];
-  const byPart      = derived?.by_part ?? [];
+  const derived        = data ? deriveFromRows(data.rows) : null;
+  const passRate       = derived?.summary.pass_rate ?? 0;
+  const failCount      = derived?.summary.fail ?? 0;
+  const flagCount         = data?.flag_count ?? 0;
+  const changeoverCount   = data?.changeover_count ?? 0;
+  const pointFailItems    = failByPoint?.items ?? [];
 
   const toggleStyle = (active: boolean): React.CSSProperties => ({
     padding: "0.3rem 0.75rem", fontSize: "0.75rem", fontWeight: 600,
@@ -691,7 +784,7 @@ export default function QWallDashboardPage() {
             border: "1px solid #3b82f6", borderRadius: 8,
             padding: "0.25rem 0.75rem", fontSize: "0.8rem", fontWeight: 600,
           }}>
-            BU: {buFilter} · {filteredRows.length} {l ? "inspecciones" : "inspections"}
+            BU: {buFilter} · {data.rows.length} {l ? "inspecciones" : "inspections"}
           </span>
         </div>
       )}
@@ -717,88 +810,52 @@ export default function QWallDashboardPage() {
       {data && !loading && derived && (
         <>
           {/* ── FILA 1: KPIs ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "0.875rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.875rem" }}>
             <KPITile label={l ? "Total Inspecciones" : "Total Inspections"} value={derived.summary.total.toLocaleString()} accent="#3b82f6" />
             <KPITile label="PASS" value={derived.summary.pass.toLocaleString()} color="#10b981" accent="#10b981" />
             <KPITile label="FAIL" value={derived.summary.fail.toLocaleString()} color={failCount > 0 ? "#ef4444" : "#10b981"} accent="#ef4444" />
             <KPITile label={l ? "Tasa de Aprobación" : "Pass Rate"} value={`${passRate.toFixed(1)}%`}
-              color={semaphore(passRate, 95)} accent={semaphore(passRate, 95)} sub="Meta ≥ 95%" />
-            <KPITile label={l ? "Tiempo Promedio" : "Avg Cycle Time"} value={fmtDuration(Math.round(derived.summary.avg_duration))} accent="#8b5cf6" sub="mm:ss" />
-            <KPITile label={l ? "Inspectores" : "Inspectors"} value={String(derived.summary.inspectors)} accent="#f59e0b" />
+              color={semaphore(passRate, 95)} accent={semaphore(passRate, 95)}  />
+            <KPITile label={l ? "Tiempo Promedio" : "Avg Cycle Time"} value={fmtDuration(Math.round(derived.summary.avg_duration))}  />
+            <KPITile label={l ? "Piezas con Flag" : "Flagged Pieces"} value={flagCount.toLocaleString()} accent="#f59e0b" />
+            <KPITile label={l ? "Cambios de Modelo" : "Model Changeovers"} value={changeoverCount.toLocaleString()} accent="#8b5cf6" />
           </div>
 
-          {/* ── FILA 2: Donut + Pie part + Pie tipo ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
-            <div style={card}>
-              <div style={cardTitle}>{l ? "Resultado Global" : "Overall Result"}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-                <Donut pct={passRate} color={semaphore(passRate, 95)} size={100} />
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {[["#10b981","PASS",derived.summary.pass],["#ef4444","FAIL",derived.summary.fail]].map(([c,lb,v]) => (
-                    <div key={String(lb)} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <div style={{ width: 10, height: 10, borderRadius: 2, background: String(c) }} />
-                      <span style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>{lb}</span>
-                      <span style={{ fontWeight: 700, color: "var(--color-text-primary)", marginLeft: "auto" }}>{v}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div style={card}>
-              <div style={cardTitle}>{l ? "Distribución por Part Number" : "By Part Number"}</div>
-              <PieChart slices={byPart.slice(0, 5).map((p: QWallPartRow, i: number) => ({
-                label: p.part_number, value: p.total,
-                color: ["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444"][i % 5],
-              }))} />
-            </div>
-
-            <div style={card}>
-              <div style={cardTitle}>{l ? "Distribución por Tipo" : "By Inspection Type"}</div>
-              {(() => {
-                const typeMap: Record<string, number> = {};
-                for (const r of filteredRows) typeMap[r.inspection_type] = (typeMap[r.inspection_type] ?? 0) + 1;
-                const colors = ["#3b82f6", "#8b5cf6", "#f59e0b"];
-                return <PieChart slices={Object.entries(typeMap).map(([label, value], i) => ({ label, value, color: colors[i % colors.length] }))} />;
-              })()}
-            </div>
-          </div>
+          {/* ── FILA 2: Part Number Summary ── */}
+          <PartNumberSummarySection
+            buId={buId} startDate={startDate} endDate={endDate} includeTest={includeTest}
+            pass={derived.summary.pass} fail={derived.summary.fail}
+          />
 
           {/* ── FILA 3: Tendencia ── */}
-          <div style={card}>
-            <div style={cardTitle}>{l ? "Tendencia diaria" : "Daily trend"}</div>
-            <TrendChart points={trend} lang={l ? "es" : "en"} />
-          </div>
+         
 
           {/* ── FILA 4: Fail modes + Inspectores ── */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+             <div style={card}>
+            <div style={cardTitle}>{l ? "Tendencia" : "Trend"}</div>
+            <TrendChart
+              startDate={startDate}
+              endDate={endDate}
+              includeTest={includeTest}
+              buId={buId}
+              locale={i18n.language}
+            />
+          </div>
             <div style={card}>
               <div style={cardTitle}>{l ? "Top fallas (Pareto)" : "Top fail modes (Pareto)"}</div>
-              {topFails.length === 0
-                ? <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>{l ? "Sin fallas." : "No failures."}</p>
-                : <HBar data={topFails.map((f: QWallFailMode) => ({ label: f.fail_mode, value: f.count }))} color="#ef4444" />
-              }
+              <ParetoChart
+                startDate={startDate}
+                endDate={endDate}
+                includeTest={includeTest}
+                buId={buId}
+                lang={l ? "es" : "en"}
+              />
             </div>
-            <div style={card}>
-              <div style={cardTitle}>{l ? "Inspecciones por inspector" : "By inspector"}</div>
-              {inspectors.length === 0
-                ? <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>—</p>
-                : <VBar data={inspectors.map((r: QWallInspectorRow) => ({ label: r.inspector, pass: r.pass, fail: r.fail }))} />
-              }
-            </div>
+            
           </div>
 
-          {/* ── FILA 5: Pass rate ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-            <div style={card}>
-              <div style={cardTitle}>{l ? "Pass rate por inspector" : "Pass rate by inspector"}</div>
-              <HBar data={inspectors.map((r: QWallInspectorRow) => ({ label: r.inspector, value: r.pass_rate }))} color="#10b981" maxVal={100} />
-            </div>
-            <div style={card}>
-              <div style={cardTitle}>{l ? "Pass rate por part number" : "Pass rate by part number"}</div>
-              <HBar data={byPart.map((r: QWallPartRow) => ({ label: r.part_number, value: r.pass_rate }))} color="#3b82f6" maxVal={100} />
-            </div>
-          </div>
+          
         </>
       )}
     </div>

@@ -1,7 +1,10 @@
 # apps/quality/views/__init__.py
 from .scrap_views import ScrapDetailView
 from .targets_views import QualityTargetView
-from .qwall_views import QWallReportView, QWallPartNumbersView
+from .qwall_views import (
+    QWallReportView, QWallPartNumbersView, QWallTrendView, QWallParetoView,
+    QWallFailByPointView, QWallBuSummaryView, QWallPartNumberSummaryView,
+)
 from .rejection_views import RejectionReportView, RejectionPhotoView, RejectionReportPDFView
 from .failure_catalog_views import FailureCatalogView, CatalogStructureView
 from .problem_views import (
@@ -43,6 +46,11 @@ __all__ = [
     'QualityTargetView',
     'QWallReportView',
     'QWallPartNumbersView',
+    'QWallTrendView',
+    'QWallParetoView',
+    'QWallFailByPointView',
+    'QWallBuSummaryView',
+    'QWallPartNumberSummaryView',
     'RejectionReportView',
     'RejectionPhotoView',
     'RejectionReportPDFView',

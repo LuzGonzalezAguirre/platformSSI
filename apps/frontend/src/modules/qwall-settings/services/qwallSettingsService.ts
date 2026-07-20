@@ -2,7 +2,7 @@ import apiClient from "../../../services/api.client";
 import type {
   BusinessUnit, QWallRole, QWallUser, PartNumber,
   InspectionPoint, FailMode, SystemConfig,
-  PartNumberScanRule, PartNumberLookup,
+  PartNumberScanRule, PartNumberLookup, FailModeWithTranslation,
 } from "../types";
 
 const BASE = "/quality/qwall/settings";
@@ -78,7 +78,7 @@ export const fetchFailModes = (bu_id?: number, point_id?: number) => {
     .then(r => r.data.data);
 };
 
-export const createFailMode = (body: { fail_code: string; description: string }) =>
+export const createFailMode = (body: { fail_code: string; description: string; english_name: string }) =>
   apiClient.post<FailMode>(`${BASE}/fail-modes/`, body).then(r => r.data);
 
 export const updateFailMode = (
@@ -101,6 +101,39 @@ export const fetchSystemConfig = () =>
 
 export const updateSystemConfig = (config_key: string, value: string) =>
   apiClient.patch<SystemConfig>(`${BASE}/system-config/${config_key}/`, { value }).then(r => r.data);
+
+// ── Fail Mode Translations ───────────────────────────────────────────────────
+
+export const fetchFailModeTranslations = (locale: string, bu_id?: number, point_id?: number) => {
+  const params: Record<string, string | number> = { locale };
+  if (bu_id)    params.bu_id    = bu_id;
+  if (point_id) params.point_id = point_id;
+  return apiClient
+    .get<{ data: FailModeWithTranslation[] }>(`${BASE}/fail-mode-translations/`, { params })
+    .then(r => r.data.data);
+};
+
+export const fetchMissingFailModeTranslations = (locale: string) =>
+  apiClient
+    .get<{ data: string[] }>(`${BASE}/fail-mode-translations/missing/`, { params: { locale } })
+    .then(r => r.data.data);
+
+export const upsertFailModeTranslation = (fail_mode_code: string, locale: string, name: string) =>
+  apiClient
+    .put<{ fail_mode_code: string; locale: string; name: string }>(
+      `${BASE}/fail-mode-translations/${encodeURIComponent(fail_mode_code)}/`, { locale, name },
+    )
+    .then(r => r.data);
+
+// ── Pass Rate Target ─────────────────────────────────────────────────────────
+
+export const fetchPassRateTarget = () =>
+  apiClient.get<{ pass_rate_target: number }>(`${BASE}/pass-rate-target/`).then(r => r.data.pass_rate_target);
+
+export const updatePassRateTarget = (pass_rate_target: number) =>
+  apiClient
+    .put<{ pass_rate_target: number }>(`${BASE}/pass-rate-target/`, { pass_rate_target })
+    .then(r => r.data.pass_rate_target);
 
 // ── Scan Rules ────────────────────────────────────────────────────────────────
 

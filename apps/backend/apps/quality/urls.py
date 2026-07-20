@@ -7,6 +7,11 @@ from apps.quality.views import (
     QualityTargetView,
     QWallReportView,
     QWallPartNumbersView,
+    QWallTrendView,
+    QWallParetoView,
+    QWallFailByPointView,
+    QWallBuSummaryView,
+    QWallPartNumberSummaryView,
     RejectionReportView,
     RejectionPhotoView,
     RejectionReportPDFView,
@@ -49,6 +54,11 @@ urlpatterns = [
     path("targets/", QualityTargetView.as_view()),
     path("targets/<int:pk>/", QualityTargetView.as_view()),
     path("qwall/", QWallReportView.as_view()),
+    path("qwall/trend/", QWallTrendView.as_view()),
+    path("qwall/pareto/", QWallParetoView.as_view()),
+    path("qwall/fail-by-point/", QWallFailByPointView.as_view()),
+    path("qwall/bu-summary/", QWallBuSummaryView.as_view()),
+    path("qwall/part-number-summary/", QWallPartNumberSummaryView.as_view()),
     path("qwall/part-numbers/", QWallPartNumbersView.as_view()),
     path("rejection-report/", RejectionReportView.as_view()),
     path("rejection-photo/<int:inspection_id>/", RejectionPhotoView.as_view()),
@@ -140,4 +150,9 @@ urlpatterns = [
     # SCAN RULES (SQL Server CCS via QWall Proxy)
     # ═════════════════════════════════════════════════════════════════════
     path("scan-rules/", include("apps.quality.scan_rules_urls")),
+
+    # ═════════════════════════════════════════════════════════════════════
+    # INCOMING INSPECTION
+    # ═════════════════════════════════════════════════════════════════════
+    path("incoming-inspection/", include("apps.quality.incoming_inspection_urls")),
 ]

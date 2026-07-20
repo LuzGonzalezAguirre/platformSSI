@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useSystemConfig, useUpdateSystemConfig } from "../hooks/useQWallSettings";
+import { useSystemConfig, useUpdateSystemConfig, usePassRateTarget, useUpdatePassRateTarget } from "../hooks/useQWallSettings";
 import type { SystemConfig } from "../types";
 
 const BOOL_KEYS = ["camera_enabled", "scrap_enabled"];
@@ -16,7 +16,7 @@ export default function GeneralSettingsTab() {
 
   const [local, setLocal] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
-  const [saving, setSaving] = useState(false);       
+  const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,6 +54,36 @@ export default function GeneralSettingsTab() {
     }
   };
 
+  // ── Pass Rate Target (Postgres — valor global único, sin historial) ────────
+  const { data: passRateTarget, isLoading: targetLoading } = usePassRateTarget();
+  const updateTarget = useUpdatePassRateTarget();
+  const [targetLocal, setTargetLocal] = useState<string>("");
+  const [targetDirty, setTargetDirty] = useState(false);
+  const [targetMsg, setTargetMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (passRateTarget !== undefined) {
+      setTargetLocal(String(passRateTarget));
+      setTargetDirty(false);
+    }
+  }, [passRateTarget]);
+
+  const handleSaveTarget = async () => {
+    setTargetMsg(null);
+    const value = parseFloat(targetLocal);
+    if (Number.isNaN(value)) {
+      setTargetMsg(t("qwallSettings.messages.saveError"));
+      return;
+    }
+    try {
+      await updateTarget.mutateAsync(value);
+      setTargetDirty(false);
+      setTargetMsg(t("qwallSettings.general.configSaved"));
+    } catch {
+      setTargetMsg(t("qwallSettings.messages.saveError"));
+    }
+  };
+
   if (isLoading) {
     return <div style={s.loading}>{t("qwallSettings.messages.loading")}</div>;
   }
@@ -64,6 +94,41 @@ export default function GeneralSettingsTab() {
 
   return (
     <div style={s.tab}>
+      <div style={s.card}>
+        <div style={s.row}>
+          <div style={s.rowInfo}>
+            <span style={s.rowLabel}>{t("qwallSettings.general.pass_rate_target")}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <input
+                type="number"
+                step="0.01"
+                style={s.textInput}
+                disabled={targetLoading}
+                value={targetLocal}
+                onChange={e => { setTargetLocal(e.target.value); setTargetDirty(true); }}
+              />
+              <span style={s.rowDesc}>%</span>
+            </div>
+            <button
+              style={{ ...s.saveBtnSm, opacity: targetDirty ? 1 : 0.5 }}
+              disabled={!targetDirty || updateTarget.isPending}
+              onClick={handleSaveTarget}
+            >
+              {updateTarget.isPending ? t("qwallSettings.buttons.saving") : t("qwallSettings.general.saveConfig")}
+            </button>
+          </div>
+        </div>
+        {targetMsg && (
+          <div style={{ padding: "0 1.25rem 0.75rem" }}>
+            <span style={{ ...s.msg, color: targetMsg === t("qwallSettings.general.configSaved") ? "var(--color-running)" : "var(--color-stopped)" }}>
+              {targetMsg}
+            </span>
+          </div>
+        )}
+      </div>
+
       <div style={s.card}>
         {configs.map((c: SystemConfig) => (
           <div key={c.config_key} style={s.row}>
@@ -147,5 +212,10 @@ const s: Record<string, React.CSSProperties> = {
     padding: "0.6rem 1.25rem", borderRadius: "var(--radius-md)", border: "none",
     backgroundColor: "var(--color-primary)", color: "#fff", cursor: "pointer",
     fontSize: "0.875rem", fontWeight: "600",
+  },
+  saveBtnSm: {
+    padding: "0.4rem 0.9rem", borderRadius: "var(--radius-md)", border: "none",
+    backgroundColor: "var(--color-primary)", color: "#fff", cursor: "pointer",
+    fontSize: "0.8rem", fontWeight: "600",
   },
 };

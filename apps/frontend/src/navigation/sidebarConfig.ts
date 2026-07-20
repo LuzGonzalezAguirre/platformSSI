@@ -129,6 +129,13 @@ export const sidebarConfig: NavSection[] = [
             allowedRoles: ALL_ROLES,
           },
           {
+            id: "quality.incoming-inspection",
+            labelKey: "nav.items.qualityIncomingInspection",
+            path: "/quality/incoming-inspection",
+            icon: "PackageSearch",
+            allowedRoles: ALL_ROLES,
+          },
+          {
             id: "quality.qwall-help",
             labelKey: "nav.items.qualityQwallHelp",
             path: "/quality/qwall/help",

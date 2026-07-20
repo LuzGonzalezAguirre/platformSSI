@@ -1,7 +1,10 @@
 import { useState, useMemo } from "react";
-import { OEETrendPoint } from "./types";
+import { Loader2 } from "lucide-react";
+import { OEETrendPoint, DateRange } from "./types";
+import { usePeriodicSeries, ChartPeriod } from "./usePeriodicSeries";
+import { MaintenanceService } from "./overview.service";
 
-interface Props { data: OEETrendPoint[]; lang: string; }
+interface Props { data: OEETrendPoint[]; lang: string; compact?: boolean; dayRange: DateRange; }
 
 type ActiveField  = "oee_pct" | "availability_pct" | "performance_pct" | "quality_pct";
 type GroupMode    = "daily" | "weekly" | "monthly";
@@ -100,7 +103,8 @@ function LineChart({
   .join(" ");
 
   return (
-    <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ overflow: "visible" }} onMouseLeave={() => onHover?.(null)}>
+    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none"
+      style={{ overflow: "visible", display: "block" }} onMouseLeave={() => onHover?.(null)}>
       {[0, 25, 50, 75, 100].map((tick) => (
         <g key={tick}>
           <line x1={padL} x2={padL + chartW} y1={toY(tick)} y2={toY(tick)} stroke="var(--color-border)" strokeWidth={0.5} strokeDasharray="3,3" />
@@ -148,11 +152,22 @@ function LineChart({
   );
 }
 
-export default function OEETrendChart({ data, lang }: Props) {
-  const [active,    setActive]    = useState<ActiveField>("oee_pct");
-  const [tooltip,   setTooltip]   = useState<TooltipData | null>(null);
-  const [groupMode, setGroupMode] = useState<GroupMode>("daily");
-  const [showMA,    setShowMA]    = useState(true);
+export default function OEETrendChart({ data: dayData, lang, compact = false, dayRange }: Props) {
+  const [active,  setActive]  = useState<ActiveField>("oee_pct");
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+  const [period,  setPeriod]  = useState<ChartPeriod>("day");
+  const [showMA,  setShowMA]  = useState(true);
+
+  const { data, loading: periodLoading } = usePeriodicSeries(
+    period, dayRange, dayData,
+    (start, end) => MaintenanceService.getOEETrend(start, end).then((r) => r.data)
+  );
+
+  // El period gobierna ambas cosas: de dónde vienen los datos (day = rango
+  // global, week/month = fetch propio de una ventana de 6 semanas/meses, que
+  // igual llega a granularidad diaria) Y cómo se agrupan visualmente —
+  // groupMode ya no es un control aparte, se deriva directo del period.
+  const groupMode: GroupMode = period === "day" ? "daily" : period === "week" ? "weekly" : "monthly";
 
   const grouped = useMemo(() => groupData(data, groupMode), [data, groupMode]);
   const maWindow = groupMode === "daily" ? 7 : groupMode === "weekly" ? 4 : 3;
@@ -161,7 +176,9 @@ export default function OEETrendChart({ data, lang }: Props) {
     <div style={card}>
       <div style={sectionTitle}>OEE Trend</div>
       <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
-        {lang === "es" ? "Sin registros de OEE en el rango seleccionado" : "No OEE records in selected range"}
+        {periodLoading
+          ? (lang === "es" ? "Cargando..." : "Loading...")
+          : (lang === "es" ? "Sin registros de OEE en el rango seleccionado" : "No OEE records in selected range")}
       </div>
     </div>
   );
@@ -169,22 +186,35 @@ export default function OEETrendChart({ data, lang }: Props) {
   const fields     = Object.entries(FIELD_CONFIG) as [ActiveField, typeof FIELD_CONFIG[ActiveField]][];
   const activeCfg  = FIELD_CONFIG[active];
   const latest     = grouped[grouped.length - 1]?.[active] as number ?? 0;
+  const meetsTarget = latest >= activeCfg.target;
+  const delta       = latest - activeCfg.target;
 
   return (
     <div style={card}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
         <div style={sectionTitle}>OEE Trend</div>
 
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-          {/* Agrupación */}
+          {/* Selector de métrica activa */}
+          <select
+            value={active}
+            onChange={(e) => { setActive(e.target.value as ActiveField); setTooltip(null); }}
+            style={selectStyle}
+          >
+            {fields.map(([field, cfg]) => (
+              <option key={field} value={field}>{cfg.label(lang)}</option>
+            ))}
+          </select>
+
+          {/* Periodo: de dónde vienen los datos Y cómo se agrupan (day = rango global agrupado por día, week/month = fetch propio agrupado por semana/mes) */}
           <div style={{ display: "flex", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
-            {(["daily", "weekly", "monthly"] as GroupMode[]).map((m) => (
-              <button key={m} onClick={() => setGroupMode(m)} style={{
+            {(["day", "week", "month"] as ChartPeriod[]).map((p) => (
+              <button key={p} onClick={() => setPeriod(p)} style={{
                 padding: "0.25rem 0.625rem", fontSize: "0.72rem", fontWeight: 600, border: "none", cursor: "pointer",
-                background: groupMode === m ? "var(--color-border)" : "transparent",
-                color: groupMode === m ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+                background: period === p ? "var(--color-border)" : "transparent",
+                color: period === p ? "var(--color-text-primary)" : "var(--color-text-secondary)",
               }}>
-                {m === "daily" ? (lang === "es" ? "Día" : "Day") : m === "weekly" ? (lang === "es" ? "Sem" : "Week") : (lang === "es" ? "Mes" : "Month")}
+                {p === "day" ? (lang === "es" ? "Día" : "Day") : p === "week" ? (lang === "es" ? "Semana" : "Week") : (lang === "es" ? "Mes" : "Month")}
               </button>
             ))}
           </div>
@@ -221,51 +251,48 @@ export default function OEETrendChart({ data, lang }: Props) {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: "1rem", position: "relative" }}>
+      {/* Franja compacta: valor activo + delta contra target */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: "0.625rem", marginBottom: "0.625rem" }}>
+        <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--color-text-secondary)" }}>
+          {activeCfg.label(lang)}
+        </span>
+        <span style={{ fontSize: "1.25rem", fontWeight: 800, color: activeCfg.color }}>
+          {latest.toFixed(1)}%
+        </span>
+        <span style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
+          Target: {activeCfg.target}%
+        </span>
+        <span style={{ fontSize: "0.75rem", fontWeight: 700, color: meetsTarget ? "#10b981" : "#ef4444" }}>
+          {meetsTarget ? `+${delta.toFixed(1)}pp ✓` : `${delta.toFixed(1)}pp`}
+        </span>
+      </div>
+
+      <div style={{ position: "relative" }}>
+        {periodLoading && (
+          <div style={spinnerOverlay}>
+            <Loader2 size={20} style={{ animation: "spin 1s linear infinite", color: activeCfg.color }} />
+          </div>
+        )}
         <LineChart
           data={grouped} field={active} color={activeCfg.color}
-          target={activeCfg.target} height={260}
+          target={activeCfg.target} height={compact ? 190 : 300} compact={compact}
           maWindow={maWindow} showMA={showMA}
           onHover={(t) => setTooltip(t)}
         />
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {fields.map(([field, cfg]) => {
-            const isActive = field === active;
-            const val      = grouped[grouped.length - 1]?.[field] as number ?? 0;
-            const meets    = val >= cfg.target;
-            return (
-              <div key={field} onClick={() => { setActive(field); setTooltip(null); }}
-                style={{
-                  background: isActive ? `${cfg.color}12` : "var(--color-bg)",
-                  border: isActive ? `1.5px solid ${cfg.color}` : "1px solid var(--color-border)",
-                  borderLeft: `3px solid ${cfg.color}`,
-                  borderRadius: "var(--radius-md)", padding: "0.5rem 0.625rem",
-                  cursor: "pointer", transition: "all 0.15s",
-                }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
-                  <span style={{ fontSize: "0.7rem", fontWeight: 600, color: isActive ? cfg.color : "var(--color-text-secondary)" }}>
-                    {cfg.label(lang)}
-                  </span>
-                  <span style={{ fontSize: "0.8rem", fontWeight: 800, color: meets ? "#10b981" : "#ef4444" }}>
-                    {val.toFixed(1)}%
-                  </span>
-                </div>
-                <LineChart
-                  data={grouped} field={field} color={cfg.color}
-                  target={cfg.target} height={40} showYLabel={false} compact
-                  maWindow={maWindow} showMA={false}
-                />
-                <div style={{ fontSize: "0.65rem", color: "var(--color-text-secondary)", textAlign: "right", marginTop: "0.15rem" }}>
-                  Target {cfg.target}%
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
 
 const card: React.CSSProperties         = { background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1.25rem", position: "relative" };
 const sectionTitle: React.CSSProperties = { fontSize: "0.875rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 };
+const selectStyle: React.CSSProperties  = {
+  padding: "0.25rem 0.5rem", fontSize: "0.72rem", fontWeight: 600, borderRadius: "var(--radius-md)",
+  border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "var(--color-text-primary)",
+  cursor: "pointer",
+};
+const spinnerOverlay: React.CSSProperties = {
+  position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+  background: "color-mix(in srgb, var(--color-surface) 70%, transparent)", zIndex: 5,
+};

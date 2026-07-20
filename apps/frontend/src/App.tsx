@@ -34,6 +34,7 @@ import AuditPage from "./modules/admin/AuditPage";
 import FailureCatalogPage from "./modules/quality/qwall/catalog/FailureCatalogPage";
 import QWallSettingsPage from "./modules/qwall-settings/index";
 import HelpPage from "./modules/quality/qwall/HelpPage";
+import IncomingInspectionPage from "./modules/incoming-inspection/IncomingInspectionPage";
 
 
 const now = new Date();
@@ -118,6 +119,7 @@ function AppRoutes() {
         <Route path="/quality/qwall/catalog" element={<FailureCatalogPage />} />
         <Route path="/quality/qwall/settings" element={<QWallSettingsPage />} />
         <Route path="/quality/qwall/help" element={<HelpPage />} />
+        <Route path="/quality/incoming-inspection" element={<IncomingInspectionPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

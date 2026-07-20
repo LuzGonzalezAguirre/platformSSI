@@ -46,6 +46,7 @@
     "qualityRejections": "Rechazos",
     "qualityQwallCatalog": "Catálogo de Fallas",
     "qualityQwallHelp": "Ayuda / Tutorial",
+    "qualityIncomingInspection": "Inspección de Entrada",
     "qualityProblems": "Control de Problemas",
     "qwallSettings": "Config QWall",
     "productionLeysilla": "Ley Silla",
@@ -212,6 +213,39 @@
     "all": "Todo"
   }
 },
+"qwallDashboard": {
+  "partNumberSummary": {
+    "title": "Resumen por Part Number",
+    "columns": {
+      "inspections": "inspecciones",
+      "runs": "runs"
+    },
+    "kpi": {
+      "totalInspections": "Total Inspecciones",
+      "passRate": "Tasa de Aprobación"
+    },
+    "widgets": {
+      "distribution": "Distribución de inspecciones por parte",
+      "runsPerPart": "Runs por número de parte",
+      "passVsFail": "Pass vs Fail",
+      "lowestPassRate": "Parte con menor pass rate",
+      "other": "Otros"
+    },
+    "detail": {
+      "viewDetail": "Ver detalle",
+      "title": "Detalle por Part Number",
+      "columns": {
+        "partNumber": "Part Number",
+        "inspections": "Inspecciones",
+        "runs": "Runs",
+        "passRate": "Pass Rate"
+      }
+    },
+    "noData": "—",
+    "loading": "Cargando...",
+    "error": "Error cargando datos."
+  }
+},
 "qwallSettings": {
   "title": "Configuración Q-Wall",
   "subtitle": "Administra las tablas de configuración del sistema Q-Wall",
@@ -236,15 +270,20 @@
     "role": "Rol",
     "active": "Estado",
     "partNumber": "Número de Parte (SSI)",
-    "volvoPN": "Número de Parte Volvo",
+    "volvoPN": "Número de Parte Cliente",
+    "serialClient": "Serial Cliente",
     "bu": "Unidad de Negocio",
     "order": "Orden",
     "pointName": "Nombre del Punto",
     "failModes": "Modos de Falla",
     "failCode": "Código de Falla",
     "description": "Descripción",
+    "englishName": "Nombre en Inglés",
     "assignedPoints": "Puntos Asignados",
     "actions": "Acciones"
+  },
+  "placeholders": {
+    "englishName": "Traducción al inglés..."
   },
   "buttons": {
     "new": "Nuevo",
@@ -286,11 +325,14 @@
     "loading": "Cargando...",
     "noData": "No se encontraron registros.",
     "noPointsInBU": "No hay puntos de inspección activos para esta BU.",
-    "duplicateName": "Ya existe un registro con ese nombre."
+    "duplicateName": "Ya existe un registro con ese nombre.",
+    "missingTranslation": "Sin traducción al inglés",
+    "englishNameRequired": "El nombre en inglés es obligatorio para crear un modo de falla."
   },
   "general": {
     "camera_enabled": "Cámara Habilitada",
     "scrap_enabled": "Scrap Habilitado",
+    "pass_rate_target": "Meta de Pass Rate",
     "saveConfig": "Guardar Cambios",
     "configSaved": "Configuración guardada."
   },
@@ -386,5 +428,40 @@
     "colShipped": "Enviado", "colBalance": "Balance", "colRelStatus": "Estado Rel",
     "colRelType": "Tipo Rel"
   }
-}
+  },
+  "incomingInspection": {
+    "title": "Inspección de Entrada",
+    "subtitle": "Contenedores en TJ Incoming Inspection — estatus y cumplimiento de SLA",
+    "filters": {
+      "dateFrom": "Desde", "dateTo": "Hasta", "partNo": "Número de Parte",
+      "operation": "Operación", "allOperations": "Todas las operaciones",
+      "location": "Ubicación", "containerStatus": "Estatus del Contenedor",
+      "defectType": "Tipo de Defecto", "slaStatus": "Estatus de SLA",
+      "allSlaStatus": "Todos", "onTime": "A tiempo", "late": "Atrasado", "refresh": "Actualizar",
+      "load": "Cargar"
+    },
+    "idle": "Selecciona un rango de fechas y presiona Cargar.",
+    "kpis": {
+      "operationCounts": "Contenedores por Operación",
+      "lotsInspected": "Lotes Inspeccionados",
+      "acceptanceRate": "Tasa de Aceptación",
+      "slaCompliance": "Cumplimiento de SLA",
+      "accepted": "Aceptados", "rejected": "Rechazados", "total": "Total",
+      "onTime": "A tiempo", "late": "Atrasado", "threshold": "Umbral"
+    },
+    "detail": {
+      "title": "Detalle", "columns": {
+        "serialNo": "No. Serie", "partNo": "No. Parte", "operation": "Operación",
+        "changeDate": "Fecha de Cambio", "location": "Ubicación", "status": "Estatus",
+        "defectType": "Tipo de Defecto", "changeBy": "Modificado por"
+      },
+      "noData": "Sin registros para los filtros seleccionados.", "loading": "Cargando...", "error": "Error al cargar datos."
+    },
+    "slaConfig": {
+      "button": "Config. SLA", "modalTitle": "Umbral de SLA de Incoming Inspection",
+      "thresholdHours": "Umbral (horas)", "save": "Guardar", "saving": "Guardando...",
+      "saved": "Umbral actualizado.", "forbidden": "No tienes permiso para cambiar esta configuración.",
+      "invalid": "Ingresa un valor entre 1 y 500."
+    }
+  }
 }

@@ -3,6 +3,7 @@ from apps.maintenance.views.overview_views import (
     MaintenanceKPIView, MaintenanceReasonsView, MaintenanceDetailView,
     OEETrendView, DowntimeByMonthView, OEELiveView,
 )
+from apps.maintenance.views.dashboard_targets_views import DashboardTargetsView
 from apps.maintenance.views.work_requests_views import WorkRequestsDashboardView
 from apps.maintenance.views.ca_views import (
     CorrectiveActionListCreateView,
@@ -20,6 +21,7 @@ urlpatterns = [
     path("overview/oee-trend/",                   OEETrendView.as_view()),
     path("overview/downtime-by-month/",           DowntimeByMonthView.as_view()),
     path("overview/oee-live/",                    OEELiveView.as_view()),
+    path("overview/targets/",                     DashboardTargetsView.as_view()),
     path("work-requests/dashboard/",              WorkRequestsDashboardView.as_view()),
     path("corrective-actions/",                   CorrectiveActionListCreateView.as_view()),
     path("corrective-actions/<int:pk>/",          CorrectiveActionDetailView.as_view()),

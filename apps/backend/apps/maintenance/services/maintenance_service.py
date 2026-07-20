@@ -76,7 +76,8 @@ class MaintenanceService:
         if cached:
             return cached
         result = _post("/oee-live", {"start_date": start_date, "end_date": end_date}, timeout=60)
-        data   = result.get("data")
+        raw    = result.get("data")
+        data   = raw.get("total") if raw else None
         if data:
             cache.set(key, data, CACHE_TTL)
         return data
@@ -103,7 +104,8 @@ class MaintenanceService:
             date_str = current.strftime("%Y-%m-%d")
             try:
                 resp = _post("/oee-live", {"start_date": date_str, "end_date": date_str}, timeout=60)
-                data = resp.get("data")
+                raw  = resp.get("data")
+                data = raw.get("total") if raw else None
                 if data and data.get("oee_pct", 0) > 0:
                     result.append({
                         "date":             date_str,

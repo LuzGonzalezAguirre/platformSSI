@@ -47,6 +47,7 @@
     "qualityRejections": "Rejections",
     "qualityQwallCatalog": "Failure Catalog",
     "qualityQwallHelp": "Help / Tutorial",
+    "qualityIncomingInspection": "Incoming Inspection",
     "qualityProblems": "Problem Control",
     "qwallSettings": "QWall Settings",
     "productionLeysilla": "Chair Law",
@@ -214,6 +215,39 @@
     "all": "All"
   }
 },
+"qwallDashboard": {
+  "partNumberSummary": {
+    "title": "Part Number Summary",
+    "columns": {
+      "inspections": "inspections",
+      "runs": "runs"
+    },
+    "kpi": {
+      "totalInspections": "Total Inspections",
+      "passRate": "Pass Rate"
+    },
+    "widgets": {
+      "distribution": "Inspection distribution by part",
+      "runsPerPart": "Runs per part number",
+      "passVsFail": "Pass vs Fail",
+      "lowestPassRate": "Lowest pass rate part",
+      "other": "Other"
+    },
+    "detail": {
+      "viewDetail": "View detail",
+      "title": "Part Number detail",
+      "columns": {
+        "partNumber": "Part Number",
+        "inspections": "Inspections",
+        "runs": "Runs",
+        "passRate": "Pass Rate"
+      }
+    },
+    "noData": "—",
+    "loading": "Loading...",
+    "error": "Failed to load data."
+  }
+},
 "qwallSettings": {
   "title": "QWall Settings",
   "subtitle": "Manage Q-Wall system configuration tables",
@@ -238,15 +272,20 @@
     "role": "Role",
     "active": "Status",
     "partNumber": "Part Number (SSI)",
-    "volvoPN": "Volvo Part Number",
+    "volvoPN": "Client Part Number",
+    "serialClient": "Serial Client",
     "bu": "Business Unit",
     "order": "Order",
     "pointName": "Point Name",
     "failModes": "Fail Modes",
     "failCode": "Fail Code",
     "description": "Description",
+    "englishName": "English Name",
     "assignedPoints": "Assigned Points",
     "actions": "Actions"
+  },
+  "placeholders": {
+    "englishName": "English translation..."
   },
   "buttons": {
     "new": "New",
@@ -288,11 +327,14 @@
     "loading": "Loading...",
     "noData": "No records found.",
     "noPointsInBU": "No active inspection points for this BU.",
-    "duplicateName": "A record with that name already exists."
+    "duplicateName": "A record with that name already exists.",
+    "missingTranslation": "Missing English translation",
+    "englishNameRequired": "English name is required to create a fail mode."
   },
   "general": {
     "camera_enabled": "Camera Enabled",
     "scrap_enabled": "Scrap Enabled",
+    "pass_rate_target": "Pass Rate Target",
     "saveConfig": "Save Changes",
     "configSaved": "Configuration saved."
   },
@@ -388,6 +430,40 @@
     "colShipped": "Shipped", "colBalance": "Balance", "colRelStatus": "Rel Status",
     "colRelType": "Rel Type"
   }
-}
-  
+  },
+  "incomingInspection": {
+    "title": "Incoming Inspection",
+    "subtitle": "Containers at TJ Incoming Inspection — status and SLA compliance",
+    "filters": {
+      "dateFrom": "From", "dateTo": "To", "partNo": "Part Number",
+      "operation": "Operation", "allOperations": "All operations",
+      "location": "Location", "containerStatus": "Container Status",
+      "defectType": "Defect Type", "slaStatus": "SLA Status",
+      "allSlaStatus": "All", "onTime": "On-time", "late": "Late", "refresh": "Refresh",
+      "load": "Load"
+    },
+    "idle": "Select a date range and press Load.",
+    "kpis": {
+      "operationCounts": "Containers by Operation",
+      "lotsInspected": "Lots Inspected",
+      "acceptanceRate": "Acceptance Rate",
+      "slaCompliance": "SLA Compliance",
+      "accepted": "Accepted", "rejected": "Rejected", "total": "Total",
+      "onTime": "On-time", "late": "Late", "threshold": "Threshold"
+    },
+    "detail": {
+      "title": "Detail", "columns": {
+        "serialNo": "Serial No", "partNo": "Part No", "operation": "Operation",
+        "changeDate": "Change Date", "location": "Location", "status": "Status",
+        "defectType": "Defect Type", "changeBy": "Changed By"
+      },
+      "noData": "No records for the selected filters.", "loading": "Loading...", "error": "Failed to load data."
+    },
+    "slaConfig": {
+      "button": "SLA Settings", "modalTitle": "Incoming Inspection SLA Threshold",
+      "thresholdHours": "Threshold (hours)", "save": "Save", "saving": "Saving...",
+      "saved": "Threshold updated.", "forbidden": "You don't have permission to change this setting.",
+      "invalid": "Enter a value between 1 and 500."
+    }
+  }
 }

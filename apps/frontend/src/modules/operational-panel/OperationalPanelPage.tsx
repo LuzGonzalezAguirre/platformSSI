@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { OpsReportService } from "../production/ops-report/ops-report.service";
 import { MaintenanceService } from "../maintenance/overview/overview.service";
+import { useDashboardTargets } from "../maintenance/overview/useDashboardTargets";
 import { WorkRequestsService } from "../maintenance/work-requests/work-requests.service";
 import { QualityService } from "../quality/services/quality.service";
 import { DailySummary } from "../production/ops-report/types";
@@ -332,6 +333,9 @@ export default function OperationalPanelPage() {
   const navigate  = useNavigate();
   const lang      = i18n.language.startsWith("es") ? "es" : "en";
   const l         = lang === "es";
+  const { getTarget } = useDashboardTargets();
+  const mttrTarget = getTarget("mttr")?.target_value ?? 2;
+  const mtbfTarget = getTarget("mtbf")?.target_value ?? 40;
 
   // ── Estado de fechas ──────────────────────────────────────────────────────
   const [dateMode,    setDateMode]    = useState<DateMode>("day");
@@ -477,14 +481,14 @@ export default function OperationalPanelPage() {
             <KPITile
               label="MTTR"
               value={mttr != null ? `${mttr.toFixed(1)} hrs` : "—"}
-              color={mttr != null ? semaphore(mttr, 2, true) : "#6b7280"}
-              sub={l ? "Meta ≤ 2 hrs" : "Target ≤ 2 hrs"}
+              color={mttr != null ? semaphore(mttr, mttrTarget, true) : "#6b7280"}
+              sub={l ? `Meta ≤ ${mttrTarget} hrs` : `Target ≤ ${mttrTarget} hrs`}
             />
             <KPITile
               label="MTBF"
               value={mtbf != null ? `${mtbf.toFixed(1)} hrs` : "—"}
-              color={mtbf != null ? semaphore(mtbf, 40) : "#6b7280"}
-              sub={l ? "Meta ≥ 40 hrs" : "Target ≥ 40 hrs"}
+              color={mtbf != null ? semaphore(mtbf, mtbfTarget) : "#6b7280"}
+              sub={l ? `Meta ≥ ${mtbfTarget} hrs` : `Target ≥ ${mtbfTarget} hrs`}
             />
             <KPITile
               label={l ? "Backlog WR" : "WR Backlog"}
@@ -559,8 +563,8 @@ export default function OperationalPanelPage() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", marginTop: "auto" }}>
                 {[
-                  { label: "MTTR",                          val: mttr != null ? `${mttr.toFixed(1)}h` : "—",   color: mttr != null ? semaphore(mttr, 2, true) : "#6b7280" },
-                  { label: "MTBF",                          val: mtbf != null ? `${mtbf.toFixed(1)}h` : "—",   color: mtbf != null ? semaphore(mtbf, 40)      : "#6b7280" },
+                  { label: "MTTR",                          val: mttr != null ? `${mttr.toFixed(1)}h` : "—",   color: mttr != null ? semaphore(mttr, mttrTarget, true) : "#6b7280" },
+                  { label: "MTBF",                          val: mtbf != null ? `${mtbf.toFixed(1)}h` : "—",   color: mtbf != null ? semaphore(mtbf, mtbfTarget)      : "#6b7280" },
                   { label: l ? "Fallas" : "Failures",      val: totalFails ?? "—",                             color: "var(--color-text-primary)" },
                 ].map((item) => (
                   <div key={item.label} style={{

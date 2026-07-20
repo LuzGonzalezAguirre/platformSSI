@@ -40,6 +40,7 @@ def health():
 class DateRange(BaseModel):
     start_date: str
     end_date:   str
+    bu_id:      int | None = None
 
 
 class RejectionReportBody(BaseModel):
@@ -52,13 +53,16 @@ class RejectionReportBody(BaseModel):
 
 @app.post("/inspections", dependencies=[Depends(verify)])
 def get_inspections(body: DateRange):
-    query = """
+    bu_filter = f"AND pn.bu_id = {int(body.bu_id)}" if body.bu_id else ""
+
+    query = f"""
     SELECT
         i.inspection_id,
         p.frameSN                                       AS serial_ssi,
         p.fpcaSN                                        AS serial_volvo,
         p.workOrder                                     AS work_order,
         pn.ssiPN                                        AS part_number,
+        pn.bu_id                                        AS bu_id,
         u.name                                          AS inspector,
         CASE i.inspection_type
             WHEN 1 THEN 'Inspection 1'
@@ -76,9 +80,21 @@ def get_inspections(body: DateRange):
                 INNER JOIN ssi_ResultFailModes rfm2 ON ir2.result_id     = rfm2.result_id
                 INNER JOIN ssi_FailModes       fm2  ON rfm2.fail_mode_id = fm2.fail_mode_id
                 WHERE ir2.inspection_id = i.inspection_id
+                ORDER BY fm2.fail_mode_id
                 FOR XML PATH(''), TYPE
             ).value('.', 'NVARCHAR(MAX)'), 1, 2, '')
         , '')                                           AS fail_modes,
+        ISNULL(
+            STUFF((
+                SELECT ', ' + fm2.fail_code
+                FROM ssi_InspectionResults ir2
+                INNER JOIN ssi_ResultFailModes rfm2 ON ir2.result_id     = rfm2.result_id
+                INNER JOIN ssi_FailModes       fm2  ON rfm2.fail_mode_id = fm2.fail_mode_id
+                WHERE ir2.inspection_id = i.inspection_id
+                ORDER BY fm2.fail_mode_id
+                FOR XML PATH(''), TYPE
+            ).value('.', 'NVARCHAR(MAX)'), 1, 2, '')
+        , '')                                           AS fail_mode_codes,
         CAST(i.started_at  AS DATE)                     AS inspection_date,
         CONVERT(VARCHAR(8), i.started_at,  108)         AS time_start,
         CONVERT(VARCHAR(8), i.finished_at, 108)         AS time_end,
@@ -90,6 +106,7 @@ def get_inspections(body: DateRange):
     INNER JOIN ssi_PartNumbers pn  ON p.pn_id      = pn.pn_id
     INNER JOIN ssi_Users       u   ON i.user_id    = u.user_id
     WHERE CAST(i.started_at AS DATE) BETWEEN ? AND ?
+    {bu_filter}
     ORDER BY i.started_at DESC
     """
     try:
@@ -102,6 +119,34 @@ def get_inspections(body: DateRange):
         for r in rows:
             if hasattr(r.get("inspection_date"), "isoformat"):
                 r["inspection_date"] = r["inspection_date"].isoformat()
+        return {"data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/inspection-point-fails", dependencies=[Depends(verify)])
+def inspection_point_fails(start_date: str, end_date: str, bu_id: int | None = None):
+    bu_filter = f"AND ip.bu_id = {int(bu_id)}" if bu_id else ""
+    sql = f"""
+        SELECT
+            ip.inspection_point_id,
+            ip.point_name,
+            p.workOrder AS work_order
+        FROM ssi_InspectionResults ir
+        INNER JOIN ssi_Inspections     i  ON ir.inspection_id       = i.inspection_id
+        INNER JOIN ssi_InspectionPoints ip ON ir.inspection_point_id = ip.inspection_point_id
+        INNER JOIN ssi_Products        p  ON i.product_id           = p.product_id
+        WHERE ir.status = 0
+          AND CAST(i.started_at AS DATE) BETWEEN ? AND ?
+          {bu_filter}
+    """
+    try:
+        conn   = get_conn()
+        cursor = conn.cursor()
+        cursor.execute(sql, start_date, end_date)
+        cols = [d[0] for d in cursor.description]
+        rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
+        conn.close()
         return {"data": rows}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -193,7 +238,7 @@ def rejection_photo(inspection_id: int):
 @app.get("/part-numbers", dependencies=[Depends(verify)])
 def get_part_numbers():
     sql = """
-        SELECT pn.pn_id, pn.ssiPN, pn.volvoProductNumber, bu.bu_name
+        SELECT pn.pn_id, pn.ssiPN, pn.volvoProductNumber, pn.bu_id, bu.bu_name
         FROM ssi_PartNumbers pn
         INNER JOIN ssi_BusinessUnits bu ON pn.bu_id = bu.bu_id
         ORDER BY bu.bu_name, pn.ssiPN
@@ -204,6 +249,58 @@ def get_part_numbers():
         cursor.execute(sql)
         cols = [d[0] for d in cursor.description]
         rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
+        conn.close()
+        return {"data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/piece-flags/count", dependencies=[Depends(verify)])
+def piece_flags_count(start_date: str, end_date: str, bu_id: int | None = None):
+    bu_filter = f"AND pn.bu_id = {int(bu_id)}" if bu_id else ""
+    sql = f"""
+        SELECT COUNT(*) AS flag_count
+        FROM ssi_PieceFlagRecords pfr
+        INNER JOIN ssi_Products    p  ON pfr.product_id = p.product_id
+        INNER JOIN ssi_PartNumbers pn ON p.pn_id         = pn.pn_id
+        WHERE CAST(pfr.created_at AS DATE) BETWEEN ? AND ?
+        {bu_filter}
+    """
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+        cursor.execute(sql, start_date, end_date)
+        row = cursor.fetchone()
+        conn.close()
+        return {"flag_count": int(row[0]) if row else 0}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/piece-flags", dependencies=[Depends(verify)])
+def piece_flags(start_date: str, end_date: str, bu_id: int | None = None):
+    """Detalle de flags (solo lectura) para cruzar en memoria contra inspecciones
+    por inspection_id — una sola consulta para todo el rango, nunca por fila."""
+    bu_filter = f"AND pn.bu_id = {int(bu_id)}" if bu_id else ""
+    sql = f"""
+        SELECT
+            pfr.flag_id,
+            pfr.inspection_id,
+            pfr.comment,
+            fm.fail_code   AS fail_mode_code,
+            fm.description AS fail_mode_name
+        FROM ssi_PieceFlagRecords pfr
+        INNER JOIN ssi_Products    p  ON pfr.product_id  = p.product_id
+        INNER JOIN ssi_PartNumbers pn ON p.pn_id          = pn.pn_id
+        LEFT JOIN  ssi_FailModes   fm ON pfr.fail_mode_id = fm.fail_mode_id
+        WHERE CAST(pfr.created_at AS DATE) BETWEEN ? AND ?
+        {bu_filter}
+    """
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+        cursor.execute(sql, start_date, end_date)
+        rows = _rows_to_dicts(cursor)
         conn.close()
         return {"data": rows}
     except Exception as e:

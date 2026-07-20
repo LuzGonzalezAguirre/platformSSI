@@ -1,68 +1,80 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Settings, RefreshCw, Play } from "lucide-react";
+import { useAuth } from "../../auth/useAuth";
 import { useMaintenanceData } from "./useMaintenanceData";
-import { DateRange, DowntimeDetail } from "./types";
-import { MaintenanceService } from "./overview.service";
+import { useDashboardTargets } from "./useDashboardTargets";
+import { DateRange } from "./types";
+import { resolvePreset } from "../../../components/common/date-presets";
+import DateRangeSelector     from "../../../components/common/DateRangeSelector";
 import KPISection           from "./KPISection";
 import ProductionMetrics    from "./ProductionMetrics";
 import OEETrendChart        from "./OEETrendChart";
 import DowntimeStackedChart from "./DowntimeStackedChart";
-import DowntimeReasons      from "./DowntimeReasons";
+import DashboardTargetsPanel from "./DashboardTargetsPanel";
 
-function getDefaultRange(): DateRange {
-  const now   = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end   = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return {
-    start: start.toISOString().split("T")[0],
-    end:   end.toISOString().split("T")[0],
-  };
-}
+const TARGETS_EDIT_ROLES = ["admin", "plant_manager", "maintenance_engineer"];
+const CHARTS_BREAKPOINT  = 900;
 
 export default function OverviewPage() {
   const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("es") ? "es" : "en";
+  const { user } = useAuth();
+  const canEditTargets = !!user?.roles?.some((r) => TARGETS_EDIT_ROLES.includes(r.slug));
 
-  const [range, setRange] = useState<DateRange>(getDefaultRange());
-  const { kpis, reasons, grandTotal, oee, oeeTrend, downtimeMonth, loading, error } = useMaintenanceData(range);
+  // `draftRange` es lo que edita el DateRangeSelector, sin efectos secundarios.
+  // `appliedRange` es el rango efectivamente consultado — solo cambia al presionar "Cargar".
+  // La carga inicial sí es automática (ambos arrancan iguales); los cambios
+  // posteriores de fecha los gobierna el botón, no el hook.
+  const [draftRange,   setDraftRange]   = useState<DateRange>(() => resolvePreset("today"));
+  const [appliedRange, setAppliedRange] = useState<DateRange>(() => resolvePreset("today"));
+  const { kpis, oee, oeeTrend, downtimeMonth, loading, error } = useMaintenanceData(appliedRange);
+  const { targets, getTarget, refetch: refetchTargets } = useDashboardTargets();
 
-  // Drill-down modal
-  const [detailReason,  setDetailReason]  = useState<string | null>(null);
-  const [detailRows,    setDetailRows]    = useState<DowntimeDetail[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
+  // Panel de targets
+  const [targetsPanelOpen, setTargetsPanelOpen] = useState(false);
 
-  const handleViewLogs = async (reason: string) => {
-    setDetailReason(reason);
-    setDetailRows([]);
-    setDetailLoading(true);
-    try {
-      const res = await MaintenanceService.getDetail(range.start, range.end, reason);
-      setDetailRows(res.data);
-    } catch {
-      setDetailRows([]);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
+  // Breakpoint de gráficas — primer precedente de resize listener en el proyecto
+  // (no hay framework CSS con media queries en JS, se maneja localmente aquí)
+  const [narrowCharts, setNarrowCharts] = useState(window.innerWidth < CHARTS_BREAKPOINT);
+  useEffect(() => {
+    const onResize = () => setNarrowCharts(window.innerWidth < CHARTS_BREAKPOINT);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const s = styles;
 
   return (
     <div style={s.page}>
-      {/* HEADER */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* HEADER — pegado al TopBar (ver s.header: cancela el padding de main.content) */}
       <div style={s.header}>
         <div>
           <h1 style={s.title}>{lang === "es" ? "Mantenimiento — Overview" : "Maintenance Overview"}</h1>
         </div>
         <div style={s.dateControls}>
-          <label style={s.fieldLabel}>{lang === "es" ? "Desde:" : "From:"}</label>
-          <input type="date" value={range.start}
-            onChange={(e) => setRange((r) => ({ ...r, start: e.target.value }))}
-            style={s.dateInput} />
-          <label style={s.fieldLabel}>{lang === "es" ? "Hasta:" : "To:"}</label>
-          <input type="date" value={range.end}
-            onChange={(e) => setRange((r) => ({ ...r, end: e.target.value }))}
-            style={s.dateInput} />
+          <DateRangeSelector value={draftRange} onChange={setDraftRange} defaultPreset="today" />
+          <button
+            type="button"
+            onClick={() => setAppliedRange(draftRange)}
+            disabled={loading}
+            style={{ ...s.loadBtn, opacity: loading ? 0.7 : 1, cursor: loading ? "default" : "pointer" }}
+          >
+            {loading ? <RefreshCw size={16} style={{ animation: "spin 1s linear infinite" }} /> : <Play size={16} />}
+            <span>{lang === "es" ? "Cargar" : "Load"}</span>
+          </button>
+          {canEditTargets && (
+            <button
+              type="button"
+              onClick={() => setTargetsPanelOpen(true)}
+              style={s.settingsBtn}
+              title={lang === "es" ? "Configurar targets" : "Configure targets"}
+            >
+              <Settings size={16} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -72,85 +84,22 @@ export default function OverviewPage() {
         <div style={s.loading}>{lang === "es" ? "Cargando datos..." : "Loading data..."}</div>
       ) : (
         <>
-          <KPISection      kpis={kpis} oee={oee} lang={lang} />
-          <ProductionMetrics kpis={kpis} lang={lang} />
-          <OEETrendChart   data={oeeTrend} lang={lang} />
-          <DowntimeStackedChart data={downtimeMonth} lang={lang} />
-          <DowntimeReasons
-            reasons={reasons}
-            grandTotal={grandTotal}
-            lang={lang}
-            onViewLogs={handleViewLogs}
-          />
+          <KPISection      kpis={kpis} oee={oee} lang={lang} getTarget={getTarget} />
+          <ProductionMetrics kpis={kpis} lang={lang} getTarget={getTarget} />
+          <div style={{ display: "grid", gridTemplateColumns: narrowCharts ? "1fr" : "1fr 1fr", gap: "1rem" }}>
+            <OEETrendChart   data={oeeTrend} lang={lang} compact dayRange={appliedRange} />
+            <DowntimeStackedChart data={downtimeMonth} lang={lang} compact dayRange={appliedRange} />
+          </div>
         </>
       )}
 
-      {/* MODAL — más grande, scroll horizontal en tabla */}
-      {detailReason !== null && (
-        <div style={s.modalOverlay} onClick={() => setDetailReason(null)}>
-          <div style={s.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={s.modalHeader}>
-              <div>
-                <div style={s.modalTitle}>
-                  {lang === "es" ? "Registros de paro:" : "Downtime logs:"} {detailReason}
-                </div>
-                <div style={s.modalSub}>{range.start} → {range.end}</div>
-              </div>
-              <button style={s.closeBtn} onClick={() => setDetailReason(null)}>✕</button>
-            </div>
-
-            {detailLoading ? (
-              <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)" }}>
-                {lang === "es" ? "Cargando..." : "Loading..."}
-              </div>
-            ) : (
-              <div style={s.tableWrap}>
-                <table style={s.table}>
-                  <thead>
-                    <tr>
-                      {["Fecha", "Hrs", "Workcenter", "Status", "Turno", "Part No", "Op No", "Notas"].map((h) => (
-                        <th key={h} style={s.th}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detailRows.map((row, i) => (
-                      <tr key={i} style={{ background: i % 2 === 0 ? "transparent" : "var(--color-bg)" }}>
-                        <td style={s.td}>{row.Log_Date?.slice(0, 10)}</td>
-                        <td style={{ ...s.td, textAlign: "right", fontWeight: 600, color: "#ef4444" }}>
-                          {Number(row.Log_Hours).toFixed(2)}
-                        </td>
-                        <td style={s.td}>{row.Workcenter}</td>
-                        <td style={s.td}>{row.Status}</td>
-                        <td style={s.td}>{row.Shift ?? "—"}</td>
-                        <td style={s.td}>{row.Part_No ?? "—"}</td>
-                        <td style={s.td}>{row.Operation_No ?? "—"}</td>
-                       
-                        <td style={{ ...s.td, maxWidth: 220 }} title={row.Notes || ""}>
-                          {row.Notes || "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {detailRows.length === 0 && (
-                  <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--color-text-secondary)" }}>
-                    {lang === "es" ? "Sin registros" : "No records"}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div style={s.modalFooter}>
-              <span style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)" }}>
-                {detailRows.length} {lang === "es" ? "registros" : "records"}
-              </span>
-              <button style={s.footerCloseBtn} onClick={() => setDetailReason(null)}>
-                {lang === "es" ? "Cerrar" : "Close"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {targetsPanelOpen && (
+        <DashboardTargetsPanel
+          targets={targets}
+          lang={lang}
+          onClose={() => setTargetsPanelOpen(false)}
+          onSaved={refetchTargets}
+        />
       )}
     </div>
   );
@@ -158,7 +107,20 @@ export default function OverviewPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   page:          { display: "flex", flexDirection: "column", gap: "1rem" },
-  header:        { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" },
+  header:        {
+    // El padre real con scroll es main.content en AppShell.tsx (padding: 1.5rem 2rem),
+    // y ese padding no forma parte del área que un sticky hijo puede "comerse" —
+    // por eso top:0 solo no bastaba para pegar el header al TopBar sin gap.
+    // Se cancela ese padding con margin negativo y se recupera como padding propio,
+    // así el header arranca en el borde real del área de scroll.
+    display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem",
+    position: "sticky", top: 0, zIndex: 10,
+    margin: "-1.5rem -2rem 0",
+    padding: "1.5rem 2rem 1rem",
+    background: "var(--color-bg)",
+  },
+  settingsBtn:   { display: "flex", alignItems: "center", justifyContent: "center", padding: "0.375rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "var(--color-text-secondary)", cursor: "pointer" },
+  loadBtn:       { display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.4375rem 1rem", background: "var(--color-primary, #3b82f6)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontSize: "0.8125rem", fontWeight: 600 },
   title:         { fontSize: "1.375rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 },
   subtitle:      { fontSize: "0.875rem", color: "var(--color-text-secondary)", margin: "0.25rem 0 0" },
   dateControls:  { display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" },
@@ -166,17 +128,4 @@ const styles: Record<string, React.CSSProperties> = {
   dateInput:     { padding: "0.375rem 0.625rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "var(--color-text-primary)", fontSize: "0.875rem" },
   errorBanner:   { padding: "0.75rem 1rem", background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: "var(--radius-md)", color: "#ef4444", fontSize: "0.875rem" },
   loading:       { padding: "3rem", textAlign: "center", color: "var(--color-text-secondary)" },
-  // Modal — más ancho y más alto
-  modalOverlay:  { position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" },
-  modal:         { background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-xl, 16px)", width: "100%", maxWidth: "1100px", maxHeight: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" },
-  modalHeader:   { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "1.25rem 1.5rem", borderBottom: "1px solid var(--color-border)", flexShrink: 0 },
-  modalTitle:    { fontSize: "1rem", fontWeight: 700, color: "var(--color-text-primary)" },
-  modalSub:      { fontSize: "0.8125rem", color: "var(--color-text-secondary)", marginTop: "0.25rem" },
-  closeBtn:      { background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", color: "var(--color-text-secondary)", padding: "0.25rem", lineHeight: 1 },
-  tableWrap:     { overflowX: "auto", overflowY: "auto", flex: 1 },
-  table:         { width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem", minWidth: 800 },
-  th:            { padding: "0.625rem 0.875rem", textAlign: "left", fontWeight: 600, color: "var(--color-text-secondary)", borderBottom: "1px solid var(--color-border)", whiteSpace: "nowrap", background: "var(--color-bg)", position: "sticky", top: 0 },
-  td:            { padding: "0.5rem 0.875rem", color: "var(--color-text-primary)", borderBottom: "1px solid var(--color-border)", whiteSpace: "nowrap" },
-  modalFooter:   { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.875rem 1.5rem", borderTop: "1px solid var(--color-border)", flexShrink: 0 },
-  footerCloseBtn:{ padding: "0.5rem 1.25rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg)", color: "var(--color-text-primary)", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600 },
 };

@@ -1,6 +1,10 @@
 # apps/quality/serializers/__init__.py
 from .quality_target_serializer import QualityTargetSerializer
 from .failure_catalog_serializer import FailureModeImageSerializer
+from .incoming_inspection_serializer import (
+    IncomingContainerHistorySerializer,
+    IncomingInspectionSLAConfigSerializer,
+)
 from .problem_serializer import (
     ProblemListSerializer,
     ProblemDetailSerializer,
@@ -31,4 +35,6 @@ __all__ = [
     'SeverityLevelSerializer',
     'DefectTypeSerializer',
     'FailureModeImageSerializer',
+    'IncomingContainerHistorySerializer',
+    'IncomingInspectionSLAConfigSerializer',
 ]
