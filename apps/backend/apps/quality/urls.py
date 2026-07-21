@@ -47,6 +47,7 @@ from apps.quality.views import (
 )
 
 urlpatterns = [
+    path("chatbot/", include("apps.quality.chatbot_urls")),
     # ═════════════════════════════════════════════════════════════════════
     # EXISTING ENDPOINTS
     # ═════════════════════════════════════════════════════════════════════

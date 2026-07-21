@@ -22,6 +22,12 @@ from .incoming_inspection import (
     IncomingInspectionSLAConfig,
     IncomingInspectionSyncState,
 )
+from ..chatbot.models import (
+    ChatbotQuestionTemplate,
+    ChatbotFeedback,
+    ChatbotSuggestion,
+)
+
 __all__ = [
     'QualityTarget',
     'Problem',
@@ -44,4 +50,7 @@ __all__ = [
     'IncomingContainerHistory',
     'IncomingInspectionSLAConfig',
     'IncomingInspectionSyncState',
+    'ChatbotQuestionTemplate',
+    'ChatbotFeedback',
+    'ChatbotSuggestion',
 ]

@@ -6,6 +6,7 @@ import TopBar from "./TopBar";
 import UserMenu from "./UserMenu";
 import { useAuthStore } from "../../store/authStore";
 import { UserRole } from "../../navigation/types";
+import ChatbotWidget from "../../modules/quality/chatbot/ChatbotWidget";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -60,6 +61,9 @@ export default function AppShell({ children }: AppShellProps) {
         <main style={styles.content}>
           {children}
         </main>
+
+        <ChatbotWidget />
+        
       </div>
     </div>
   );

@@ -1,0 +1,1 @@
+from .chatbot import admin as chatbot_admin
