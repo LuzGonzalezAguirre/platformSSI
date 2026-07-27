@@ -10,9 +10,9 @@ export interface IncomingInspectionFilters {
 }
 
 export interface OperationCount {
-  operation_no: number;
-  container_count: number;
-  total_quantity: string | number;
+  operation_key: string;
+  operation_name: string;
+  lot_count: number;
 }
 
 export interface LotsInspected {
@@ -73,4 +73,13 @@ export interface PaginatedResponse<T> {
 
 export interface SLAConfig {
   threshold_hours: number;
+}
+
+export interface RejectionComment {
+  id: number;
+  serial_no: string;
+  comment: string;
+  created_by: number;
+  created_by_name: string;
+  created_at: string;
 }

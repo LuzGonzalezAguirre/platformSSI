@@ -257,8 +257,18 @@
     "inspectionPoints": "Inspection Points",
     "failModes": "Fail Modes",
     "scanRules": "Scan Rules",
-    "general": "General"
+    "general": "General",
+    "summary": "Summary",
+  "rejected": "Rejected Lots"
   },
+  "rejected": {
+  "title": "Rejected Lots",
+  "comments": "Comments",
+  "noComments": "No comments yet.",
+  "commentPlaceholder": "Write a comment about this rejection...",
+  "addComment": "Add Comment",
+  "saving": "Saving..."
+},
   "filter": {
     "label": "BU:",
     "allBUs": "All",
@@ -434,12 +444,17 @@
   "incomingInspection": {
     "title": "Incoming Inspection",
     "subtitle": "Containers at TJ Incoming Inspection — status and SLA compliance",
+    "tabs": {
+      "summary": "Summary",
+      "rejected": "Rejected Lots"
+    },
     "filters": {
       "dateFrom": "From", "dateTo": "To", "partNo": "Part Number",
       "operation": "Operation", "allOperations": "All operations",
       "location": "Location", "containerStatus": "Container Status",
       "defectType": "Defect Type", "slaStatus": "SLA Status",
-      "allSlaStatus": "All", "onTime": "On-time", "late": "Late", "refresh": "Refresh",
+      "allSlaStatus": "All", "allStatus": "All Status",
+      "onTime": "On-time", "late": "Late", "refresh": "Refresh",
       "load": "Load"
     },
     "idle": "Select a date range and press Load.",
@@ -464,6 +479,14 @@
       "thresholdHours": "Threshold (hours)", "save": "Save", "saving": "Saving...",
       "saved": "Threshold updated.", "forbidden": "You don't have permission to change this setting.",
       "invalid": "Enter a value between 1 and 500."
+    },
+    "rejected": {
+      "title": "Rejected Lots",
+      "comments": "Comments",
+      "noComments": "No comments yet.",
+      "commentPlaceholder": "Write a comment about this rejection...",
+      "addComment": "Add Comment",
+      "saving": "Saving..."
     }
-  }
+}
 }

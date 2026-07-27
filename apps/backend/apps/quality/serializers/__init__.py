@@ -4,6 +4,7 @@ from .failure_catalog_serializer import FailureModeImageSerializer
 from .incoming_inspection_serializer import (
     IncomingContainerHistorySerializer,
     IncomingInspectionSLAConfigSerializer,
+    IncomingRejectionCommentSerializer,
 )
 from .problem_serializer import (
     ProblemListSerializer,
@@ -37,4 +38,5 @@ __all__ = [
     'FailureModeImageSerializer',
     'IncomingContainerHistorySerializer',
     'IncomingInspectionSLAConfigSerializer',
+    'IncomingRejectionCommentSerializer',
 ]

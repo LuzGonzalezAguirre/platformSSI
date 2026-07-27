@@ -11,7 +11,7 @@ from datetime import datetime
 PROXY_URL = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
 PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
 HEADERS = {"Authorization": f"Bearer {PROXY_SECRET}"}
-TIMEOUT = 45
+TIMEOUT = 300
 
 
 def fetch_current_snapshot() -> list[dict]:

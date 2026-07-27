@@ -21,6 +21,7 @@ from .incoming_inspection import (
     IncomingContainerHistory,
     IncomingInspectionSLAConfig,
     IncomingInspectionSyncState,
+    IncomingRejectionComment,
 )
 from ..chatbot.models import (
     ChatbotQuestionTemplate,
@@ -50,6 +51,7 @@ __all__ = [
     'IncomingContainerHistory',
     'IncomingInspectionSLAConfig',
     'IncomingInspectionSyncState',
+    'IncomingRejectionComment',
     'ChatbotQuestionTemplate',
     'ChatbotFeedback',
     'ChatbotSuggestion',

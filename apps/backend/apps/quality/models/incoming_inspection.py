@@ -104,3 +104,32 @@ class IncomingInspectionSyncState(models.Model):
 
     def __str__(self):
         return f"{self.sync_type} last_synced_at={self.last_synced_at} ({self.last_run_status})"
+
+
+class IncomingRejectionComment(models.Model):
+    """
+    Comentarios sobre lotes rechazados (Container_Status = 'Hold'). Append-only
+    — sin edición ni borrado, es un log de seguimiento de calidad. serial_no
+    es una llave lógica hacia IncomingContainerHistory, no FK real (un mismo
+    serial_no puede tener múltiples filas de historial; el comentario aplica
+    al lote, no a un evento puntual).
+    """
+    serial_no = models.CharField(max_length=100, db_index=True)
+    comment = models.TextField()
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'quality_incoming_rejection_comment'
+        verbose_name = 'Incoming Rejection Comment'
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["serial_no", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"Comment on {self.serial_no} by {self.created_by} @ {self.created_at}"

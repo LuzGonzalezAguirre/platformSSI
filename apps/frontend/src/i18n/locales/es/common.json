@@ -256,6 +256,7 @@
     "failModes": "Modos de Falla",
     "scanRules": "Reglas de Escaneo",
     "general": "General"
+   
   },
   "filter": {
     "label": "BU:",
@@ -429,15 +430,20 @@
     "colRelType": "Tipo Rel"
   }
   },
-  "incomingInspection": {
+ "incomingInspection": {
     "title": "Inspección de Entrada",
     "subtitle": "Contenedores en TJ Incoming Inspection — estatus y cumplimiento de SLA",
+    "tabs": {
+      "summary": "Resumen",
+      "rejected": "Lotes Rechazados"
+    },
     "filters": {
       "dateFrom": "Desde", "dateTo": "Hasta", "partNo": "Número de Parte",
       "operation": "Operación", "allOperations": "Todas las operaciones",
       "location": "Ubicación", "containerStatus": "Estatus del Contenedor",
       "defectType": "Tipo de Defecto", "slaStatus": "Estatus de SLA",
-      "allSlaStatus": "Todos", "onTime": "A tiempo", "late": "Atrasado", "refresh": "Actualizar",
+      "allSlaStatus": "Todos", "allStatus": "Todos los Estatus",
+      "onTime": "A tiempo", "late": "Atrasado", "refresh": "Actualizar",
       "load": "Cargar"
     },
     "idle": "Selecciona un rango de fechas y presiona Cargar.",
@@ -462,6 +468,14 @@
       "thresholdHours": "Umbral (horas)", "save": "Guardar", "saving": "Guardando...",
       "saved": "Umbral actualizado.", "forbidden": "No tienes permiso para cambiar esta configuración.",
       "invalid": "Ingresa un valor entre 1 y 500."
+    },
+    "rejected": {
+      "title": "Lotes Rechazados",
+      "comments": "Comentarios",
+      "noComments": "Aún no hay comentarios.",
+      "commentPlaceholder": "Escribe un comentario sobre este rechazo...",
+      "addComment": "Agregar Comentario",
+      "saving": "Guardando..."
     }
-  }
+}
 }

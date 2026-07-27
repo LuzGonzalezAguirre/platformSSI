@@ -17,7 +17,16 @@ from apps.quality.models import (
 )
 from apps.quality.repositories import incoming_inspection_plex_repository as plex_repo
 
-HISTORY_OVERLAP = timedelta(minutes=10)
+# 6 horas de margen (antes 10 minutos) — Plex tiene latencia real entre que
+# un evento ocurre (Change_Date) y queda disponible para consultarse via
+# ODBC; con overlap corto, cualquier registro que tarde más de esa ventana
+# en aparecer se pierde silenciosamente para siempre (el watermark ya
+# avanzó más allá de su Change_Date). Confirmado empíricamente: backfill
+# del 27/07 recuperó 4192 filas que el sync incremental normal, corriendo
+# sano y sin errores durante 11 días, nunca capturó. No resuelve la causa
+# raíz (eso requiere watermark real vía Change_Key, pendiente) pero reduce
+# drásticamente la ventana de pérdida mientras tanto.
+HISTORY_OVERLAP = timedelta(hours=6)
 DEFAULT_HISTORY_LOOKBACK = timedelta(days=1)
 
 

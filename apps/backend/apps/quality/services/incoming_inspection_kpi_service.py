@@ -1,50 +1,61 @@
 # apps/quality/services/incoming_inspection_kpi_service.py
-from django.db.models import Count, Sum, Min, Window
+from django.db.models import Count, Sum, Min, Window, Case, When, Value, CharField
 from django.db.models.functions import RowNumber
 
 from apps.quality.repositories import incoming_inspection_postgres_repository as repo
 from apps.quality.services.incoming_inspection_sla_config_service import get_current_threshold
 
-REJECTED_STATUS_MARKERS = ("reject", "fail", "scrap", "hold")
+REJECTED_STATUS = "Hold"
+
+OPERATION_NAMES = {
+    10: "Receive-Each",
+    11: "Inspect-Each",
+    20: "Inspect-Each",
+}
 
 
 def _is_rejected(container_status: str | None) -> bool:
     if not container_status:
         return False
-    status = container_status.lower()
-    return any(marker in status for marker in REJECTED_STATUS_MARKERS)
+    return container_status == REJECTED_STATUS
 
 
 def get_operation_counts(filters: dict) -> list[dict]:
-    """Objetivo 1 — containers actualmente en Incoming Inspection por operación."""
-    rows = (
-        repo.snapshot_queryset(filters)
-        .values("operation_no")
-        .annotate(container_count=Count("id"), total_quantity=Sum("quantity"))
-        .order_by("operation_no")
+    qs = repo.history_queryset(filters, operation_nos=(10, 11, 20)).annotate(
+        operation_name=Case(
+            When(operation_no=10, then=Value(OPERATION_NAMES[10])),
+            When(operation_no__in=[11, 20], then=Value(OPERATION_NAMES[11])),
+            default=Value("Unknown"),
+            output_field=CharField(),
+        )
     )
-    return list(rows)
+    rows = (
+        qs.values("operation_name")
+        .annotate(lot_count=Count("serial_no", distinct=True))
+        .order_by("operation_name")
+    )
+    return [
+        {
+            "operation_key": "10" if row["operation_name"] == OPERATION_NAMES[10] else "11_20",
+            "operation_name": row["operation_name"],
+            "lot_count": row["lot_count"],
+        }
+        for row in rows
+    ]
 
 
 def get_lots_inspected(filters: dict) -> dict:
-    """Objetivo 2 — lotes inspeccionados (ops 11/20) en el rango filtrado."""
     qs = repo.history_queryset(filters)
-    total = qs.count()
-    by_operation = list(qs.values("operation_no").annotate(count=Count("id")).order_by("operation_no"))
+    total = qs.values("serial_no").distinct().count()
+    by_operation = list(
+        qs.values("operation_no")
+        .annotate(count=Count("serial_no", distinct=True))
+        .order_by("operation_no")
+    )
     return {"total": total, "by_operation": by_operation}
 
 
 def get_acceptance_rate(filters: dict) -> dict:
-    """
-    Objetivo 3 — % de aceptación basado en el último estado registrado
-    (ops 11/20) por serial_no.
-
-    Nota: la vocabulary exacta de `container_status` en Plex no está
-    confirmada aún (ver checklist del PR) — se clasifica como "rechazado"
-    cualquier status que contenga reject/fail/scrap/hold (case-insensitive);
-    todo lo demás cuenta como aceptado. Ajustar REJECTED_STATUS_MARKERS
-    cuando se valide contra datos reales.
-    """
     qs = repo.history_queryset(filters).annotate(
         row_number=Window(
             expression=RowNumber(),
@@ -66,16 +77,30 @@ def get_acceptance_rate(filters: dict) -> dict:
     return {"total": total, "accepted": accepted, "rejected": rejected, "acceptance_rate": acceptance_rate}
 
 
+def get_rejected_lots_queryset(filters: dict):
+    """
+    Pestaña "Lotes Rechazados" — mismo criterio deduplicado (Window/RowNumber
+    sobre último estado por serial_no) que get_acceptance_rate(), expuesto
+    aquí como queryset paginable en vez de agregado.
+
+    Se ignora cualquier filtro de container_status recibido — esta vista
+    SIEMPRE es "solo Hold" por definición, sin importar qué filtro haya
+    quedado seleccionado en la pestaña de Resumen.
+    """
+    rejected_filters = {k: v for k, v in filters.items() if k != "container_status"}
+    qs = repo.history_queryset(rejected_filters).annotate(
+        row_number=Window(
+            expression=RowNumber(),
+            partition_by=["serial_no"],
+            order_by=["-change_date"],
+        )
+    )
+    return qs.filter(row_number=1, container_status=REJECTED_STATUS).order_by("-change_date")
+
+
 def get_sla_compliance(filters: dict) -> dict:
-    """Objetivo 4 — cumplimiento del SLA de inspección (op10 -> ops 11/20)."""
     threshold_hours = get_current_threshold()
 
-    starts = {
-        row["serial_no"]: row["start"]
-        for row in repo.op10_start_queryset(filters)
-        .values("serial_no")
-        .annotate(start=Min("change_date"))
-    }
     ends = {
         row["serial_no"]: row["end"]
         for row in repo.history_queryset(filters)
@@ -83,12 +108,21 @@ def get_sla_compliance(filters: dict) -> dict:
         .annotate(end=Min("change_date"))
     }
 
+    starts_filters = {k: v for k, v in filters.items() if k not in ("date_from", "date_to")}
+    starts = {
+        row["serial_no"]: row["start"]
+        for row in repo.op10_start_queryset(starts_filters)
+        .filter(serial_no__in=list(ends.keys()))
+        .values("serial_no")
+        .annotate(start=Min("change_date"))
+    }
+
     on_time = 0
     late = 0
     detail = []
-    for serial_no, start in starts.items():
-        end = ends.get(serial_no)
-        if end is None:
+    for serial_no, end in ends.items():
+        start = starts.get(serial_no)
+        if start is None:
             continue
         hours = (end - start).total_seconds() / 3600
         is_on_time = hours <= threshold_hours
@@ -119,6 +153,4 @@ def get_sla_compliance(filters: dict) -> dict:
 
 
 def get_detail_queryset(filters: dict, ordering: str = "-change_date"):
-    """Queryset de detalle — sorting/filtering resuelto aquí; la
-    paginación la aplica la view (PageNumberPagination, igual que audit)."""
     return repo.history_queryset(filters).order_by(ordering)

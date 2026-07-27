@@ -84,31 +84,24 @@ class OEELiveView(APIView):
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
 
-        # ── 1. Buscar registro manual en PostgreSQL ───────────────────────
         from datetime import datetime
-        from apps.production.repositories.targets_repository import TargetsRepository
+        from apps.production.models import OEERecord
         from apps.production.serializers.targets import OEERecordSerializer
 
         start_date = datetime.strptime(start, "%Y-%m-%d").date()
         end_date   = datetime.strptime(end,   "%Y-%m-%d").date()
 
-        # Busca el registro más reciente dentro del rango
-        from apps.production.models import OEERecord
-        manual = (
-            OEERecord.objects
-            .filter(date__gte=start_date, date__lte=end_date)
-            .order_by("-date")
-            .first()
-        )
+        # El override manual solo aplica a consultas de UN SOLO DIA.
+        # Para rangos multi-dia, siempre se calcula desde Plex --
+        # mezclar un registro manual de un dia con el calculo agregado
+        # de varios dias no tiene sentido de negocio.
+        if start_date == end_date:
+            manual = OEERecord.objects.filter(date=start_date).first()
+            if manual:
+                data = OEERecordSerializer(manual).data
+                data["source"] = "manual"
+                return Response(data)
 
-        if manual:
-            # Hay dato manual — lo devuelve con una bandera para que el
-            # frontend sepa el origen
-            data = OEERecordSerializer(manual).data
-            data["source"] = "manual"
-            return Response(data)
-
-        # ── 2. Fallback — calcular desde Plex ────────────────────────────
         data = MaintenanceService.get_oee_live(start, end)
         if data is None:
             return Response({})
