@@ -4,6 +4,7 @@ from django.core.cache import cache
 from ..repositories.qwall_repository import QWallRepository
 from ..models.failure_catalog import FailureModeImage
 from apps.ssi_common.db import proxy_get
+from .fail_mode_translation_service import FailModeTranslationService
 
 CACHE_TTL = 1800  # 30 min
 
@@ -73,11 +74,12 @@ class FailureCatalogService:
         return points
 
     @staticmethod
-    def get_structure() -> list[dict]:
+    def get_structure(locale: str = "es") -> list[dict]:
         """
         Devuelve la jerarquía completa desde SQL Server (via proxy):
           BusinessUnit → InspectionPoints → FailModes
-        Cada modo de falla incluye la imagen guardada en Postgres (si existe).
+        Cada modo de falla incluye la imagen guardada en Postgres (si existe)
+        y, si locale != "es", su traducción (con fallback al español).
         """
         resp = proxy_get("/catalog/structure")
         rows = resp.get("data", [])
@@ -88,6 +90,13 @@ class FailureCatalogService:
             for img in FailureModeImage.objects.select_related('updated_by').all()
         }
 
+        # Traducciones de fail mode: UNA sola consulta a Postgres (no loop).
+        translations = (
+            FailModeTranslationService.get_translations_map(locale)
+            if locale != "es"
+            else {}
+        )
+
         # Construir jerarquía desde las filas planas
         bu_map: dict[int, dict] = {}
         for row in rows:
@@ -97,7 +106,8 @@ class FailureCatalogService:
             ip_name = row.get("point_name") or ""
             fm_id   = row.get("fail_mode_id")
             fm_code = row.get("fail_code") or ""
-            fm_desc = row.get("fm_description") or fm_code
+            fm_desc_original = row.get("fm_description") or fm_code
+            fm_desc = translations.get(fm_code, fm_desc_original)
 
             if bu_id not in bu_map:
                 bu_map[bu_id] = {
@@ -122,13 +132,14 @@ class FailureCatalogService:
 
             img = images.get((ip_name, fm_code))
             ip_map[ip_id]["fail_modes"].append({
-                "id":         fm_id,
-                "name":       fm_desc,
-                "fail_code":  fm_code,
-                "has_image":  img is not None and bool(img.image_data),
-                "image_data": img.image_data  if img else "",
-                "image_mime": img.image_mime  if img else "",
-                "updated_at": img.updated_at.isoformat() if img else None,
+                "id":               fm_id,
+                "name":             fm_desc,
+                "fail_code":        fm_code,
+                "has_translation":  fm_code in translations,
+                "has_image":        img is not None and bool(img.image_data),
+                "image_data":       img.image_data  if img else "",
+                "image_mime":       img.image_mime  if img else "",
+                "updated_at":       img.updated_at.isoformat() if img else None,
                 "updated_by": (
                     img.updated_by.get_full_name() or img.updated_by.username
                     if img and img.updated_by else None
@@ -145,7 +156,6 @@ class FailureCatalogService:
             })
 
         return result
-
     @staticmethod
     def save_image(inspection_point: str, failure_mode: str,
                    image_data: str, image_mime: str, user) -> FailureModeImage:

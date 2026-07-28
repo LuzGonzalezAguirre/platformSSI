@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import * as Icons from "lucide-react";
 import {
   failureCatalogApi,
@@ -216,7 +217,10 @@ function ModeRow({ pointName, mode, onViewImage, onSaved }: ModeRowProps) {
 
 // ─── Fail Mode Card (solo lectura — imagen + nombre) ─────────────────────────
 
-function FailureModeCard({ mode, onZoom, fillMode }: { mode: FailureMode; onZoom: () => void; fillMode?: boolean }) {
+function FailureModeCard({ mode, onZoom, fillMode, lang }: {
+  mode: FailureMode; onZoom: () => void; fillMode?: boolean; lang: "es" | "en";
+}) {
+  const l = lang === "es";
   return (
     <div
       style={{ ...s.card, cursor: mode.has_image ? "pointer" : "default", aspectRatio: fillMode ? "unset" : "4 / 3" }}
@@ -232,6 +236,15 @@ function FailureModeCard({ mode, onZoom, fillMode }: { mode: FailureMode; onZoom
         </div>
       )}
       <div style={s.cardOverlay}>
+        <span style={{
+          fontFamily: "monospace", fontSize: "0.65rem", fontWeight: 700,
+          color: "rgba(255,255,255,0.8)", display: "block", marginBottom: "0.15rem",
+        }}>
+          {mode.fail_code}
+          {!l && !mode.has_translation && (
+            <span style={{ marginLeft: "0.4rem", color: "#f59e0b" }}>ES</span>
+          )}
+        </span>
         <p style={s.cardTitle}>{mode.name}</p>
       </div>
     </div>
@@ -241,6 +254,9 @@ function FailureModeCard({ mode, onZoom, fillMode }: { mode: FailureMode; onZoom
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function FailureCatalogPage() {
+  const { i18n } = useTranslation();
+  const lang: "es" | "en" = i18n.language.startsWith("es") ? "es" : "en";
+
   const [units, setUnits]                   = useState<BusinessUnit[]>([]);
   const [loading, setLoading]               = useState(true);
   const [error, setError]                   = useState("");
@@ -254,7 +270,7 @@ export default function FailureCatalogPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await failureCatalogApi.getStructure();
+      const data = await failureCatalogApi.getStructure(lang);
       setUnits(data);
       if (data.length > 0) {
         setSelectedUnit(prev => prev ?? data[0].id);
@@ -270,7 +286,7 @@ export default function FailureCatalogPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [lang]);
 
   const activeUnit  = units.find(u => u.id === selectedUnit) ?? null;
   const activePoint = activeUnit?.inspection_points.find(p => p.id === selectedPoint) ?? null;
@@ -455,6 +471,7 @@ export default function FailureCatalogPage() {
                                 mode={mode}
                                 onZoom={() => setViewImg(mode)}
                                 fillMode={isSmall}
+                                lang={lang}
                               />
                             ))}
                           </div>

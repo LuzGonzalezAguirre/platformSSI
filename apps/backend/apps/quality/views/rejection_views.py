@@ -20,13 +20,17 @@ class RejectionReportView(APIView):
         end = request.query_params.get("end_date")
         bu_id = request.query_params.get("bu_id")
         include_test = request.query_params.get("include_test", "false").lower() == "true"
+        lang = request.query_params.get("lang", "es")
+        if lang not in ("es", "en"):
+            lang = "es"
 
         if not start or not end:
             return Response({"detail": "start_date y end_date requeridos."}, status=400)
 
         try:
             data = RejectionService().get_tree(
-                start, end, int(bu_id) if bu_id else None, include_test=include_test
+                start, end, int(bu_id) if bu_id else None,
+                include_test=include_test, locale=lang,
             )
             return Response(data)
         except Exception as e:

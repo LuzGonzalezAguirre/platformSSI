@@ -24,6 +24,7 @@ from .downtime_serializers import (
     DowntimeLogSerializer,
     DowntimeLogsQuerySerializer,
     DowntimeTrendPointSerializer,
+    DowntimeTrendQuerySerializer,
 )
 
 __all__ = [
@@ -47,4 +48,5 @@ __all__ = [
     'DowntimeLogSerializer',
     'DowntimeLogsQuerySerializer',
     'DowntimeTrendPointSerializer',
+    'DowntimeTrendQuerySerializer',
 ]

@@ -686,7 +686,23 @@ def deactivate_employee(employee_id: int):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
+@app.post("/attendance/employees/{employee_id}/reactivate", dependencies=[Depends(verify)])
+def reactivate_employee(employee_id: int):
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute("UPDATE ssi_production_employee SET is_active = 1 WHERE id = ?", employee_id)
+        conn.commit()
+        c.execute("SELECT id, barcode_id, name, department, turno, is_active, created_at FROM ssi_production_employee WHERE id = ?", employee_id)
+        rows = _rows_to_dicts(c)
+        conn.close()
+        if not rows:
+            raise HTTPException(status_code=404, detail="Employee not found")
+        return rows[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
 # ══════════════════════════════════════════════════════════════════════════════
 # LEY SILLA NOM-036 — Chair Control
 # ══════════════════════════════════════════════════════════════════════════════

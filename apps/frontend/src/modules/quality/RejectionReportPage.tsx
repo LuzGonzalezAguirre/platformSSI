@@ -29,6 +29,7 @@ interface FailModeNode {
   fail_mode_id:     number;
   fail_code:        string;
   fail_description: string;
+  has_translation:  boolean;
   count:            number;
   serials:          SerialNode[];
 }
@@ -259,6 +260,8 @@ function FailModeBlock({ node, lang, onInfo }: {
   lang:   "es" | "en";
   onInfo: (i: Inspection) => void;
 }) {
+  const l = lang === "es";
+
   return (
     <div style={{
       background: "var(--color-surface)",
@@ -273,11 +276,32 @@ function FailModeBlock({ node, lang, onInfo }: {
         borderBottom: "1px solid var(--color-border)",
       }}>
         <span style={{
+          fontFamily: "monospace", fontSize: "0.75rem", fontWeight: 700,
+          color: "var(--color-text-secondary)",
+          background: "var(--color-bg)",
+          border: "1px solid var(--color-border)",
+          borderRadius: 6, padding: "0.15rem 0.5rem",
+        }}>
+          {node.fail_code}
+        </span>
+        <span style={{
           fontWeight: 700, fontSize: "0.95rem",
           color: "var(--color-text-primary)", flex: 1,
         }}>
           {node.fail_description}
         </span>
+        {!l && !node.has_translation && (
+          <span
+            title={l ? "" : "No English translation on file"}
+            style={{
+              fontSize: "0.7rem", color: "#f59e0b",
+              border: "1px solid #f59e0b", borderRadius: 4,
+              padding: "0.05rem 0.4rem",
+            }}
+          >
+            ES
+          </span>
+        )}
         <span style={{
           background: "rgba(239,68,68,0.15)",
           color: "#ef4444",
@@ -303,7 +327,6 @@ function FailModeBlock({ node, lang, onInfo }: {
     </div>
   );
 }
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function RejectionReportPage() {
@@ -322,22 +345,23 @@ export default function RejectionReportPage() {
   const [modal,       setModal]       = useState<Inspection | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true); setError(null);
-    try {
-      const params: Record<string, string> = {
-        start_date:   startDate,
-        end_date:     endDate,
-        include_test: includeTest ? "true" : "false",
-      };
-      if (buId) params.bu_id = buId;
-      const res = await apiClient.get("/quality/rejection-report/", { params });
-      setData(res.data);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || (l ? "Error cargando datos" : "Error loading data"));
-    } finally {
-      setLoading(false);
-    }
-  }, [startDate, endDate, buId, includeTest, l]);
+  setLoading(true); setError(null);
+  try {
+    const params: Record<string, string> = {
+      start_date:   startDate,
+      end_date:     endDate,
+      include_test: includeTest ? "true" : "false",
+      lang,
+    };
+    if (buId) params.bu_id = buId;
+    const res = await apiClient.get("/quality/rejection-report/", { params });
+    setData(res.data);
+  } catch (e: any) {
+    setError(e?.response?.data?.detail || (l ? "Error cargando datos" : "Error loading data"));
+  } finally {
+    setLoading(false);
+  }
+}, [startDate, endDate, buId, includeTest, lang, l]);
 
   const downloadPdf = useCallback(async () => {
     setPdfLoading(true);

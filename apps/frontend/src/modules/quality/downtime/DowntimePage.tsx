@@ -68,6 +68,16 @@ function TrendChart({ points, l, granularity }: { points: DowntimeTrendPoint[]; 
   const MONTH_NAMES_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const MONTH_NAMES_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+  const isoWeekNumber = (d: Date): number => {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = (date.getUTCDay() + 6) % 7; // Lunes = 0
+    date.setUTCDate(date.getUTCDate() - dayNum + 3); // jueves de esa semana
+    const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+    const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+    return 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 24 * 3600 * 1000));
+  };
+
   const pointLabel = (dateStr: string) => {
     if (granularity === "month") {
       const [y, m] = dateStr.split("-");
@@ -75,8 +85,10 @@ function TrendChart({ points, l, granularity }: { points: DowntimeTrendPoint[]; 
       return `${names[Number(m) - 1]} ${y.slice(2)}`;
     }
     const d = new Date(dateStr + "T00:00:00");
-    const label = `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    return granularity === "week" ? `${l ? "sem" : "wk"} ${label}` : label;
+    if (granularity === "week") {
+      return `${l ? "Sem" : "Week"} ${isoWeekNumber(d)}`;
+    }
+    return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   };
 
   const pts = points.map((p, i) => ({ x: xPos(i), y: yPos(p.total_hours), ...p }));

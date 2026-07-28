@@ -15,8 +15,11 @@ class CatalogStructureView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        lang = request.query_params.get("lang", "es")
+        if lang not in ("es", "en"):
+            lang = "es"
         try:
-            data = FailureCatalogService.get_structure()
+            data = FailureCatalogService.get_structure(locale=lang)
             return Response({"data": data})
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

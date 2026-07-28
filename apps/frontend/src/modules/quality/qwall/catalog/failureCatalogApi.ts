@@ -4,6 +4,7 @@ export interface FailureMode {
   id: number;
   name: string;
   fail_code: string;
+  has_translation: boolean;
   has_image: boolean;
   image_data: string;
   image_mime: string;
@@ -24,8 +25,10 @@ export interface BusinessUnit {
 }
 
 export const failureCatalogApi = {
-  getStructure: async (): Promise<BusinessUnit[]> => {
-    const res = await apiClient.get("/quality/catalog/structure/");
+  getStructure: async (locale: string = "es"): Promise<BusinessUnit[]> => {
+    const res = await apiClient.get("/quality/catalog/structure/", {
+      params: { lang: locale },
+    });
     return res.data.data;
   },
 

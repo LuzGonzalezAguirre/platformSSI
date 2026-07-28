@@ -1,7 +1,7 @@
 # apps/quality/services/rejection_service.py
 
 from ..repositories.rejection_repository import RejectionRepository
-
+from .fail_mode_translation_service import FailModeTranslationService
 
 import re
 
@@ -29,6 +29,7 @@ class RejectionService:
         end: str,
         bu_id: int | None,
         include_test: bool = False,
+        locale: str = "es",
     ) -> list[dict]:
         rows = self._repo.get_rejection_report(start, end, bu_id)
 
@@ -38,6 +39,15 @@ class RejectionService:
         else:
             rows = [r for r in rows if not _is_test_wo(r.get("workOrder"))]
 
+        # Traducciones de fail mode: UNA sola consulta a Postgres (no loop).
+        # CCS solo tiene la descripción en español; para locale != "es" se
+        # sobrescribe con la traducción si existe, con fallback al original.
+        translations = (
+            FailModeTranslationService.get_translations_map(locale)
+            if locale != "es"
+            else {}
+        )
+
         # Estructura: fail_mode → serial_number → inspections[]
         tree: dict[int, dict] = {}
 
@@ -46,10 +56,13 @@ class RejectionService:
             sn    = r["serial_number"] or r["frameSN"] or f"WO-{r['workOrder']}"
 
             if fm_id not in tree:
+                fail_code  = r["fail_code"]
+                translated = translations.get(fail_code)
                 tree[fm_id] = {
                     "fail_mode_id":     fm_id,
-                    "fail_code":        r["fail_code"],
-                    "fail_description": r["fail_description"],
+                    "fail_code":        fail_code,
+                    "fail_description": translated or r["fail_description"],
+                    "has_translation":  translated is not None,
                     "count":            0,
                     "serials":          {},
                 }
