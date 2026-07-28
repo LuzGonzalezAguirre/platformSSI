@@ -38,7 +38,7 @@ from .problem_views import (
     ProblemNoteListCreateView,
     ProblemNoteDetailView,
 )
-
+from .downtime_views import DowntimeLogsView, DowntimeTrendView
 __all__ = [
     'FailureCatalogView',
     'CatalogStructureView',
@@ -83,4 +83,6 @@ __all__ = [
     'ProblemAttachmentDeleteView',
     'ProblemNoteListCreateView',
     'ProblemNoteDetailView',
+    'DowntimeLogsView',
+    'DowntimeTrendView',
 ]

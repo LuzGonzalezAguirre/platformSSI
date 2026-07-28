@@ -20,6 +20,11 @@ from .problem_serializer import (
     SeverityLevelSerializer,
     DefectTypeSerializer,
 )
+from .downtime_serializers import (
+    DowntimeLogSerializer,
+    DowntimeLogsQuerySerializer,
+    DowntimeTrendPointSerializer,
+)
 
 __all__ = [
     'QualityTargetSerializer',
@@ -39,4 +44,7 @@ __all__ = [
     'IncomingContainerHistorySerializer',
     'IncomingInspectionSLAConfigSerializer',
     'IncomingRejectionCommentSerializer',
+    'DowntimeLogSerializer',
+    'DowntimeLogsQuerySerializer',
+    'DowntimeTrendPointSerializer',
 ]

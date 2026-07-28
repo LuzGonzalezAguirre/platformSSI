@@ -101,6 +101,13 @@ export const sidebarConfig: NavSection[] = [
         allowedRoles: ALL_ROLES,
       },  
       {
+  id: "quality.downtime",
+  labelKey: "nav.items.qualityDowntime",
+  path: "/quality/downtime",
+  icon: "Clock",
+  allowedRoles: ALL_ROLES,
+},
+      {
         id: "quality.qwall-group",
         labelKey: "nav.items.qualityQwallGroup",
         path: "",

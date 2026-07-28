@@ -36,6 +36,8 @@ import QWallSettingsPage from "./modules/qwall-settings/index";
 import HelpPage from "./modules/quality/qwall/HelpPage";
 import IncomingInspectionPage from "./modules/incoming-inspection/IncomingInspectionPage";
 
+import DowntimePage from "./modules/quality/downtime/DowntimePage";
+
 
 const now = new Date();
 const hour = now.getHours();
@@ -108,7 +110,7 @@ function AppRoutes() {
         <Route path="/quality/qwall" element={<QWallPage />} />
         <Route path="/quality/qwall-dashboard" element={<QWallDashboardPage />} />
         <Route path="/quality/rejections" element={<RejectionReportPage />} />
-
+        <Route path="/quality/downtime" element={<DowntimePage />} />
         {/* ════════════════════════════════════════════════════════════════ */}
         {/* PROBLEM CONTROL ROUTES (NUEVO) */}
         {/* ════════════════════════════════════════════════════════════════ */}

@@ -2,6 +2,7 @@
 from django.urls import path, include
 from apps.quality.views import (
     FailureCatalogView,
+    DowntimeLogsView,
     CatalogStructureView,
     ScrapDetailView,
     QualityTargetView,
@@ -44,6 +45,7 @@ from apps.quality.views import (
     ProblemAttachmentDeleteView,
     ProblemNoteListCreateView,
     ProblemNoteDetailView,
+    DowntimeTrendView,
 )
 
 urlpatterns = [
@@ -156,4 +158,7 @@ urlpatterns = [
     # INCOMING INSPECTION
     # ═════════════════════════════════════════════════════════════════════
     path("incoming-inspection/", include("apps.quality.incoming_inspection_urls")),
+
+    path("downtime/logs/", DowntimeLogsView.as_view(), name="downtime-logs"),
+    path("downtime/trend/", DowntimeTrendView.as_view(), name="downtime-trend"),
 ]
