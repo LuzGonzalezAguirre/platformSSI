@@ -37,7 +37,12 @@ from ..cogp.models import (
     COGPDailySummary,
 )
 
+from .downtime_workcenter import DowntimeWorkcenter
+from .downtime_workcenter_assignment import DowntimeWorkcenterAssignment
+
 __all__ = [
+    'DowntimeWorkcenter',
+'DowntimeWorkcenterAssignment',
     'ClassificationSource',
     'QualityTarget',
     'Problem',

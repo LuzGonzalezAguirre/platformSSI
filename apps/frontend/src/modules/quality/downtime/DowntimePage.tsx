@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { DowntimeService, DowntimePreset, DowntimeLogRow, DowntimeLogsResponse, DowntimeTrendPoint, DowntimeTrendGranularity } from "../services/downtime.service";
+import { useNavigate } from "react-router-dom";
+import { Settings } from "lucide-react";
+import { DowntimeService, DowntimePreset, DowntimeLogRow, DowntimeLogsResponse, DowntimeSummaryRow, DowntimeTrendPoint, DowntimeTrendGranularity } from "../services/downtime.service";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const yesterdayStr = () => {
@@ -42,6 +44,11 @@ function KPICard({ label, value, topColor }: { label: string; value: string; top
 // ── Trend chart (SVG inline, sin librerías externas) ────────────────────────
 
 const LINE_COLOR = "#1e3a5f";
+// Alturas fijas para que las tarjetas de ambas columnas queden parejas —
+// Tabla/Tendencia comparten TOP_CARD_HEIGHT, Resumen/Pareto comparten
+// BOTTOM_CARD_HEIGHT, independientemente de cuánto contenido tengan.
+const TOP_CARD_HEIGHT = 350;
+const BOTTOM_CARD_HEIGHT = 300;
 
 function TrendChart({ points, l, granularity }: { points: DowntimeTrendPoint[]; l: boolean; granularity: DowntimeTrendGranularity }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -151,15 +158,165 @@ function TrendChart({ points, l, granularity }: { points: DowntimeTrendPoint[]; 
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+// ── Pareto por Workcenter — agrega minutos de `summary` (ya agrupado por
+// fecha+workcenter) sumando todas las fechas del rango por workcenter,
+// sin pegarle de nuevo al backend — mismo dato ya cargado, solo reagrupado
+// en cliente. Mismo patrón visual que el Pareto de defectos en QualityPanelPage.
+
+function computeWorkcenterPareto(rows: DowntimeSummaryRow[]) {
+  const map = new Map<string, { minutes: number; incidents: number }>();
+  for (const r of rows) {
+    const cur = map.get(r.workcenter) ?? { minutes: 0, incidents: 0 };
+    cur.minutes += r.total_minutes;
+    cur.incidents += r.incident_count;
+    map.set(r.workcenter, cur);
+  }
+  const total = Array.from(map.values()).reduce((s, v) => s + v.minutes, 0);
+  const sorted = Array.from(map.entries()).sort((a, b) => b[1].minutes - a[1].minutes);
+
+  let cumulative = 0;
+  return sorted.map(([workcenter, v]) => {
+    const pct = total > 0 ? (v.minutes / total) * 100 : 0;
+    cumulative += pct;
+    return {
+      workcenter,
+      minutes: v.minutes,
+      incidents: v.incidents,
+      pct_of_total: pct,
+      cumulative_pct: cumulative,
+    };
+  });
+}
+
+const PARETO_BAR_COLOR = "#ef6461";
+const PARETO_LINE_COLOR = "#f59e0b";
+
+function WorkcenterParetoChart({ rows, l }: { rows: DowntimeSummaryRow[]; l: boolean }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const pareto = computeWorkcenterPareto(rows);
+
+  if (pareto.length === 0) {
+    return (
+      <div style={{ padding: "1rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.8rem" }}>
+        {l ? "Sin datos" : "No data"}
+      </div>
+    );
+  }
+
+  const W = 700, H = 220;
+  const PAD = { top: 22, right: 34, bottom: 30, left: 30 };
+  const iW = W - PAD.left - PAD.right;
+  const iH = H - PAD.top - PAD.bottom;
+  const n = pareto.length;
+
+  const maxMinutes = Math.max(...pareto.map((p) => p.minutes), 1);
+  const barSlot = iW / n;
+  const barW = barSlot * 0.55;
+
+  const xCenter = (i: number) => PAD.left + barSlot * (i + 0.5);
+  const yBar = (v: number) => PAD.top + iH - (v / maxMinutes) * iH;
+  const yPct = (pct: number) => PAD.top + iH - (pct / 100) * iH;
+
+  const linePts = pareto.map((p, i) => `${xCenter(i)},${yPct(p.cumulative_pct)}`).join(" ");
+  const pctTicks = [0, 25, 50, 75, 100];
+  const minutesTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(maxMinutes * f));
+
+  const hovered = hover !== null ? pareto[hover] : null;
+
+  return (
+    <div style={{ position: "relative" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: "block", overflow: "visible" }}
+        onMouseLeave={() => setHover(null)}>
+
+        {/* Eje izquierdo — minutos */}
+        {minutesTicks.map((v) => (
+          <g key={`m-${v}`}>
+            <line x1={PAD.left} y1={yBar(v)} x2={PAD.left + iW} y2={yBar(v)} stroke="var(--color-border)" strokeWidth="1" strokeDasharray="3,3" />
+            <text x={PAD.left - 6} y={yBar(v) + 3} fontSize="9" fill="var(--color-text-tertiary)" textAnchor="end">{v}</text>
+          </g>
+        ))}
+        {/* Eje derecho — % acumulado */}
+        {pctTicks.map((p) => (
+          <text key={`p-${p}`} x={PAD.left + iW + 6} y={yPct(p) + 3} fontSize="9" fill={PARETO_LINE_COLOR} textAnchor="start">
+            {p}%
+          </text>
+        ))}
+
+        <line x1={PAD.left} y1={PAD.top + iH} x2={PAD.left + iW} y2={PAD.top + iH} stroke="var(--color-border)" strokeWidth="1" />
+
+        {/* Barras */}
+        {pareto.map((p, i) => {
+          const x = xCenter(i) - barW / 2;
+          const y = yBar(p.minutes);
+          const h = PAD.top + iH - y;
+          return (
+            <g key={p.workcenter}>
+              <rect
+                x={x} y={y} width={barW} height={Math.max(h, 1)} rx={2}
+                fill={PARETO_BAR_COLOR} opacity={hover === i ? 1 : 0.9}
+                onMouseEnter={() => setHover(i)}
+                style={{ cursor: "pointer" }}
+              />
+              <text x={xCenter(i)} y={y - 5} fontSize="10" fontWeight={700} fill="var(--color-text-primary)" textAnchor="middle">
+                {p.minutes}
+              </text>
+              <text
+                x={xCenter(i)} y={PAD.top + iH + 13} fontSize="9" fill="var(--color-text-tertiary)" textAnchor="middle"
+                style={{ maxWidth: barSlot }}
+              >
+                {p.workcenter.length > 12 ? `${p.workcenter.slice(0, 11)}…` : p.workcenter}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Línea de % acumulado */}
+        <polyline points={linePts} fill="none" stroke={PARETO_LINE_COLOR} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {pareto.map((p, i) => (
+          <circle
+            key={`dot-${p.workcenter}`}
+            cx={xCenter(i)} cy={yPct(p.cumulative_pct)}
+            r={hover === i ? 5 : 3.5}
+            fill={hover === i ? "#fff" : PARETO_LINE_COLOR}
+            stroke={PARETO_LINE_COLOR} strokeWidth="2"
+            onMouseEnter={() => setHover(i)}
+            style={{ cursor: "pointer" }}
+          />
+        ))}
+      </svg>
+
+      {hovered && (
+        <div style={{
+          position: "absolute",
+          left: `${(xCenter(hover!) / W) * 100}%`, top: `${(yPct(hovered.cumulative_pct) / H) * 100}%`,
+          transform: "translate(-50%, -130%)",
+          background: "var(--color-surface)", border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius-md)", padding: "0.3rem 0.5rem", fontSize: "10px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.12)", pointerEvents: "none", whiteSpace: "nowrap", zIndex: 10,
+        }}>
+          <div style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>{hovered.workcenter}</div>
+          <div style={{ color: PARETO_BAR_COLOR, fontWeight: 700 }}>{hovered.minutes} min</div>
+          <div style={{ color: PARETO_LINE_COLOR, fontWeight: 700 }}>{hovered.cumulative_pct.toFixed(1)}% {l ? "acum." : "cum."}</div>
+          <div style={{ color: "var(--color-text-tertiary)" }}>{hovered.incidents} {l ? "incidencias" : "incidents"}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DowntimePage() {
+
   const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("es") ? "es" : "en";
   const l = lang === "es";
+  const navigate = useNavigate();
 
   const [preset, setPreset] = useState<DowntimePreset>("custom");
   const [dateFrom, setDateFrom] = useState(yesterdayStr());
   const [dateTo, setDateTo] = useState(yesterdayStr());
   const [data, setData] = useState<DowntimeLogsResponse | null>(null);
+  const [summary, setSummary] = useState<DowntimeSummaryRow[] | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -173,14 +330,20 @@ export default function DowntimePage() {
   const load = useCallback(async () => {
     if (isCustomIncomplete) return;
     setLoading(true);
+    setSummaryLoading(true);
     setError(null);
     try {
-      const res = await DowntimeService.getLogs(preset, dateFrom, dateTo);
-      setData(res);
+      const [logsRes, summaryRes] = await Promise.all([
+        DowntimeService.getLogs(preset, dateFrom, dateTo),
+        DowntimeService.getSummary(preset, dateFrom, dateTo),
+      ]);
+      setData(logsRes);
+      setSummary(summaryRes.rows);
     } catch (e: any) {
       setError(e?.response?.data?.error || (l ? "Error cargando datos" : "Error loading data"));
     } finally {
       setLoading(false);
+      setSummaryLoading(false);
     }
   }, [preset, dateFrom, dateTo, isCustomIncomplete, l]);
 
@@ -257,6 +420,13 @@ export default function DowntimePage() {
           <button style={btn} onClick={load} disabled={loading || isCustomIncomplete}>
             {loading ? (l ? "Cargando..." : "Loading...") : (l ? "Cargar" : "Load")}
           </button>
+          <button
+            style={{ ...inp, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: "0.4rem" }}
+            onClick={() => navigate("/quality/downtime/settings")}
+            title={l ? "Asignación de inspectores" : "Inspector assignment"}
+          >
+            <Settings size={15} />
+          </button>
         </div>
       </div>
 
@@ -275,126 +445,198 @@ export default function DowntimePage() {
         />
         <KPICard
           label={l ? "Horas totales" : "Total hours"}
-          value={loading ? "…" : `${(data?.total_hours ?? 0).toFixed(2)}h`}
+          value={loading ? "…" : `${Math.round((data?.total_hours ?? 0) * 60)} min = ${(data?.total_hours ?? 0).toFixed(2)}h`}
           topColor="#ef4444"
         />
         <KPICard
           label={l ? "Promedio por incidencia" : "Avg per incident"}
-          value={loading ? "…" : `${avgHoursPerIncident.toFixed(2)}h`}
+          value={loading ? "…" : `${Math.round(avgHoursPerIncident * 60)} min = ${avgHoursPerIncident.toFixed(2)}h`}
           topColor="#10b981"
         />
       </div>
 
-      {/* Tabla + Tendencia lado a lado, para que todo quepa en una sola vista */}
+      {/* Columna izquierda: Tabla + Resumen | Columna derecha: Tendencia + Pareto WC */}
       <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "0.5rem", alignItems: "start" }}>
 
-      {/* Tabla */}
-      <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "0.75rem" }}>
-        <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "0.5rem" }}>
-          {l ? "Registros" : "Logs"}
-          {data && <span style={{ fontWeight: 400, color: "var(--color-text-secondary)" }}> ({data.count})</span>}
+        {/* ── Columna izquierda ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+
+          {/* Tabla */}
+          <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "0.75rem", height: TOP_CARD_HEIGHT, display: "flex", flexDirection: "column" }}>
+            <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "0.5rem" }}>
+              {l ? "Registros" : "Logs"}
+              {data && <span style={{ fontWeight: 400, color: "var(--color-text-secondary)" }}> ({data.count})</span>}
+            </div>
+
+            {loading ? (
+              <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
+                {l ? "Cargando datos Plex..." : "Loading Plex data..."}
+              </div>
+            ) : !data || data.results.length === 0 ? (
+              <div style={{ padding: "1rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.8rem" }}>
+                {l ? "No hay registros para este rango" : "No records for this range"}
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflowY: "auto", overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+                  <thead>
+                    <tr>
+                      <th style={th}>{l ? "Fecha/Hora" : "Date/Time"}</th>
+                      <th style={th}>{l ? "Minutos" : "Minutes"}</th>
+                      <th style={th}>{l ? "Notas" : "Notes"}</th>
+                      <th style={th}>Workcenter</th>
+                      <th style={th}>Part No</th>
+                      <th style={th}>{l ? "Operación" : "Operation"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.results.map((row, idx) => (
+                      <tr key={`${row.log_date}-${idx}`}>
+                        <td style={td}>
+                          {row.log_date
+                            ? new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(row.log_date))
+                            : ""}
+                        </td>
+                        <td style={td}>{row.log_hours != null ? Math.round(row.log_hours * 60) : ""}</td>
+                        <td style={td}>{row.notes}</td>
+                        <td style={td}>{row.workcenter}</td>
+                        <td style={td}>{row.part_no}</td>
+                        <td style={td}>
+                          {row.operation_no}{row.operation_description ? ` — ${row.operation_description}` : ""}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Resumen por workcenter — minutos + inspector asignado ese día */}
+          <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "0.75rem", height: BOTTOM_CARD_HEIGHT, display: "flex", flexDirection: "column" }}>
+            <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "0.5rem" }}>
+              {l ? "Resumen por Workcenter" : "Workcenter Summary"}
+              {summary && <span style={{ fontWeight: 400, color: "var(--color-text-secondary)" }}> ({summary.length})</span>}
+            </div>
+
+            {summaryLoading ? (
+              <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
+                {l ? "Cargando resumen..." : "Loading summary..."}
+              </div>
+            ) : !summary || summary.length === 0 ? (
+              <div style={{ padding: "1rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.8rem" }}>
+                {l ? "No hay registros para este rango" : "No records for this range"}
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflowY: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+                  <thead>
+                    <tr>
+                      <th style={th}>{l ? "Fecha" : "Date"}</th>
+                      <th style={th}>Workcenter</th>
+                      <th style={th}>{l ? "Minutos" : "Minutes"}</th>
+                      <th style={th}>{l ? "Incidencias" : "Incidents"}</th>
+                      <th style={th}>{l ? "Inspector" : "Inspector"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.map((row, idx) => (
+                      <tr key={`${row.date}-${row.workcenter}-${idx}`}>
+                        <td style={td}>{row.date}</td>
+                        <td style={td}>{row.workcenter}</td>
+                        <td style={td}>{row.total_minutes}</td>
+                        <td style={td}>{row.incident_count}</td>
+                        <td style={{ ...td, color: row.inspector_name ? "var(--color-text-primary)" : "var(--color-text-tertiary)" }}>
+                          {row.inspector_name || (l ? "— Sin asignar —" : "— Unassigned —")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
         </div>
 
-        {loading ? (
-          <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
-            {l ? "Cargando datos Plex..." : "Loading Plex data..."}
-          </div>
-        ) : !data || data.results.length === 0 ? (
-          <div style={{ padding: "1rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.8rem" }}>
-            {l ? "No hay registros para este rango" : "No records for this range"}
-          </div>
-        ) : (
-          <div style={{ maxHeight: 380, overflowY: "auto", overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
-              <thead>
-                <tr>
-                  <th style={th}>{l ? "Fecha/Hora" : "Date/Time"}</th>
-                  <th style={th}>{l ? "Minutos" : "Minutes"}</th>
-                  <th style={th}>{l ? "Notas" : "Notes"}</th>
-                  <th style={th}>Workcenter</th>
-                  <th style={th}>Part No</th>
-                  <th style={th}>{l ? "Operación" : "Operation"}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.results.map((row, idx) => (
-                  <tr key={`${row.log_date}-${idx}`}>
-                    <td style={td}>
-                      {row.log_date
-                        ? new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(row.log_date))
-                        : ""}
-                    </td>
-                    <td style={td}>{row.log_hours != null ? Math.round(row.log_hours * 60) : ""}</td>
-                    <td style={td}>{row.notes}</td>
-                    <td style={td}>{row.workcenter}</td>
-                    <td style={td}>{row.part_no}</td>
-                    <td style={td}>
-                      {row.operation_no}{row.operation_description ? ` — ${row.operation_description}` : ""}
-                    </td>
-                  </tr>
+        {/* ── Columna derecha ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+
+          {/* Tendencia — hasta el último día consultado en la tabla */}
+          <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "0.875rem", height: TOP_CARD_HEIGHT, display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.5rem" }}>
+              <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-text-primary)" }}>
+                {l ? "Tendencia de Downtime" : "Downtime Trend"}
+              </div>
+              <div style={{ display: "flex", background: "var(--color-bg-secondary, #f1f5f9)", borderRadius: "var(--radius-md)", padding: "2px" }}>
+                {(["daily", "week", "month"] as DowntimeTrendGranularity[]).map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setTrendGranularity(g)}
+                    style={{
+                      border: "none", borderRadius: "calc(var(--radius-md) - 2px)",
+                      padding: "0.25rem 0.6rem", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer",
+                      background: trendGranularity === g ? "var(--color-surface)" : "transparent",
+                      color: trendGranularity === g ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+                      boxShadow: trendGranularity === g ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
+                    }}
+                  >
+                    {g === "daily" ? (l ? "Día" : "Day") : g === "week" ? (l ? "Semana" : "Week") : (l ? "Mes" : "Month")}
+                  </button>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              </div>
+            </div>
 
-      {/* Tendencia — hasta el último día consultado en la tabla */}
-      <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "0.875rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.5rem" }}>
-          <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-text-primary)" }}>
-            {l ? "Tendencia de Downtime" : "Downtime Trend"}
+            {trend && (
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)", fontWeight: 600 }}>
+                  {l ? "Total" : "Total"}
+                </span>
+                <span style={{ fontSize: "1.5rem", fontWeight: 800, color: LINE_COLOR }}>
+                  {trend.reduce((sum, p) => sum + p.total_hours, 0).toFixed(1)}h
+                </span>
+                <span style={{ fontSize: "0.72rem", color: "var(--color-text-tertiary)" }}>
+                  {trend.length} {trendGranularity === "daily" ? (l ? "días" : "days") : trendGranularity === "week" ? (l ? "semanas" : "weeks") : (l ? "meses" : "months")}
+                  {" · "}{trend[0]?.date} → {trend[trend.length - 1]?.date}
+                </span>
+              </div>
+            )}
+
+            {trendError && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--radius-md)", padding: "0.4rem 0.75rem", color: "#b91c1c", fontSize: "0.78rem", marginBottom: "0.5rem" }}>
+                {trendError}
+              </div>
+            )}
+
+            {trendLoading ? (
+              <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
+                {l ? "Cargando tendencia..." : "Loading trend..."}
+              </div>
+            ) : (
+              <TrendChart points={trend ?? []} l={l} granularity={trendGranularity} />
+            )}
           </div>
-          <div style={{ display: "flex", background: "var(--color-bg-secondary, #f1f5f9)", borderRadius: "var(--radius-md)", padding: "2px" }}>
-            {(["daily", "week", "month"] as DowntimeTrendGranularity[]).map((g) => (
-              <button
-                key={g}
-                onClick={() => setTrendGranularity(g)}
-                style={{
-                  border: "none", borderRadius: "calc(var(--radius-md) - 2px)",
-                  padding: "0.25rem 0.6rem", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer",
-                  background: trendGranularity === g ? "var(--color-surface)" : "transparent",
-                  color: trendGranularity === g ? "var(--color-text-primary)" : "var(--color-text-secondary)",
-                  boxShadow: trendGranularity === g ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
-                }}
-              >
-                {g === "daily" ? (l ? "Día" : "Day") : g === "week" ? (l ? "Semana" : "Week") : (l ? "Mes" : "Month")}
-              </button>
-            ))}
+
+          {/* Pareto por Workcenter — minutos acumulados en el rango consultado */}
+          <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "0.875rem", height: BOTTOM_CARD_HEIGHT, display: "flex", flexDirection: "column" }}>
+            <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "0.5rem" }}>
+              {l ? "Pareto — Tiempo por Workcenter" : "Pareto — Time by Workcenter"}
+            </div>
+            {summaryLoading ? (
+              <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
+                {l ? "Cargando..." : "Loading..."}
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflowY: "auto" }}>
+                <WorkcenterParetoChart rows={summary ?? []} l={l} />
+              </div>
+            )}
           </div>
+
         </div>
 
-        {trend && (
-          <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)", fontWeight: 600 }}>
-              {l ? "Total" : "Total"}
-            </span>
-            <span style={{ fontSize: "1.5rem", fontWeight: 800, color: LINE_COLOR }}>
-              {trend.reduce((sum, p) => sum + p.total_hours, 0).toFixed(1)}h
-            </span>
-            <span style={{ fontSize: "0.72rem", color: "var(--color-text-tertiary)" }}>
-              {trend.length} {trendGranularity === "daily" ? (l ? "días" : "days") : trendGranularity === "week" ? (l ? "semanas" : "weeks") : (l ? "meses" : "months")}
-              {" · "}{trend[0]?.date} → {trend[trend.length - 1]?.date}
-            </span>
-          </div>
-        )}
-
-        {trendError && (
-          <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--radius-md)", padding: "0.4rem 0.75rem", color: "#b91c1c", fontSize: "0.78rem", marginBottom: "0.5rem" }}>
-            {trendError}
-          </div>
-        )}
-
-        {trendLoading ? (
-          <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
-            {l ? "Cargando tendencia..." : "Loading trend..."}
-          </div>
-        ) : (
-          <TrendChart points={trend ?? []} l={l} granularity={trendGranularity} />
-        )}
       </div>
 
-      </div>
     </div>
   );
 }

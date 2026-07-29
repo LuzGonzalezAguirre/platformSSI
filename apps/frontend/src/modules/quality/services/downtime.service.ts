@@ -39,6 +39,20 @@ export interface DowntimeTrendResponse {
   points:      DowntimeTrendPoint[];
 }
 
+export interface DowntimeSummaryRow {
+  date:            string;
+  workcenter:      string;
+  total_minutes:   number;
+  incident_count:  number;
+  inspector_name:  string | null;
+}
+
+export interface DowntimeSummaryResponse {
+  date_from: string;
+  date_to:   string;
+  rows:      DowntimeSummaryRow[];
+}
+
 const BASE = "/quality/downtime";
 
 export const DowntimeService = {
@@ -53,6 +67,20 @@ export const DowntimeService = {
       if (dateTo)   params.date_to   = dateTo;
     }
     const { data } = await apiClient.get(`${BASE}/logs/`, { params });
+    return data;
+  },
+
+  getSummary: async (
+    preset: DowntimePreset,
+    dateFrom?: string,
+    dateTo?: string,
+  ): Promise<DowntimeSummaryResponse> => {
+    const params: Record<string, string> = { preset };
+    if (preset === "custom") {
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo)   params.date_to   = dateTo;
+    }
+    const { data } = await apiClient.get(`${BASE}/summary/`, { params });
     return data;
   },
 

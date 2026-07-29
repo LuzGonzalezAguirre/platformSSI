@@ -90,6 +90,76 @@ def get_logs(
     return result
 
 
+def get_summary(
+    preset: str,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+) -> dict:
+    """
+    Agrupa los logs por (fecha, workcenter): suma de minutos, conteo de
+    incidencias, y el inspector asignado a ese workcenter ese día (join
+    contra DowntimeWorkcenterAssignment por nombre de workcenter + fecha).
+    """
+    from apps.quality.models.downtime_workcenter_assignment import DowntimeWorkcenterAssignment
+
+    resolved_from, resolved_to = resolve_date_range(preset, date_from, date_to)
+
+    cache_key = f"downtime:summary:v1:{resolved_from.isoformat()}:{resolved_to.isoformat()}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        raw_logs = downtime_repository.fetch_logs(resolved_from, resolved_to, reason=FIXED_REASON)
+    except downtime_repository.DowntimeRepositoryError as exc:
+        raise DowntimeServiceError(str(exc)) from exc
+
+    grouped: dict[tuple[str, str], dict] = {}
+    for row in raw_logs:
+        if row.get("Status") != FIXED_STATUS:
+            continue
+        log_date_raw = row.get("Log_Date")
+        workcenter = row.get("Workcenter")
+        if not log_date_raw or not workcenter:
+            continue
+        day_key = str(log_date_raw)[:10]
+        key = (day_key, workcenter)
+        if key not in grouped:
+            grouped[key] = {"total_hours": 0.0, "incident_count": 0}
+        grouped[key]["total_hours"] += float(row.get("Log_Hours") or 0)
+        grouped[key]["incident_count"] += 1
+
+    assignments = (
+        DowntimeWorkcenterAssignment.objects
+        .filter(date__gte=resolved_from, date__lte=resolved_to)
+        .select_related("workcenter")
+    )
+    assignment_map = {
+        (a.date.isoformat(), a.workcenter.name): a.inspector_name
+        for a in assignments
+    }
+
+    rows = []
+    for (day_key, workcenter), agg in grouped.items():
+        rows.append({
+            "date": day_key,
+            "workcenter": workcenter,
+            "total_minutes": round(agg["total_hours"] * 60),
+            "incident_count": agg["incident_count"],
+            "inspector_name": assignment_map.get((day_key, workcenter)),
+        })
+
+    rows.sort(key=lambda r: (r["date"], r["workcenter"]))
+
+    result = {
+        "date_from": resolved_from.isoformat(),
+        "date_to": resolved_to.isoformat(),
+        "rows": rows,
+    }
+    cache.set(cache_key, result, CACHE_TTL_SECONDS)
+    return result
+
+
 def get_trend(
     granularity: str = "daily",
     end_date: Optional[date] = None,

@@ -25,6 +25,8 @@ import QWallDashboardPage from "./modules/quality/qwall/QWallDashboardPage";
 import RejectionReportPage from "./modules/quality/RejectionReportPage";
 import CogpDashboardPage from "./modules/quality/cogp/CogpDashboardPage";
 import CogpMappingPage from "./modules/quality/cogp/CogpMappingPage";
+import DowntimeSettingsPage from "./modules/quality/downtime-settings/DowntimeSettingsPage";
+
 
 // ════════════════════════════════════════════════════════════════════════
 // PROBLEM CONTROL IMPORTS (NUEVO)
@@ -127,6 +129,7 @@ function AppRoutes() {
         <Route path="/quality/cogp" element={<CogpDashboardPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="/quality/cogp/mapping" element={<CogpMappingPage />} />
+        <Route path="/quality/downtime/settings" element={<DowntimeSettingsPage />} />
       </Routes>
     </AppShell>
   );

@@ -46,6 +46,13 @@ from apps.quality.views import (
     ProblemNoteListCreateView,
     ProblemNoteDetailView,
     DowntimeTrendView,
+    FailureCatalogView,
+    DowntimeLogsView,
+    DowntimeTrendView,
+    DowntimeSummaryView,
+    DowntimeWorkcentersView,
+    DowntimeAssignmentsView,
+    CatalogStructureView,
 )
 
 urlpatterns = [
@@ -163,4 +170,8 @@ urlpatterns = [
     path("downtime/trend/", DowntimeTrendView.as_view(), name="downtime-trend"),
 
     path("cogp/", include("apps.quality.cogp_urls")),
+
+    path("downtime/summary/", DowntimeSummaryView.as_view(), name="downtime-summary"),
+    path("downtime/workcenters/", DowntimeWorkcentersView.as_view(), name="downtime-workcenters"),
+    path("downtime/assignments/", DowntimeAssignmentsView.as_view(), name="downtime-assignments"),
 ]

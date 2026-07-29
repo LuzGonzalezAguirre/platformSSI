@@ -26,8 +26,18 @@ from .downtime_serializers import (
     DowntimeTrendPointSerializer,
     DowntimeTrendQuerySerializer,
 )
+from .downtime_workcenter_serializers import DowntimeWorkcenterSerializer
+from .downtime_assignment_serializers import (
+    DowntimeAssignmentRowSerializer,
+    DowntimeAssignmentsBulkWriteSerializer,
+    DowntimeSummaryRowSerializer,
+)
 
 __all__ = [
+    'DowntimeWorkcenterSerializer',
+    'DowntimeAssignmentRowSerializer',
+    'DowntimeAssignmentsBulkWriteSerializer',
+    'DowntimeSummaryRowSerializer',
     'QualityTargetSerializer',
     'ProblemListSerializer',
     'ProblemDetailSerializer',

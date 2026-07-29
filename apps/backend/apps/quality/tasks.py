@@ -135,3 +135,12 @@ def sync_incoming_history():
         return
 
     _mark_ok("history", run_started_at)
+
+@shared_task
+def sync_downtime_workcenters():
+    from apps.quality.services import downtime_workcenter_service
+    try:
+        downtime_workcenter_service.sync_workcenters()
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error("sync_downtime_workcenters failed: %s", exc)

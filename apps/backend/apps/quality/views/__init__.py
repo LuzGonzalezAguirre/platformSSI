@@ -39,6 +39,10 @@ from .problem_views import (
     ProblemNoteDetailView,
 )
 from .downtime_views import DowntimeLogsView, DowntimeTrendView
+
+from .downtime_views import DowntimeLogsView, DowntimeTrendView, DowntimeSummaryView
+from .downtime_workcenter_views import DowntimeWorkcentersView
+from .downtime_assignment_views import DowntimeAssignmentsView
 __all__ = [
     'FailureCatalogView',
     'CatalogStructureView',
@@ -85,4 +89,7 @@ __all__ = [
     'ProblemNoteDetailView',
     'DowntimeLogsView',
     'DowntimeTrendView',
+    'DowntimeSummaryView',
+    'DowntimeWorkcentersView',
+    'DowntimeAssignmentsView',
 ]
