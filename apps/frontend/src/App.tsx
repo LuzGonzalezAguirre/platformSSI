@@ -23,6 +23,8 @@ import CorrectiveActionsPage from "./modules/maintenance/corrective-actions/Corr
 import QWallPage from "./modules/quality/qwall/QWallPage";
 import QWallDashboardPage from "./modules/quality/qwall/QWallDashboardPage";
 import RejectionReportPage from "./modules/quality/RejectionReportPage";
+import CogpDashboardPage from "./modules/quality/cogp/CogpDashboardPage";
+import CogpMappingPage from "./modules/quality/cogp/CogpMappingPage";
 
 // ════════════════════════════════════════════════════════════════════════
 // PROBLEM CONTROL IMPORTS (NUEVO)
@@ -122,8 +124,9 @@ function AppRoutes() {
         <Route path="/quality/qwall/settings" element={<QWallSettingsPage />} />
         <Route path="/quality/qwall/help" element={<HelpPage />} />
         <Route path="/quality/incoming-inspection" element={<IncomingInspectionPage />} />
-
+        <Route path="/quality/cogp" element={<CogpDashboardPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/quality/cogp/mapping" element={<CogpMappingPage />} />
       </Routes>
     </AppShell>
   );

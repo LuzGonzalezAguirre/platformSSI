@@ -160,6 +160,11 @@ class CcsEmployeesView(APIView):
     def post(self, request):
         return _proxy_post("/attendance/employees", request.data)
 
+class CcsEmployeeReactivateView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, pk):
+        return _proxy_post(f"/attendance/employees/{pk}/reactivate", {})
+    
 
 class CcsEmployeeDetailView(APIView):
     permission_classes = [IsAuthenticated]

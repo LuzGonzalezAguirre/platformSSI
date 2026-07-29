@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { ShieldCheck, Clock, Settings, X, Download, FileText} from "lucide-react";
+import { ShieldCheck, Clock, Download, FileText } from "lucide-react";
 import { OpsReportService } from "./ops-report.service";
-import { DailySummary, ClientMetrics, ViewMode, OEERecord } from "./types";
+import { MaintenanceService } from "../../maintenance/overview/overview.service";
+import { OEEData } from "../../maintenance/overview/types";
+import { DailySummary, ClientMetrics, ViewMode } from "./types";
 import { SafetyService } from "../safety/safety.service";
 import { SafetySettings } from "../safety/types";
 import { AssistanceService } from "../assistance/assistance.service";
@@ -13,9 +15,36 @@ function todayStr() {
   return new Date().toISOString().split("T")[0];
 }
 
+// El backend de OEELiveView agrega "source" a la respuesta pero el tipo
+// compartido OEEData (maintenance/overview/types.ts) todavía no lo declara.
+// Se extiende localmente para no tocar un tipo de otro módulo sin acuerdo.
+type OEELiveData = OEEData & { source?: "manual" | "plex" };
+
+// Ventana de agregación por viewMode, consistente con el "hasta la fecha
+// seleccionada" (WTD/MTD) que ya usan ProductionTable/ProductionCharts.
+// Vive en frontend porque es solo selección de rango a consultar, no
+// cálculo de negocio (el OEE en sí se calcula 100% en backend/Plex).
+function getPeriodRange(mode: ViewMode, selectedDate: string): { start: string; end: string } {
+  if (mode === "daily") return { start: selectedDate, end: selectedDate };
+
+  const d = new Date(selectedDate + "T12:00:00");
+
+  if (mode === "weekly") {
+    const day = d.getDay(); // 0=Dom..6=Sab
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + diffToMonday);
+    return { start: monday.toISOString().split("T")[0], end: selectedDate };
+  }
+
+  // monthly
+  const firstOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+  return { start: firstOfMonth.toISOString().split("T")[0], end: selectedDate };
+}
+
 // ── Donut Chart ───────────────────────────────────────────────────────────────
 interface DonutProps {
-  value: number;
+  value: number | null;
   color: string;
   size?: number;
 }
@@ -24,7 +53,8 @@ function DonutChart({ value, color, size = 160 }: DonutProps) {
   const radius = 54;
   const stroke = 12;
   const circ   = 2 * Math.PI * radius;
-  const filled = Math.min((value / 100) * circ, circ);
+  const hasData = value !== null;
+  const filled = hasData ? Math.min((value / 100) * circ, circ) : 0;
   const cx = size / 2;
   const cy = size / 2;
 
@@ -32,19 +62,24 @@ function DonutChart({ value, color, size = 160 }: DonutProps) {
     <div style={{ position: "relative", width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
         <circle cx={cx} cy={cy} r={radius} fill="none" stroke="var(--color-border)" strokeWidth={stroke} />
-        <circle
-          cx={cx} cy={cy} r={radius} fill="none"
-          stroke={color} strokeWidth={stroke}
-          strokeDasharray={`${filled} ${circ - filled}`}
-          strokeLinecap="round"
-        />
+        {hasData && (
+          <circle
+            cx={cx} cy={cy} r={radius} fill="none"
+            stroke={color} strokeWidth={stroke}
+            strokeDasharray={`${filled} ${circ - filled}`}
+            strokeLinecap="round"
+          />
+        )}
       </svg>
       <div style={{
         position: "absolute", inset: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <span style={{ fontSize: "1.25rem", fontWeight: 800, color: "var(--color-text-primary)" }}>
-          {value.toFixed(1)}%
+        <span style={{
+          fontSize: "1.25rem", fontWeight: 800,
+          color: hasData ? "var(--color-text-primary)" : "var(--color-text-tertiary)",
+        }}>
+          {hasData ? `${value.toFixed(1)}%` : "—"}
         </span>
       </div>
     </div>
@@ -258,25 +293,16 @@ export default function OpsReportPage() {
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
 
-  // OEE modal
-  const [oeeModalOpen, setOeeModalOpen] = useState(false);
-  const [oeeRecord, setOeeRecord]       = useState<OEERecord | null>(null);
-  const [oeeForm, setOeeForm]           = useState({ availability_pct: 0, performance_pct: 0, quality_pct: 0, oee_pct: 0 });
-  const [savingOEE, setSavingOEE]       = useState(false);
-  const [oeeMsg, setOeeMsg]             = useState<{ type: "success" | "error"; text: string } | null>(null);
+  // OEE — ahora 100% derivado de /maintenance/overview/oee-live/
+  const [oeeData, setOeeData] = useState<OEELiveData | null>(null);
 
-  const loadOEE = useCallback(async (date: string) => {
-    const record = await OpsReportService.getOEE(date);
-    setOeeRecord(record);
-    if (record) {
-      setOeeForm({
-        availability_pct: parseFloat(record.availability_pct),
-        performance_pct:  parseFloat(record.performance_pct),
-        quality_pct:      parseFloat(record.quality_pct),
-        oee_pct:          parseFloat(record.oee_pct),
-      });
-    } else {
-      setOeeForm({ availability_pct: 0, performance_pct: 0, quality_pct: 0, oee_pct: 0 });
+  const loadOEE = useCallback(async (date: string, mode: ViewMode) => {
+    const { start, end } = getPeriodRange(mode, date);
+    try {
+      const data = await MaintenanceService.getOEELive(start, end);
+      setOeeData(data as OEELiveData | null);
+    } catch {
+      setOeeData(null);
     }
   }, []);
 
@@ -308,34 +334,17 @@ export default function OpsReportPage() {
         setEarnedHoursManual(null);
       }
 
-      // OEE guardado
-      await loadOEE(selectedDate);
+      // OEE live (Plex / override manual legado) — sigue el rango del viewMode
+      await loadOEE(selectedDate, viewMode);
 
     } catch (e: any) {
       setError(e?.response?.data?.detail || (lang === "es" ? "Error cargando datos" : "Error loading data"));
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, lang, loadOEE]);
+  }, [selectedDate, viewMode, lang, loadOEE]);
 
   useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    if (oeeModalOpen) loadOEE(selectedDate);
-  }, [oeeModalOpen, selectedDate, loadOEE]);
-
-  const handleSaveOEE = async () => {
-    setSavingOEE(true); setOeeMsg(null);
-    try {
-      await OpsReportService.saveOEE({ date: selectedDate, ...oeeForm });
-      setOeeMsg({ type: "success", text: lang === "es" ? "Guardado correctamente" : "Saved successfully" });
-      await loadOEE(selectedDate);
-    } catch {
-      setOeeMsg({ type: "error", text: lang === "es" ? "Error guardando" : "Error saving" });
-    } finally {
-      setSavingOEE(false);
-    }
-  };
 
   // Earned hours: priorizar entrada manual, fallback a Plex
   const earnedHours = earnedHoursManual ?? 0;
@@ -346,11 +355,14 @@ export default function OpsReportPage() {
 
   const generalYield = summary?.total.yield_pct ?? 0;
 
-  // OEE: desde registro manual, fallback 0
-  const oeePct         = oeeRecord ? parseFloat(oeeRecord.oee_pct)          : 0;
-  const availPct       = oeeRecord ? parseFloat(oeeRecord.availability_pct)  : 0;
-  const performancePct = oeeRecord ? parseFloat(oeeRecord.performance_pct)   : productivityPct;
-  const qualityPct     = oeeRecord ? parseFloat(oeeRecord.quality_pct)       : generalYield;
+  // OEE: desde oee-live (Plex agregado o override manual legado); null si no hay dato
+  const oeePct         = oeeData ? parseFloat(oeeData.oee_pct)          : null;
+  const availPct       = oeeData ? parseFloat(oeeData.availability_pct) : null;
+  const performancePct = oeeData ? parseFloat(oeeData.performance_pct)  : null;
+  const qualityPct     = oeeData ? parseFloat(oeeData.quality_pct)      : null;
+  const oeeSource      = oeeData?.source ?? null;
+
+  const { start: periodStart, end: periodEnd } = getPeriodRange(viewMode, selectedDate);
 
   const CLIENTS = [
     { key: "volvo"   as const, label: "VOLVO"   },
@@ -389,25 +401,6 @@ export default function OpsReportPage() {
               </button>
             ))}
           </div>
-          <button
-            style={{
-              display: "flex", alignItems: "center", gap: "0.375rem",
-              padding: "0.5rem 1rem", borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)",
-              background: oeeRecord ? "rgba(59,130,246,0.08)" : "var(--color-surface)",
-              color: oeeRecord ? "#3b82f6" : "var(--color-text-secondary)",
-              cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
-            }}
-            onClick={() => setOeeModalOpen(true)}
-          >
-            <Settings size={15} />
-            OEE
-            {oeeRecord && (
-              <span style={{ fontSize: "0.75rem", color: "#3b82f6" }}>
-                {parseFloat(oeeRecord.oee_pct).toFixed(1)}%
-              </span>
-            )}
-          </button>
         </div>
       </div>
 
@@ -469,7 +462,7 @@ export default function OpsReportPage() {
               />
             </div>
             <div style={s.prodBarSection}>
-              <KPIBar label="OEE" value={oeePct} target={65} />
+              <KPIBar label="OEE" value={oeePct ?? 0} target={65} />
             </div>
             <div style={s.earnedHoursBlock}>
               <Clock size={16} color="var(--color-text-secondary)" />
@@ -489,7 +482,23 @@ export default function OpsReportPage() {
             </div>
           </div>
 
-          {/* DONUT CHARTS */}
+          {/* DONUT CHARTS — Availability / Performance / Quality (fuente: Mantenimiento / Plex) */}
+          <div style={s.donutSectionHeader}>
+            <span style={s.donutRangeLabel}>
+              {periodStart === periodEnd ? periodStart : `${periodStart} → ${periodEnd}`}
+            </span>
+            {oeeSource && (
+              <span style={{
+                ...s.sourceBadge,
+                background: oeeSource === "manual" ? "rgba(59,130,246,0.1)" : "rgba(16,185,129,0.1)",
+                color: oeeSource === "manual" ? "#3b82f6" : "#10b981",
+              }}>
+                {oeeSource === "manual"
+                  ? (lang === "es" ? "Override manual" : "Manual override")
+                  : (lang === "es" ? "Vivo (Plex)" : "Live (Plex)")}
+              </span>
+            )}
+          </div>
           <div style={s.donutGrid}>
             {[
               { label: lang === "es" ? "Disponibilidad" : "Availability", value: availPct },
@@ -501,9 +510,9 @@ export default function OpsReportPage() {
                 <DonutChart value={d.value} color="#1e3a5f" />
                 <div style={s.donutLegend}>
                   <span style={{ ...s.donutDot, background: "#1e3a5f" }} />
-                  <span>{d.value.toFixed(1)}%</span>
+                  <span>{d.value !== null ? `${d.value.toFixed(1)}%` : "—"}</span>
                   <span style={{ ...s.donutDot, background: "var(--color-border)", marginLeft: "0.5rem" }} />
-                  <span>{(100 - d.value).toFixed(1)}%</span>
+                  <span>{d.value !== null ? `${(100 - d.value).toFixed(1)}%` : "—"}</span>
                 </div>
               </div>
             ))}
@@ -579,130 +588,6 @@ export default function OpsReportPage() {
             </div>
           )}
 
-          {/* OEE MODAL */}
-          {oeeModalOpen && (
-            <div
-              style={{
-                position: "fixed", inset: 0, zIndex: 1000,
-                background: "rgba(0,0,0,0.4)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}
-              onClick={(e) => { if (e.target === e.currentTarget) setOeeModalOpen(false); }}
-            >
-              <div style={{
-                background: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-xl, 16px)",
-                padding: "2rem", width: "100%", maxWidth: "480px",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                  <div>
-                    <div style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--color-text-primary)" }}>
-                      OEE — {lang === "es" ? "Entrada Manual" : "Manual Entry"}
-                    </div>
-                    <div style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", marginTop: "0.25rem" }}>
-                      {selectedDate}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => { setOeeModalOpen(false); setOeeMsg(null); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-secondary)" }}
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                {oeeRecord && (
-                  <div style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)", marginBottom: "1rem" }}>
-                    {lang === "es" ? "Último guardado:" : "Last saved:"} {oeeRecord.recorded_at}
-                  </div>
-                )}
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
-                  {(["availability_pct", "performance_pct", "quality_pct", "oee_pct"] as const).map((field) => {
-                    const labels: Record<string, string> = {
-                      availability_pct: "Availability %",
-                      performance_pct:  "SSI Performance %",
-                      quality_pct:      "Quality %",
-                      oee_pct:          "OEE %",
-                    };
-                    const val   = oeeForm[field];
-                    const color = val >= 85 ? "#10b981" : val >= 70 ? "#f59e0b" : "#ef4444";
-                    return (
-                      <div key={field}>
-                        <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--color-text-secondary)", display: "block", marginBottom: "0.375rem" }}>
-                          {labels[field]}
-                        </label>
-                        <input
-                          type="number" min={0} max={100} step={0.001}
-                          value={oeeForm[field]}
-                          onChange={(e) => setOeeForm(prev => ({ ...prev, [field]: parseFloat(e.target.value) || 0 }))}
-                          style={{
-                            width: "100%", padding: "0.625rem 0.75rem",
-                            border: "1px solid var(--color-border)",
-                            borderRadius: "var(--radius-md)",
-                            background: "var(--color-background)",
-                            color: "var(--color-text-primary)",
-                            fontSize: "1rem", fontWeight: 700,
-                            boxSizing: "border-box" as const,
-                          }}
-                        />
-                        <div style={{ marginTop: "0.375rem", height: "4px", background: "var(--color-border)", borderRadius: "2px" }}>
-                          <div style={{ height: "100%", width: `${Math.min(val, 100)}%`, background: color, borderRadius: "2px" }} />
-                        </div>
-                        <div style={{ fontSize: "0.75rem", color, fontWeight: 700, marginTop: "0.25rem" }}>
-                          {val.toFixed(1)}%
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {oeeMsg && (
-                  <div style={{
-                    padding: "0.75rem 1rem", borderRadius: "var(--radius-md)",
-                    marginBottom: "1rem", fontSize: "0.875rem",
-                    background: oeeMsg.type === "success" ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
-                    color:      oeeMsg.type === "success" ? "#10b981" : "#ef4444",
-                    border:     `1px solid ${oeeMsg.type === "success" ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`,
-                  }}>
-                    {oeeMsg.text}
-                  </div>
-                )}
-
-                <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-                  <button
-                    onClick={() => { setOeeModalOpen(false); setOeeMsg(null); }}
-                    style={{
-                      padding: "0.625rem 1.25rem", borderRadius: "var(--radius-md)",
-                      border: "1px solid var(--color-border)",
-                      background: "transparent", color: "var(--color-text-secondary)",
-                      cursor: "pointer", fontSize: "0.875rem",
-                    }}
-                  >
-                    {lang === "es" ? "Cancelar" : "Cancel"}
-                  </button>
-                  <button
-                    onClick={handleSaveOEE}
-                    disabled={savingOEE}
-                    style={{
-                      padding: "0.625rem 1.25rem", borderRadius: "var(--radius-md)",
-                      border: "none", background: "#3b82f6", color: "#fff",
-                      cursor: savingOEE ? "not-allowed" : "pointer",
-                      fontSize: "0.875rem", fontWeight: 600,
-                      opacity: savingOEE ? 0.7 : 1,
-                    }}
-                  >
-                    {savingOEE
-                      ? (lang === "es" ? "Guardando..." : "Saving...")
-                      : (lang === "es" ? "Guardar" : "Save")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {summary && viewMode === "daily" && (
             <div style={{ padding: "1rem 1.25rem 2rem", display: "flex", justifyContent: "flex-end" }}>
               <button
@@ -719,7 +604,6 @@ export default function OpsReportPage() {
                   try {
                     await OpsReportService.exportDailyExcel(selectedDate);
                   } catch {
-                    // puedes mostrar un toast aquí si tienes sistema de notificaciones
                     alert(lang === "es" ? "Error generando Excel" : "Error generating Excel");
                   }
                 }}
@@ -729,26 +613,26 @@ export default function OpsReportPage() {
               </button>
 
               <button
-  style={{
-    display: "flex", alignItems: "center", gap: "0.5rem",
-    padding: "0.625rem 1.25rem",
-    borderRadius: "var(--radius-md)",
-    border: "1px solid #ef4444",
-    background: "rgba(239,68,68,0.08)",
-    color: "#ef4444",
-    cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
-  }}
-  onClick={async () => {
-    try {
-      await OpsReportService.exportDailyPDF(selectedDate);
-    } catch {
-      alert(lang === "es" ? "Error generando PDF" : "Error generating PDF");
-    }
-  }}
->
-  <FileText size={16} />
-  {lang === "es" ? "Descargar PDF" : "Download PDF"}
-</button>
+                style={{
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                  padding: "0.625rem 1.25rem",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid #ef4444",
+                  background: "rgba(239,68,68,0.08)",
+                  color: "#ef4444",
+                  cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
+                }}
+                onClick={async () => {
+                  try {
+                    await OpsReportService.exportDailyPDF(selectedDate);
+                  } catch {
+                    alert(lang === "es" ? "Error generando PDF" : "Error generating PDF");
+                  }
+                }}
+              >
+                <FileText size={16} />
+                {lang === "es" ? "Descargar PDF" : "Download PDF"}
+              </button>
             </div>
           )}
         </>
@@ -786,12 +670,15 @@ const styles: Record<string, React.CSSProperties> = {
   earnedHoursBlock: { display: "flex", alignItems: "center", gap: "0.625rem", paddingLeft: "1rem", borderLeft: "1px solid var(--color-border)" },
   earnedHoursValue: { fontSize: "1rem", fontWeight: 700, color: "var(--color-text-primary)" },
   earnedHoursLabel: { fontSize: "0.75rem", color: "var(--color-text-secondary)" },
+  donutSectionHeader: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  donutRangeLabel:  { fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-text-secondary)" },
+  sourceBadge:      { fontSize: "0.75rem", fontWeight: 700, padding: "0.25rem 0.625rem", borderRadius: "999px" },
   donutGrid:        { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem" },
   donutCard:        { display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", padding: "1.5rem", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)" },
   donutCardTitle:   { fontSize: "1rem", fontWeight: 700, color: "var(--color-text-primary)", alignSelf: "flex-start" },
   donutLegend:      { display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "var(--color-text-secondary)" },
   donutDot:         { width: "10px", height: "10px", borderRadius: "50%", display: "inline-block" },
-  clientGrid: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" },  
+  clientGrid: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" },
   clientCard: { padding: "1rem", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)" },
   clientBadge:      { fontSize: "1rem", fontWeight: 800, color: "var(--color-text-primary)", letterSpacing: "0.05em" },
   clientKPIs:       { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem" },

@@ -23,6 +23,22 @@ class PlexClient:
             "Authorization": f"Bearer {self.secret}",
             "Content-Type":  "application/json",
         }
+    def _get(self, endpoint: str) -> dict:
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        try:
+            response = httpx.get(
+                url,
+                headers=self._headers(),
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.TimeoutException:
+            raise PlexProxyError(f"Timeout connecting to Plex proxy at {url}")
+        except httpx.HTTPStatusError as e:
+            raise PlexProxyError(f"Plex proxy error {e.response.status_code}: {e.response.text}")
+        except Exception as e:
+            raise PlexProxyError(f"Unexpected error calling Plex proxy: {str(e)}")
 
     def _post(self, endpoint: str, payload: dict) -> list:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"

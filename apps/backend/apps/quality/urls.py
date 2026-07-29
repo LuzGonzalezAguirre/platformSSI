@@ -161,4 +161,6 @@ urlpatterns = [
 
     path("downtime/logs/", DowntimeLogsView.as_view(), name="downtime-logs"),
     path("downtime/trend/", DowntimeTrendView.as_view(), name="downtime-trend"),
+
+    path("cogp/", include("apps.quality.cogp_urls")),
 ]

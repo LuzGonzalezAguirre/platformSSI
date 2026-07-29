@@ -28,8 +28,17 @@ from ..chatbot.models import (
     ChatbotFeedback,
     ChatbotSuggestion,
 )
+from ..cogp.models import (
+    CustomerPartMapping,
+    BusinessUnit,
+    ClassificationSource,
+    ScrapRecord,
+    ProductionRecord,
+    COGPDailySummary,
+)
 
 __all__ = [
+    'ClassificationSource',
     'QualityTarget',
     'Problem',
     'SeverityLevel',
@@ -55,4 +64,9 @@ __all__ = [
     'ChatbotQuestionTemplate',
     'ChatbotFeedback',
     'ChatbotSuggestion',
+    'CustomerPartMapping',
+    'BusinessUnit',
+    'ScrapRecord',
+    'ProductionRecord',
+    'COGPDailySummary',
 ]

@@ -53,7 +53,9 @@
     "productionLeysilla": "Chair Law",
     "ssiChairs": "Chair Law ",
     "ssiAttendance": "Attendance",
-    "qualityDowntime": "Downtime"
+    "qualityDowntime": "Downtime",
+    "qualityCogp": "COGP",
+    "qualityCogpMapping": "COGP Mapping"
 
 
 
@@ -67,6 +69,23 @@
     "cancel": "Cancel",
     "confirm": "Confirm"
   },
+  "cogpMapping": {
+  "title": "COGP Part → Business Unit Mapping",
+  "subtitle": "Catalog of parts classified by business unit, with classification source",
+  "allBUs": "All BUs",
+  "searchPlaceholder": "Search by Part No or name...",
+  "search": "Search",
+  "results": "results",
+  "noData": "No records found.",
+  "columns": {
+    "partNo": "Part No",
+    "partName": "Part Name",
+    "customerNo": "Customer No",
+    "customerName": "Customer Name",
+    "businessUnit": "Business Unit",
+    "source": "Source"
+  }
+},
   "users": {
     "title": "User Management",
     "newUser": "New User",
@@ -489,5 +508,26 @@
       "addComment": "Add Comment",
       "saving": "Saving..."
     }
+},
+"cogpDashboard": {
+  "title": "COGP — Scrap Cost over Production",
+  "subtitle": "Weekly trend by business unit — target: below 2%",
+  "latestWeek": "latest week",
+  "noData": "No data",
+  "loadError": "Failed to load COGP data.",
+  "week": "W",
+  "target": "target",
+  "presets": {
+    "month": "Month",
+    "quarter": "Quarter",
+    "year": "Year"
+  },
+  "businessUnits": {
+    "volvo": "Volvo",
+    "cummins": "Cummins",
+    "tulc": "TULC",
+    "global": "Global"
+  }
 }
+
 }

@@ -52,10 +52,29 @@
     "productionLeysilla": "Ley Silla",
     "ssiChairs": "Ley Silla NOM-036",
     "ssiAttendance": "Asistencia",
-    "qualityDowntime": "Downtime"
+    "qualityDowntime": "Downtime",
+    "qualityCogp": "COGP",
+    "qualityCogpMapping": "Mapeo COGP"
 
   }
   },
+  "cogpMapping": {
+  "title": "Mapeo Part → Unidad de Negocio (COGP)",
+  "subtitle": "Catálogo de partes clasificadas por unidad de negocio, con fuente de clasificación",
+  "allBUs": "Todas las BU",
+  "searchPlaceholder": "Buscar por Part No o nombre...",
+  "search": "Buscar",
+  "results": "resultados",
+  "noData": "No se encontraron registros.",
+  "columns": {
+    "partNo": "Part No",
+    "partName": "Nombre",
+    "customerNo": "Customer No",
+    "customerName": "Nombre Cliente",
+    "businessUnit": "Unidad de Negocio",
+    "source": "Fuente"
+  }
+},
   "common": {
     "loading": "Cargando...",
     "error": "Ocurrio un error",
@@ -478,5 +497,25 @@
       "addComment": "Agregar Comentario",
       "saving": "Guardando..."
     }
+},
+"cogpDashboard": {
+  "title": "COGP — Costo del Scrap sobre Producción",
+  "subtitle": "Tendencia semanal por unidad de negocio — meta: menor a 2%",
+  "latestWeek": "última semana",
+  "noData": "Sin datos",
+  "loadError": "Error cargando datos de COGP.",
+  "week": "S",
+  "target": "meta",
+  "presets": {
+    "month": "Mes",
+    "quarter": "Trimestre",
+    "year": "Año"
+  },
+  "businessUnits": {
+    "volvo": "Volvo",
+    "cummins": "Cummins",
+    "tulc": "TULC",
+    "global": "Global"
+  }
 }
 }

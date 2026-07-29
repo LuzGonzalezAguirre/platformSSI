@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Users, Plus, Save, RefreshCw, Pencil, PowerOff, Eye, EyeOff } from "lucide-react";
+import { Users, Plus, Save, RefreshCw, Pencil, PowerOff, Eye, EyeOff, Power } from "lucide-react";
 import { AssistanceService } from "./assistance.service";
 import {
   PlantEmployee, AttendanceRecord,
@@ -8,6 +8,7 @@ import {
   DEPARTMENTS, STATUS_LABELS, STATUS_COLORS,
   SHIFT_LABELS, DEFAULT_HOURS,
 } from "./types";
+
 
 type Tab = "attendance" | "employees" | "productivity";
 
@@ -206,7 +207,15 @@ export default function AssistancePage() {
       setEmpMsg({ type: "error", text: lang === "es" ? "Error desactivando" : "Error deactivating" });
     }
   };
-
+  const handleReactivate = async (emp: PlantEmployee) => {
+    try {
+      const updated = await AssistanceService.reactivateCcsEmployee(emp.id);
+      setEmployees((prev) => prev.map((e) => (e.id === updated.id ? { ...updated, is_active: true } : e)));
+      setEmpMsg({ type: "success", text: lang === "es" ? `'${emp.name}' reactivado` : `'${emp.name}' reactivated` });
+    } catch {
+      setEmpMsg({ type: "error", text: lang === "es" ? "Error reactivando" : "Error reactivating" });
+    }
+  };
   // Stats
   const total      = draft.length;
   const present    = draft.filter((r) => r.status === "present").length;
@@ -671,13 +680,21 @@ const productivityPct = paidHoursRef > 0 && earnedHours > 0
                           >
                             <Pencil size={14} />
                           </button>
-                          {emp.is_active && (
+                          {emp.is_active ? (
                             <button
                               style={{ ...s.iconBtn, color: "#ef4444" }}
                               onClick={() => handleDeactivate(emp)}
                               title={lang === "es" ? "Desactivar" : "Deactivate"}
                             >
                               <PowerOff size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              style={{ ...s.iconBtn, color: "#10b981" }}
+                              onClick={() => handleReactivate(emp)}
+                              title={lang === "es" ? "Reactivar" : "Reactivate"}
+                            >
+                              <Power size={14} />
                             </button>
                           )}
                         </div>

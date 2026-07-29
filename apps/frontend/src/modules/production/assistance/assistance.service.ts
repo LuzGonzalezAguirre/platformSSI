@@ -29,6 +29,9 @@ export const AssistanceService = {
   deactivateEmployee: (id: number): Promise<PlantEmployee> =>
     apiClient.delete(`${BASE}/employees/${id}/`).then((r: any) => r.data),
 
+  reactivateCcsEmployee: (id: number): Promise<any> =>
+    apiClient.post(`${BASE}/ccs/employees/${id}/reactivate/`).then((r: any) => r.data),
+
   getAttendance: (date: string, turno?: "A" | "B"): Promise<AttendanceRecord[]> =>
     apiClient
       .get(`${BASE}/attendance/`, { params: { date, ...(turno ? { turno } : {}) } })

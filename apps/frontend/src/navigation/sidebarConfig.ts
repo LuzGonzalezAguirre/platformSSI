@@ -26,6 +26,14 @@ export const sidebarConfig: NavSection[] = [
         icon: "LayoutDashboard",
         allowedRoles: ALL_ROLES,
       },
+      {
+      id: "operational-panel.cogp",
+      labelKey: "nav.items.qualityCogp",
+      path: "/quality/cogp",
+      icon: "TrendingDown",
+      allowedRoles: ALL_ROLES,
+    },
+    
     ],
   },
   {

@@ -12,7 +12,7 @@ from apps.production.views.assistance_views import (
 from apps.production.views.ccs_views import (
     CcsCheckInView, CcsCheckOutView, CcsOvertimeView, CcsTodayStatusView,
     CcsAttendanceRecordsView, CcsAttendanceKpisView, CcsAttendanceDailyView,
-    CcsEmployeesView, CcsEmployeeDetailView,
+    CcsEmployeesView, CcsEmployeeDetailView,CcsEmployeeReactivateView,
     ChairKpisView, ChairBreaksView, ChairDailyChartView, ChairTurnoChartView,
 )
 from apps.production.views.ops_report_views import OpsDailySummaryView, OpsWeeklyTableView
@@ -46,6 +46,7 @@ urlpatterns = [
     path("ccs/attendance/kpis/",    CcsAttendanceKpisView.as_view()),
     path("ccs/employees/",           CcsEmployeesView.as_view()),
     path("ccs/employees/<int:pk>/",  CcsEmployeeDetailView.as_view()),
+    path("ccs/employees/<int:pk>/reactivate/", CcsEmployeeReactivateView.as_view()),
 
     # Chairs (Ley Silla NOM-036)
     path("chairs/kpis/",         ChairKpisView.as_view()),
