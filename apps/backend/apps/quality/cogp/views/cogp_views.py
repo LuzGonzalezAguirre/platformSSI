@@ -8,11 +8,48 @@ from rest_framework.permissions import IsAuthenticated
 from apps.quality.cogp.serializers.cogp_serializers import CogpSummaryResponseSerializer
 from apps.quality.cogp.services.cogp_live_trend_service import CogpLiveTrendService
 from apps.quality.models import CustomerPartMapping
+from apps.quality.cogp.services.cogp_pareto_service import CogpParetoService
+
 
 
 ALLOWED_ROLES = {"quality_engineer", "plant_manager", "admin"}
 
+class CogpParetoView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        user_roles = set(request.user.roles.values_list("slug", flat=True))
+        if not user_roles & ALLOWED_ROLES:
+            return Response(
+                {"detail": "No tienes permiso para ver este reporte."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        period = request.query_params.get("period", "week")
+        if period not in ("day", "week", "month"):
+            return Response(
+                {"detail": "period debe ser day, week o month."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        date_str = request.query_params.get("date")
+        if not date_str:
+            return Response(
+                {"detail": "date es requerido (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            reference_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response(
+                {"detail": "Formato de fecha invalido, usar YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = CogpParetoService()
+        result = service.get_pareto(period, reference_date)
+        return Response(result)
 class CogpSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 

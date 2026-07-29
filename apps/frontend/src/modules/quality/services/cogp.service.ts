@@ -42,4 +42,33 @@ export const CogpService = {
     apiClient
       .get(`${BASE}/mapping/`, { params })
       .then((r: any) => r.data),
+  getPareto: (period: CogpPeriod, date: string): Promise<CogpParetoResponse> =>
+    apiClient
+      .get(`${BASE}/pareto/`, { params: { period, date } })
+      .then((r: any) => r.data),
 };
+export interface CogpParetoItem {
+  reason: string;
+  workcenter: string;
+  cost: string;
+  pct_of_total: string;
+}
+
+export interface CogpParetoBucket {
+  total_scrap: string;
+  total_extended_cost: string;
+  scrap_rate_pct: string | null;
+  items: CogpParetoItem[];
+}
+
+export interface CogpParetoResponse {
+  period: "day" | "week" | "month";
+  start_date: string;
+  end_date: string;
+  volvo: CogpParetoBucket;
+  cummins: CogpParetoBucket;
+  tulc: CogpParetoBucket;
+  global: CogpParetoBucket;
+}
+
+export type CogpPeriod = "day" | "week" | "month";

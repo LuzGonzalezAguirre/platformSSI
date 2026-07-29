@@ -75,6 +75,17 @@
     "source": "Fuente"
   }
 },
+"cogpPareto": {
+  "title": "Desglose Pareto de Scrap",
+  "subtitle": "Principales razones de scrap por workcenter en el periodo seleccionado",
+  "totalScrap": "Scrap Total",
+  "scrapRate": "Tasa de Scrap",
+  "periods": {
+    "day": "Día",
+    "week": "Semana",
+    "month": "Mes"
+  }
+},
   "common": {
     "loading": "Cargando...",
     "error": "Ocurrio un error",

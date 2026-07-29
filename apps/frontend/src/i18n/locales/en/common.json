@@ -69,6 +69,17 @@
     "cancel": "Cancel",
     "confirm": "Confirm"
   },
+  "cogpPareto": {
+  "title": "Scrap Pareto Breakdown",
+  "subtitle": "Top scrap reasons by workcenter for the selected period",
+  "totalScrap": "Total Scrap",
+  "scrapRate": "Scrap Rate",
+  "periods": {
+    "day": "Day",
+    "week": "Week",
+    "month": "Month"
+  }
+},
   "cogpMapping": {
   "title": "COGP Part → Business Unit Mapping",
   "subtitle": "Catalog of parts classified by business unit, with classification source",
