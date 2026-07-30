@@ -374,9 +374,9 @@ export default function RejectionReportPage() {
       });
       if (buId) params.append("bu_id", buId);
       const token = localStorage.getItem("mes_access_token");
-      const res   = await fetch(
-        `http://localhost:8000/api/v1/quality/rejection-report/pdf/?${params}`,
-        { headers: { Authorization: `Bearer ${token ?? ""}` } },
+      const res = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/quality/rejection-report/pdf/?${params}`,
+      { headers: { Authorization: `Bearer ${token ?? ""}` } },
       );
       if (!res.ok) return;
       const blob = await res.blob();

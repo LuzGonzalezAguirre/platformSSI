@@ -9,6 +9,7 @@ class PlantEmployee(models.Model):
     name       = models.CharField(max_length=150, verbose_name="Nombre completo")
     department = models.CharField(max_length=100, default="Assembly")
     turno      = models.CharField(max_length=1, choices=Turno.choices, default=Turno.A)
+    barcode_id = models.CharField(max_length=50, blank=True, default="", verbose_name="Barcode/Badge ID")
     user       = models.OneToOneField(
         "identity.User",
         null=True, blank=True,
