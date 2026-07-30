@@ -258,3 +258,9 @@ class ChairTurnoChartView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         return _proxy_post("/chairs/turno-chart", request.data)
+
+class CcsEmployeeReactivateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk: int):
+        return _proxy_post(f"/attendance/employees/{pk}/reactivate", {})
