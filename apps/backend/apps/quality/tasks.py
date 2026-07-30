@@ -17,6 +17,8 @@ from apps.quality.models import (
 )
 from apps.quality.repositories import incoming_inspection_plex_repository as plex_repo
 
+
+
 # 6 horas de margen (antes 10 minutos) — Plex tiene latencia real entre que
 # un evento ocurre (Change_Date) y queda disponible para consultarse via
 # ODBC; con overlap corto, cualquier registro que tarde más de esa ventana

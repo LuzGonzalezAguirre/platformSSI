@@ -41,7 +41,7 @@ import HelpPage from "./modules/quality/qwall/HelpPage";
 import IncomingInspectionPage from "./modules/incoming-inspection/IncomingInspectionPage";
 
 import DowntimePage from "./modules/quality/downtime/DowntimePage";
-
+import ScrapRatePage from "./modules/quality/cogp/ScrapRatePage";
 
 const now = new Date();
 const hour = now.getHours();
@@ -130,6 +130,7 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="/quality/cogp/mapping" element={<CogpMappingPage />} />
         <Route path="/quality/downtime/settings" element={<DowntimeSettingsPage />} />
+        <Route path="/quality/scrap-rate" element={<ScrapRatePage />} />
       </Routes>
     </AppShell>
   );

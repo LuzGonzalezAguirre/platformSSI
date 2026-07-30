@@ -55,13 +55,60 @@
     "ssiAttendance": "Attendance",
     "qualityDowntime": "Downtime",
     "qualityCogp": "COGP",
-    "qualityCogpMapping": "COGP Mapping"
+    "qualityCogpMapping": "COGP Mapping",
+    "qualityScrapRate": "Scrap Rate"
 
 
 
 
   }
 },
+"scrapRate": {
+  "title": "Scrap Rate — Pieces",
+  "subtitle": "Weekly trend of produced pieces vs scrap. Source: COGP (Plex).",
+  "noData": "No data for the selected range.",
+  "loading": "Loading trend...",
+  "loadError": "Failed to load scrap rate.",
+  "target": "target",
+  "fullscreen": "Fullscreen",
+  "exitFullscreen": "Exit (Esc)",
+  "partialWeek": "week in progress",
+  "undefinedRate": "No input this week: the rate is undefined, not zero.",
+  "meta": "{{range}} · {{cache}} weeks cached, {{plex}} from Plex",
+  "kpis": {
+    "input": "Total input",
+    "produced": "Produced",
+    "scrap": "Scrap",
+    "rate": "Scrap Rate",
+    "weeks": "Weeks"
+  },
+  "legend": {
+    "produced": "Produced",
+    "scrap": "Scrap",
+    "rate": "Scrap Rate",
+    "scrapNotToScale": "The scrap segment uses a minimum visible height; the exact figure is in the label and in the % line."
+  },
+  "tooltip": {
+    "input": "Input",
+    "produced": "Produced",
+    "scrap": "Scrap",
+    "scrapFinished": "Finished-good scrap",
+    "rate": "Scrap Rate"
+  },
+  "presets": {
+    "ytd": "Year to date",
+    "w13": "13 wks",
+    "w26": "26 wks",
+    "w52": "52 wks"
+  },
+  "businessUnits": {
+    "global": "Global",
+    "volvo": "Volvo",
+    "cummins": "Cummins",
+    "tulc": "TULC"
+  }
+}
+ ,
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",

@@ -54,7 +54,8 @@
     "ssiAttendance": "Asistencia",
     "qualityDowntime": "Downtime",
     "qualityCogp": "COGP",
-    "qualityCogpMapping": "Mapeo COGP"
+    "qualityCogpMapping": "Mapeo COGP",
+    "qualityScrapRate": "Scrap Rate"
 
   }
   },
@@ -75,6 +76,52 @@
     "source": "Fuente"
   }
 },
+"scrapRate": {
+  "title": "Scrap Rate — Piezas",
+  "subtitle": "Tendencia semanal de piezas producidas vs scrap. Fuente: COGP (Plex).",
+  "noData": "Sin datos para el rango seleccionado.",
+  "loading": "Cargando tendencia...",
+  "loadError": "Error al cargar el scrap rate.",
+  "target": "meta",
+  "fullscreen": "Pantalla completa",
+  "exitFullscreen": "Salir (Esc)",
+  "partialWeek": "semana en curso",
+  "undefinedRate": "Sin input en esta semana: la tasa es indefinida, no cero.",
+  "meta": "{{range}} · {{cache}} semanas de cache, {{plex}} desde Plex",
+  "kpis": {
+    "input": "Input total",
+    "produced": "Producido",
+    "scrap": "Scrap",
+    "rate": "Scrap Rate",
+    "weeks": "Semanas"
+  },
+  "legend": {
+    "produced": "Producido",
+    "scrap": "Scrap",
+    "rate": "Scrap Rate",
+    "scrapNotToScale": "El segmento de scrap usa una altura mínima visible; la cifra exacta está en la etiqueta y en la línea de %."
+  },
+  "tooltip": {
+    "input": "Input",
+    "produced": "Producido",
+    "scrap": "Scrap",
+    "scrapFinished": "Scrap terminado",
+    "rate": "Scrap Rate"
+  },
+  "presets": {
+    "ytd": "Año actual",
+    "w13": "13 sem",
+    "w26": "26 sem",
+    "w52": "52 sem"
+  },
+  "businessUnits": {
+    "global": "Global",
+    "volvo": "Volvo",
+    "cummins": "Cummins",
+    "tulc": "TULC"
+  }
+}
+ ,
 "cogpPareto": {
   "title": "Desglose Pareto de Scrap",
   "subtitle": "Principales razones de scrap por workcenter en el periodo seleccionado",

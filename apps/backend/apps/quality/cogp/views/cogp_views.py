@@ -10,7 +10,11 @@ from apps.quality.cogp.services.cogp_live_trend_service import CogpLiveTrendServ
 from apps.quality.models import CustomerPartMapping
 from apps.quality.cogp.services.cogp_pareto_service import CogpParetoService
 
-
+from apps.quality.cogp.services.scrap_rate_service import (
+    ScrapRateService,
+    ALLOWED_BUSINESS_UNITS,
+    GLOBAL_KEY,
+)
 
 ALLOWED_ROLES = {"quality_engineer", "plant_manager", "admin"}
 
@@ -162,3 +166,70 @@ class CogpMappingCatalogView(APIView):
             for r in qs[:2000]  # tope simple, sin paginacion formal por ahora
         ]
         return Response({"count": qs.count(), "results": data})
+
+
+class ScrapRateWeeklyView(APIView):
+    """
+    GET /api/v1/quality/cogp/scrap-rate/
+        ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD&business_unit=GLOBAL
+ 
+    Tendencia semanal de scrap rate en piezas. Read-only: no escribe en
+    Plex ni en Postgres, solo consulta el proxy y cachea en Redis.
+    """
+ 
+    permission_classes = [IsAuthenticated]
+ 
+    def get(self, request):
+        user_roles = set(request.user.roles.values_list("slug", flat=True))
+        if not user_roles & ALLOWED_ROLES:
+            return Response(
+                {"detail": "No tienes permiso para ver este reporte."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+ 
+        start_date_str = request.query_params.get("start_date")
+        end_date_str = request.query_params.get("end_date")
+ 
+        if not start_date_str or not end_date_str:
+            return Response(
+                {"detail": "start_date y end_date son requeridos (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+ 
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response(
+                {"detail": "Formato de fecha invalido, usar YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+ 
+        if end_date < start_date:
+            return Response(
+                {"detail": "end_date debe ser mayor o igual a start_date."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+ 
+        business_unit = request.query_params.get("business_unit", GLOBAL_KEY).upper()
+        if business_unit not in ALLOWED_BUSINESS_UNITS:
+            return Response(
+                {
+                    "detail": (
+                        "business_unit invalido. Validos: "
+                        f"{', '.join(sorted(ALLOWED_BUSINESS_UNITS))}."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+ 
+        service = ScrapRateService()
+        try:
+            result = service.get_weekly_scrap_rate(start_date, end_date, business_unit)
+        except ValueError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+ 
+        return Response(result)

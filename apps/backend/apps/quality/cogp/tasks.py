@@ -5,6 +5,8 @@ from celery import shared_task
 
 from apps.quality.cogp.services.plex_sync_service import PlexSyncService
 from apps.quality.cogp.services.cogp_calculation_service import CogpCalculationService
+from apps.quality.cogp.services.scrap_rate_service import ScrapRateService
+
 
 logger = logging.getLogger(__name__)
 
@@ -83,3 +85,37 @@ def backfill_cogp_range(start_date_str: str, end_date_str: str):
         current += timedelta(days=1)
 
     return results
+
+
+@shared_task(bind=True, max_retries=1, default_retry_delay=300)
+def warm_scrap_rate_cache(self, weeks_back: int = 52):
+    """
+    Precalienta el cache de scrap rate. Sin esto, el primer usuario que abre
+    la pantalla con cache frio paga una query de meses contra Plex en linea
+    -- inaceptable para un gerente entrando a las 7 AM.
+ 
+    La primera corrida llena las 52 semanas; las siguientes solo refrescan
+    la semana en curso (TTL 10 min) porque las cerradas siguen vigentes
+    7 dias. Una sola llamada llena las cuatro BU: el service clasifica
+    Volvo/Cummins/TULC/Global en la misma pasada.
+ 
+    max_retries=1: si Plex esta caido, no vale la pena insistir; la siguiente
+    corrida del beat (15 min) lo intenta de nuevo.
+    """
+    today = date.today()
+    monday_this_week = today - timedelta(days=today.weekday())
+    start = monday_this_week - timedelta(weeks=weeks_back)
+ 
+    try:
+        result = ScrapRateService().get_weekly_scrap_rate(start, today, "GLOBAL")
+    except Exception as exc:
+        logger.error("warm_scrap_rate_cache fallo (%s a %s): %s", start, today, exc)
+        raise self.retry(exc=exc)
+ 
+    meta = result["meta"]
+    logger.info(
+        "warm_scrap_rate_cache: %s semanas totales, %s desde cache, %s desde Plex.",
+        meta["weeks_total"], meta["weeks_from_cache"], meta["weeks_from_plex"],
+    )
+    return meta
+ 
