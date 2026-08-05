@@ -7,6 +7,8 @@ import {
   useUserNames,
 } from "./hooks/useIncomingInspection";
 import type { IncomingInspectionFilters, IncomingContainerHistoryRow } from "./types";
+import DashboardTab from "./components/DashboardTab";
+import PendingTab from "./components/PendingTab";
 
 const MAX_ROWS = 3000; // debe coincidir con MAX_PAGE_SIZE del backend
 
@@ -366,7 +368,7 @@ const DEFAULT_FROM = "2026-01-01";
 export default function IncomingInspectionPage() {
   const { t } = useTranslation();
 
-  const [activeTab, setActiveTab] = useState<"summary" | "rejected">("summary");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "pending" | "summary" | "rejected">("dashboard");
   const [filters, setFilters] = useState<IncomingInspectionFilters>({
     date_from: DEFAULT_FROM,
     date_to: todayStr(),
@@ -420,7 +422,7 @@ export default function IncomingInspectionPage() {
   const slaColor = sla && sla.compliance_rate >= 90 ? "#10b981" : sla && sla.compliance_rate >= 75 ? "#f59e0b" : "#ef4444";
   const acceptColor = acceptance && acceptance.acceptance_rate >= 95 ? "#10b981" : acceptance && acceptance.acceptance_rate >= 85 ? "#f59e0b" : "#ef4444";
 
-  const tabStyle = (tab: "summary" | "rejected"): React.CSSProperties => ({
+  const tabStyle = (tab: "dashboard" | "pending" | "summary" | "rejected"): React.CSSProperties => ({
     padding: "0.5rem 1rem", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer",
     border: "none", background: "transparent",
     color: activeTab === tab ? "var(--color-text-primary)" : "var(--color-text-secondary)",
@@ -445,6 +447,12 @@ export default function IncomingInspectionPage() {
 
       {/* ── Tabs ── */}
       <div style={{ display: "flex", borderBottom: "1px solid var(--color-border)" }}>
+        <button style={tabStyle("dashboard")} onClick={() => setActiveTab("dashboard")}>
+  {t("incomingInspection.tabs.dashboard")}
+</button>
+<button style={tabStyle("pending")} onClick={() => setActiveTab("pending")}>
+  {t("incomingInspection.tabs.pending")}
+</button>
         <button style={tabStyle("summary")} onClick={() => setActiveTab("summary")}>
           {t("incomingInspection.tabs.summary")}
         </button>
@@ -503,6 +511,9 @@ export default function IncomingInspectionPage() {
           {t("incomingInspection.idle")}
         </div>
       )}
+
+      {activeTab === "dashboard" && <DashboardTab filters={filters} />}
+      {activeTab === "pending" && <PendingTab filters={filters} />}
 
       {/* ── SUMMARY TAB ── */}
       {activeTab === "summary" && (

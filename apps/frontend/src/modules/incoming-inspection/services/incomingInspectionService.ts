@@ -2,7 +2,7 @@ import apiClient from "../../../services/api.client";
 import type {
   IncomingInspectionFilters, IncomingInspectionKPIs,
   IncomingContainerHistoryRow, PaginatedResponse, SLAConfig,
-  RejectionComment,
+  RejectionComment, IncomingDashboard, PendingBacklog,
 } from "../types";
 
 const BASE = "/quality/incoming-inspection";
@@ -14,6 +14,12 @@ function toParams(filters: IncomingInspectionFilters): Record<string, string | n
   });
   return params;
 }
+
+export const fetchDashboard = (filters: IncomingInspectionFilters) =>
+  apiClient.get<IncomingDashboard>(`${BASE}/dashboard/`, { params: toParams(filters) }).then(r => r.data);
+
+export const fetchPendingBacklog = (filters: IncomingInspectionFilters) =>
+  apiClient.get<PendingBacklog>(`${BASE}/pending/`, { params: toParams(filters) }).then(r => r.data);
 
 export const fetchKPIs = (filters: IncomingInspectionFilters) =>
   apiClient.get<IncomingInspectionKPIs>(`${BASE}/kpis/`, { params: toParams(filters) }).then(r => r.data);

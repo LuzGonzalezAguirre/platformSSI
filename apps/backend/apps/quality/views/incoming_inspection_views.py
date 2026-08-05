@@ -17,9 +17,18 @@ from apps.quality.services import incoming_inspection_kpi_service as kpi_service
 from apps.quality.services import incoming_inspection_sla_config_service as sla_service
 from apps.quality.services import incoming_inspection_rejection_comment_service as comment_service
 from apps.quality.services import incoming_inspection_user_lookup_service as user_lookup_service
+from apps.quality.services import incoming_inspection_dashboard_service as dashboard_service
+from apps.quality.services import incoming_inspection_pending_service as pending_service
 
 ALLOWED_SORT_FIELDS = {"change_date", "-change_date", "part_no", "-part_no", "operation_no", "-operation_no"}
+
+# Bump al cambiar la forma de cualquier payload cacheado. Redis no expone
+# delete_pattern en esta configuración — versionar la llave es la única
+# invalidación confiable.
+CACHE_VERSION = "v2"
 KPI_CACHE_TTL = 90
+DASHBOARD_CACHE_TTL = 90
+PENDING_CACHE_TTL = 45
 
 # Se abandonó la paginación con botones ← → en el frontend (single scroll
 # list en su lugar) — este tope protege contra rangos de fecha muy amplios
@@ -40,6 +49,11 @@ def _forbidden():
     return Response({"detail": "Forbidden"}, status=403)
 
 
+def _cache_key(namespace: str, filters: dict) -> str:
+    digest = hashlib.sha256(json.dumps(filters, sort_keys=True).encode()).hexdigest()
+    return f"incoming_inspection:{namespace}:{CACHE_VERSION}:{digest}"
+
+
 def _parse_filters(request) -> dict:
     params = request.query_params
     filters = {}
@@ -47,10 +61,49 @@ def _parse_filters(request) -> dict:
         value = params.get(key)
         if value:
             filters[key] = value
+
+    # date_to llega como YYYY-MM-DD y Postgres lo interpreta como medianoche,
+    # lo que descartaba silenciosamente el último día completo del rango.
+    date_to = filters.get("date_to")
+    if date_to and len(date_to) == 10:
+        filters["date_to"] = f"{date_to} 23:59:59.999999"
+
     operation_no = params.get("operation_no")
     if operation_no:
         filters["operation_no"] = int(operation_no)
     return filters
+
+
+class IncomingInspectionDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        filters = _parse_filters(request)
+        cache_key = _cache_key("dashboard", filters)
+
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        data = dashboard_service.get_dashboard(filters)
+        cache.set(cache_key, data, DASHBOARD_CACHE_TTL)
+        return Response(data)
+
+
+class IncomingInspectionPendingView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        filters = _parse_filters(request)
+        cache_key = _cache_key("pending", filters)
+
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        data = pending_service.get_pending_backlog(filters)
+        cache.set(cache_key, data, PENDING_CACHE_TTL)
+        return Response(data)
 
 
 class IncomingInspectionKPIsView(APIView):
@@ -58,9 +111,7 @@ class IncomingInspectionKPIsView(APIView):
 
     def get(self, request):
         filters = _parse_filters(request)
-        cache_key = "incoming_inspection:kpis:" + hashlib.sha256(
-            json.dumps(filters, sort_keys=True).encode()
-        ).hexdigest()
+        cache_key = _cache_key("kpis", filters)
 
         cached = cache.get(cache_key)
         if cached is not None:

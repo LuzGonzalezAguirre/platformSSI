@@ -588,19 +588,18 @@ export default function DowntimePage() {
             </div>
 
             {trend && (
-              <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)", fontWeight: 600 }}>
-                  {l ? "Total" : "Total"}
-                </span>
-                <span style={{ fontSize: "1.5rem", fontWeight: 800, color: LINE_COLOR }}>
-                  {trend.reduce((sum, p) => sum + p.total_hours, 0).toFixed(1)}h
-                </span>
-                <span style={{ fontSize: "0.72rem", color: "var(--color-text-tertiary)" }}>
-                  {trend.length} {trendGranularity === "daily" ? (l ? "días" : "days") : trendGranularity === "week" ? (l ? "semanas" : "weeks") : (l ? "meses" : "months")}
-                  {" · "}{trend[0]?.date} → {trend[trend.length - 1]?.date}
-                </span>
-              </div>
-            )}
+  <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
+    <span style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)", fontWeight: 600 }}>
+      {l ? "Total" : "Total"}
+    </span>
+    <span style={{ fontSize: "1.5rem", fontWeight: 800, color: LINE_COLOR }}>
+      {trend.reduce((sum, p) => sum + p.total_hours, 0).toFixed(1)}h
+    </span>
+    <span style={{ fontSize: "0.72rem", color: "var(--color-text-tertiary)" }}>
+      {trend.length} {trendGranularity === "daily" ? (l ? "días" : "days") : trendGranularity === "week" ? (l ? "semanas" : "weeks") : (l ? "meses" : "months")}
+    </span>
+  </div>
+)}
 
             {trendError && (
               <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--radius-md)", padding: "0.4rem 0.75rem", color: "#b91c1c", fontSize: "0.78rem", marginBottom: "0.5rem" }}>

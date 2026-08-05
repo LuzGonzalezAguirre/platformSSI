@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from apps.quality.services.plex_client_quality import QualityPlexClient
 from apps.quality.models import BusinessUnit
-from apps.quality.cogp.services.cogp_live_trend_service import (
+from apps.ssi_common.bu_classification import (
     resolve_bu_from_workcenter,
     resolve_bu_for_production,
 )

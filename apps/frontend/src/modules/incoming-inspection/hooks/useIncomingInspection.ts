@@ -2,6 +2,26 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as svc from "../services/incomingInspectionService";
 import type { IncomingInspectionFilters } from "../types";
 
+// Dashboard y backlog pegan a Postgres con caché Redis del lado servidor —
+// nunca a Plex. Por eso auto-cargan sin gate manual, a diferencia de los
+// endpoints heredados que conservan enabled:false.
+export const useIncomingDashboard = (filters: IncomingInspectionFilters, enabled = true) =>
+  useQuery({
+    queryKey: ["incoming-inspection-dashboard", filters],
+    queryFn: () => svc.fetchDashboard(filters),
+    enabled,
+    staleTime: 60_000,
+  });
+
+export const usePendingBacklog = (filters: IncomingInspectionFilters, enabled = true) =>
+  useQuery({
+    queryKey: ["incoming-inspection-pending", filters],
+    queryFn: () => svc.fetchPendingBacklog(filters),
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: enabled ? 60_000 : false,
+  });
+
 export const useIncomingInspectionKPIs = (filters: IncomingInspectionFilters) =>
   useQuery({
     queryKey: ["incoming-inspection-kpis", filters],
@@ -53,7 +73,7 @@ export const useUserNames = (userNos: number[]) => {
     queryKey: ["incoming-inspection-user-names", key],
     queryFn: () => svc.fetchUserNames(key),
     enabled: key.length > 0,
-    staleTime: 1000 * 60 * 60, // 1h
+    staleTime: 1000 * 60 * 60,
   });
 };
 
@@ -67,6 +87,8 @@ export const useUpdateSLAConfig = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["incoming-inspection-sla-config"] });
       qc.invalidateQueries({ queryKey: ["incoming-inspection-kpis"] });
+      qc.invalidateQueries({ queryKey: ["incoming-inspection-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["incoming-inspection-pending"] });
     },
   });
 };

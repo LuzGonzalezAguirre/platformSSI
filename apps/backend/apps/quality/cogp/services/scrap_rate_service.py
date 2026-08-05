@@ -1,3 +1,4 @@
+# apps/quality/cogp/services/scrap_rate_service.py
 import logging
 import time
 from datetime import date, datetime, timedelta
@@ -8,9 +9,9 @@ from django.core.cache import cache
 from apps.quality.models import BusinessUnit
 from apps.quality.services.plex_client_quality import QualityPlexClient
 from apps.warehouse.services.plex_client import PlexProxyError
-from apps.quality.cogp.services.cogp_live_trend_service import (
-    resolve_bu_from_workcenter,
-    resolve_bu_for_production,
+from apps.ssi_common.bu_classification import (
+    resolve_bu_for_finished_goods,
+    TERMINAL_WORKCENTERS,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,10 +22,10 @@ TRACKED_BUS = (BusinessUnit.VOLVO, BusinessUnit.CUMMINS, BusinessUnit.TULC)
 
 ALLOWED_BUSINESS_UNITS = frozenset({*TRACKED_BUS, GLOBAL_KEY})
 
-# Part_Type de Plex que representan producto terminado. Los valores exactos
-# deben confirmarse contra el catalogo real. NOTA: hoy cogp/scrap-range NO
-# devuelve Part_Type, asi que scrap_qty_finished sale siempre en 0 hasta que
-# se agregue la columna al query del proxy. El indicador oficial es scrap_qty.
+# Part_Type de Plex que representan producto terminado. Con el filtro por
+# workcenter terminal este desglose es casi redundante -- se conserva porque
+# un workcenter terminal puede scrapear un componente cargado en la misma
+# estacion, y esa distincion sigue siendo util para el ingeniero de calidad.
 FINISHED_PART_TYPES = frozenset({"finished good", "assembly"})
 
 
@@ -103,22 +104,43 @@ class ScrapRateService:
     Tendencia semanal de scrap rate EN PIEZAS, por business unit, calculada
     en vivo desde Plex via proxy con cache Redis granular por semana ISO.
 
-    Definicion adoptada:
+    ALCANCE (v3): la metrica se calcula EXCLUSIVAMENTE sobre workcenters
+    terminales de producto terminado (ver TERMINAL_WORKCENTERS). Scrap y
+    produccion se clasifican con la MISMA funcion,
+    resolve_bu_for_finished_goods, y ambos descartan lo no terminal.
+
+    Esto es intencional y cambia el significado del indicador:
+
+      - ANTES: scrap de toda la planta (incluyendo molding, subensambles y
+        componentes) contra produccion de unidades terminadas. Numerador y
+        denominador en granos distintos -> tasas de 35-47% sin sentido
+        fisico.
+
+      - AHORA: scrap de producto terminado contra produccion de producto
+        terminado. Es un YIELD del punto terminal, comparable consigo mismo
+        semana a semana.
+
+    ESTE NUMERO NO ES EL COGP. El COGP en costo (cogp_live_trend_service)
+    sigue contando scrap de toda la planta, porque un componente scrapeado
+    en molding cuesta dinero real aunque no sea una unidad terminada. Los
+    dos indicadores van a diferir y ambos son correctos -- miden cosas
+    distintas. La UI debe etiquetarlo como scrap rate de producto terminado
+    o alguien va a "conciliarlos" y perder una tarde.
+
+    Definicion:
         input_qty      = produced_qty + scrap_qty
         scrap_rate_pct = scrap_qty / input_qty * 100
 
-    Se usa produced+scrap como denominador (no produced solo) por dos
-    razones: (1) acota el rate a [0,100] incluso en semanas donde el scrap
-    de componentes supera la produccion de unidades terminadas -- los dos
-    granos no son comparables y con produccion sola el ratio puede pasar de
-    100%; (2) hace que la fraccion coloreada de la barra apilada sea
-    literalmente el rate. La diferencia contra scrap/produccion es <0.01
-    puntos porcentuales a las tasas reales de la planta, asi que no
-    contradice el COGP en costo ya publicado.
+    Con ambos lados en el mismo grano, produced+scrap como denominador ya
+    no es solo una cota defensiva: es literalmente el input de la estacion
+    terminal, y la fraccion coloreada de la barra apilada es exactamente
+    el rate.
 
     ERP Protection: el numero de queries depende del ANCHO del rango, no
     del volumen de datos, y esta acotado por MAX_FETCH_CHUNKS. Un ano son
-    3 ventanas; con cache caliente, la semana en curso es 1.
+    3 ventanas; con cache caliente, la semana en curso es 1. El filtrado
+    por workcenter es en Python, post-fetch: NO se agrega una query por
+    workcenter.
 
     DEPENDENCIA ABIERTA: requiere que cogp/scrap-range y
     cogp/production-range devuelvan la columna Quantity. Mientras el proxy
@@ -143,10 +165,12 @@ class ScrapRateService:
     # peor caso son 5 ventanas = 10 queries ODBC en cache frio.
     MAX_FETCH_CHUNKS = 6
 
-    # Versionado del cache: incrementar al cambiar la forma del bucket o al
-    # invalidar datos malos. v2 = purga de los ceros cacheados cuando el
-    # proxy no devolvia Quantity.
-    CACHE_VERSION = "v2"
+    # Versionado del cache: incrementar al cambiar la forma del bucket, la
+    # regla de clasificacion, o al invalidar datos malos.
+    #   v2 = purga de los ceros cacheados cuando el proxy no devolvia Quantity.
+    #   v3 = scrap restringido a workcenters terminales (mismo criterio que
+    #        produccion). Todo lo cacheado en v2 tiene el numerador inflado.
+    CACHE_VERSION = "v3"
 
     def __init__(self, client: QualityPlexClient | None = None):
         self.client = client or QualityPlexClient()
@@ -268,6 +292,8 @@ class ScrapRateService:
             },
             "meta": {
                 "source": "plex_live",
+                "scope": "finished_goods_workcenters",
+                "workcenters": sorted(TERMINAL_WORKCENTERS),
                 "weeks_total": len(spine),
                 "weeks_from_cache": len(spine) - weeks_from_plex,
                 "weeks_from_plex": weeks_from_plex,
@@ -365,6 +391,7 @@ class ScrapRateService:
 
         total_scrap_rows = 0
         total_production_rows = 0
+        total_scrap_discarded = 0
         missing_qty_column = False
 
         for window_start, window_end in windows:
@@ -380,7 +407,7 @@ class ScrapRateService:
             if production_rows and "Quantity" not in production_rows[0]:
                 missing_qty_column = True
 
-            self._bucket_scrap(scrap_rows, buckets, wanted)
+            total_scrap_discarded += self._bucket_scrap(scrap_rows, buckets, wanted)
             self._bucket_production(production_rows, buckets, wanted)
 
             total_scrap_rows += len(scrap_rows)
@@ -400,7 +427,7 @@ class ScrapRateService:
             detail = (
                 "el proxy no devuelve la columna Quantity"
                 if missing_qty_column
-                else "revisar mapeo de workcenters y nombres de columna"
+                else "revisar mapeo de workcenters terminales y nombres de columna"
             )
             raise PlexProxyError(
                 f"ScrapRate: {rows_seen} filas recibidas de Plex y 0 piezas "
@@ -418,15 +445,27 @@ class ScrapRateService:
 
         logger.info(
             "ScrapRate: %s semanas calculadas desde Plex (%s a %s) en %s ventana(s), "
-            "%s filas scrap / %s filas produccion.",
+            "%s filas scrap / %s filas produccion. Scrap descartado por workcenter "
+            "no terminal: %s piezas.",
             len(buckets), fetch_start, fetch_end, len(windows),
-            total_scrap_rows, total_production_rows,
+            total_scrap_rows, total_production_rows, total_scrap_discarded,
         )
         return buckets
 
     # ── bucketing ────────────────────────────────────────────────────
 
-    def _bucket_scrap(self, rows: list[dict], buckets: dict, wanted: set) -> None:
+    def _bucket_scrap(self, rows: list[dict], buckets: dict, wanted: set) -> int:
+        """
+        Solo cuenta scrap reportado en workcenters TERMINALES, con la misma
+        funcion de clasificacion que la produccion. El scrap de molding y
+        subensambles se descarta a proposito: no tiene contraparte en el
+        denominador y por eso inflaba la tasa a 35-47%.
+
+        Devuelve la cantidad de piezas descartadas, para trazabilidad -- ese
+        volumen no desaparece, sigue reflejado en el COGP en costo.
+        """
+        discarded = 0
+
         for row in rows:
             report_date = _normalize_report_date(row.get("Report_Date"))
             if report_date is None:
@@ -436,19 +475,21 @@ class ScrapRateService:
             if (iso_year, iso_week) not in wanted:
                 continue
 
-            bu = resolve_bu_from_workcenter(
-                row.get("Workcenter_Group"), row.get("Workcenter")
-            )
+            qty = _to_int_qty(row.get("Quantity"))
+
+            bu = resolve_bu_for_finished_goods(row.get("Workcenter"))
             if bu not in buckets[(iso_year, iso_week)]:
+                discarded += qty
                 continue
 
-            qty = _to_int_qty(row.get("Quantity"))
             target = buckets[(iso_year, iso_week)][bu]
             target["scrap_qty"] += qty
 
             part_type = (row.get("Part_Type") or "").strip().lower()
             if part_type in FINISHED_PART_TYPES:
                 target["scrap_qty_finished"] += qty
+
+        return discarded
 
     def _bucket_production(self, rows: list[dict], buckets: dict, wanted: set) -> None:
         unclassified: set[str] = set()
@@ -463,7 +504,7 @@ class ScrapRateService:
                 continue
 
             workcenter = row.get("Workcenter")
-            bu = resolve_bu_for_production(workcenter)
+            bu = resolve_bu_for_finished_goods(workcenter)
             if bu not in buckets[(iso_year, iso_week)]:
                 unclassified.add(str(workcenter))
                 continue
@@ -473,9 +514,8 @@ class ScrapRateService:
             )
 
         if unclassified:
-            logger.warning(
-                "ScrapRate: produccion descartada por workcenter no clasificado "
-                "en ninguna BU: %s. Revisar PRODUCTION_WORKCENTER_TO_BU.",
+            logger.debug(
+                "ScrapRate: produccion descartada por workcenter no terminal: %s.",
                 ", ".join(sorted(unclassified)),
             )
 

@@ -3,6 +3,11 @@ import requests
 from django.core.cache import cache
 from datetime import date
 
+from apps.quality.cogp.services.cogp_daily_bu_service import (
+    CogpDailyBuService,
+    empty_day as _empty_cogp_day,
+)
+
 PROXY_URL    = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
 PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
 HEADERS      = {"Authorization": f"Bearer {PROXY_SECRET}"}
@@ -55,15 +60,28 @@ class OpsReportService:
         return data
 
     @staticmethod
-    def get_scrap_cogp(report_date: date) -> dict:
-        key    = f"ops:scrap_cogp:{report_date}"
-        cached = cache.get(key)
-        if cached:
-            return cached
-        data = _post("/scrap-cogp", {"report_date": str(report_date)})
-        cache.set(key, data, CACHE_TTL)
-        return data
+    def get_cogp_daily(report_date: date) -> dict:
+        """
+        Bucket COGP del dia por BU: {bu: {scrap_cost, scrap_qty, extended_cost}}.
+        Fuente unica de verdad para numerador Y denominador del %COGP.
+        """
+        buckets = CogpDailyBuService().get_daily_buckets(report_date, report_date)
+        return buckets.get(str(report_date)) or _empty_cogp_day()
 
+    @staticmethod
+    def get_scrap_cogp(report_date: date) -> dict:
+        """
+        Se conserva la firma y la forma del payload para no romper consumidores
+        existentes (exports Excel/PDF). Ya NO llama a /scrap-cogp del proxy: el
+        scrap sale de cogp/scrap-range y se clasifica en Django con
+        apps.ssi_common.bu_classification, igual que el modulo de Calidad.
+        """
+        day = OpsReportService.get_cogp_daily(report_date)
+        return {
+            bu: {"scrap_qty": v["scrap_qty"], "scrap_cost": v["scrap_cost"]}
+            for bu, v in day.items()
+        }
+    
     @staticmethod
     def get_earned_labor_hours(report_date: date) -> dict:
         key    = f"ops:earned_hours:{report_date}"
@@ -105,9 +123,11 @@ class OpsReportService:
         cummins_wip = _get_wip(report_date, "cummins")
         tulc_wip    = _get_wip(report_date, "tulc")
 
-        volvo_cogp   = prod["volvo"]["cogp_cost"]
-        cummins_cogp = prod["cummins"]["cogp_cost"]
-        tulc_cogp    = prod.get("tulc", {}).get("cogp_cost", 0.0)
+        cogp_day = OpsReportService.get_cogp_daily(report_date)
+
+        volvo_cogp   = cogp_day["volvo"]["extended_cost"]
+        cummins_cogp = cogp_day["cummins"]["extended_cost"]
+        tulc_cogp    = cogp_day["tulc"]["extended_cost"]
     
         volvo_qty   = prod["volvo"]["quantity"]
         cummins_qty = prod["cummins"]["quantity"]
@@ -197,7 +217,7 @@ class OpsReportService:
         today    = date.today()
         end_date = min(end_date, today)
 
-        cache_key = f"ops:table:{bu_code}:{mode}:{report_date}"
+        cache_key = f"ops:table:v2:{bu_code}:{mode}:{report_date}"
         cached    = cache.get(cache_key)
         if cached:
             return cached
@@ -209,6 +229,24 @@ class OpsReportService:
        }, timeout=timeout)
 
         days_data = data.get("days", [])
+
+        # El scrap y el costo COGP se sobreescriben con la clasificacion de
+        # Django. El proxy sigue mandando su propia version en /production-range;
+        # se ignora a proposito -- una sola regla de BU en todo el sistema.
+        cogp_days = CogpDailyBuService().get_daily_buckets(start_date, end_date)
+        by_date = {d["date"]: d for d in days_data}
+
+        for day_str, bucket in cogp_days.items():
+            entry = by_date.get(day_str)
+            if entry is None:
+                entry = {"date": day_str}
+                by_date[day_str] = entry
+                days_data.append(entry)
+            for bu_key, vals in bucket.items():
+                bu_entry = entry.setdefault(bu_key, {"quantity": 0})
+                bu_entry["scrap_cost"] = vals["scrap_cost"]
+                bu_entry["scrap_qty"]  = vals["scrap_qty"]
+                bu_entry["cogp_cost"]  = vals["extended_cost"]
 
         from apps.production.repositories.targets_repository import TargetsRepository
         target_cache: dict[str, int] = {}

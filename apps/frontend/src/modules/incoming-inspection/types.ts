@@ -43,6 +43,8 @@ export interface SLACompliance {
   detail: SLADetailRow[];
 }
 
+export type SLASummary = Omit<SLACompliance, "detail">;
+
 export interface IncomingInspectionKPIs {
   operation_counts: OperationCount[];
   lots_inspected: LotsInspected;
@@ -82,4 +84,80 @@ export interface RejectionComment {
   created_by: number;
   created_by_name: string;
   created_at: string;
+}
+
+export interface DailyTrendPoint {
+  date: string;
+  inspected: number;
+  accepted: number;
+  rejected: number;
+  rejection_rate: number;
+}
+
+export interface TopRejectedPart {
+  part_no: string;
+  total: number;
+  rejected: number;
+  rejection_rate: number;
+}
+
+export interface AgingBucket {
+  key: "q1" | "q2" | "q3" | "over";
+  min_hours: number;
+  max_hours: number | null;
+  breached: boolean;
+  count: number;
+}
+
+export interface CycleTimeHistogram {
+  threshold_hours: number;
+  total: number;
+  buckets: AgingBucket[];
+  p50: number | null;
+  p90: number | null;
+  avg: number | null;
+}
+
+export interface IncomingDashboard {
+  kpis: {
+    operation_counts: OperationCount[];
+    lots_inspected: LotsInspected;
+    acceptance_rate: AcceptanceRate;
+    sla_compliance: SLASummary;
+  };
+  daily_trend: DailyTrendPoint[];
+  top_rejected_parts: TopRejectedPart[];
+  cycle_time_histogram: CycleTimeHistogram;
+}
+
+export interface PendingRow extends IncomingContainerHistoryRow {
+  waiting_hours: number;
+  aging_bucket: AgingBucket["key"];
+  sla_status: "on_time" | "late";
+}
+
+export interface PendingReconciliation {
+  status: "ok" | "drift" | "no_snapshot";
+  snapshot_total: number | null;
+  history_total: number;
+  delta: number | null;
+  snapshot_quantity: string | null;
+  snapshot_synced_at: string | null;
+}
+
+export interface PendingBacklog {
+  threshold_hours: number;
+  generated_at: string;
+  count: number;
+  truncated: boolean;
+  summary: {
+    total: number;
+    on_time: number;
+    late: number;
+    oldest_hours: number | null;
+    avg_hours: number | null;
+    buckets: AgingBucket[];
+  };
+  reconciliation: PendingReconciliation;
+  results: PendingRow[];
 }

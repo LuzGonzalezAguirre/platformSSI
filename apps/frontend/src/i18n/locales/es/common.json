@@ -582,9 +582,51 @@
     "title": "Inspección de Entrada",
     "subtitle": "Contenedores en TJ Incoming Inspection — estatus y cumplimiento de SLA",
     "tabs": {
-      "summary": "Resumen",
-      "rejected": "Lotes Rechazados"
-    },
+  "dashboard": "Dashboard",
+  "pending": "Pendientes (Op 10)",
+  "summary": "Resumen",
+  "rejected": "Lotes Rechazados"
+},
+"dashboard": {
+  "dailyTrend": "Tendencia diaria — aceptados vs rechazados",
+  "cycleTime": "Tiempo de ciclo vs umbral de SLA",
+  "topRejected": "Part numbers con más rechazos",
+  "accepted": "Aceptados",
+  "rejected": "Rechazados",
+  "inspected": "Inspeccionados",
+  "rejectionRate": "Tasa de rechazo",
+  "range": "{{from}}–{{to}}h",
+  "over": "> {{value}}h",
+  "p50": "Mediana",
+  "p90": "P90",
+  "avg": "Promedio",
+  "noData": "Sin datos en el rango seleccionado."
+},
+"pending": {
+  "title": "Lotes pendientes por inspeccionar",
+  "total": "Total pendiente",
+  "onTime": "Dentro de SLA",
+  "late": "Fuera de SLA",
+  "oldest": "Más antiguo",
+  "avgWaiting": "Espera promedio",
+  "aging": "Antigüedad del backlog",
+  "columns": {
+    "serialNo": "No. Serie",
+    "partNo": "No. Parte",
+    "receivedAt": "Recibido",
+    "waiting": "Espera",
+    "location": "Ubicación",
+    "changeBy": "Recibido por"
+  },
+  "reconciliation": {
+    "ok": "Conciliado con el snapshot de Plex ({{snapshot}} contenedores en Op 10).",
+    "drift": "Discrepancia: el historial reporta {{history}} lotes pendientes, el snapshot de Plex reporta {{snapshot}} contenedores en Op 10 (Δ {{delta}}). Revisar la sincronización incremental.",
+    "noSnapshot": "Sin snapshot de Plex disponible — no fue posible conciliar el backlog.",
+    "syncedAt": "Snapshot: {{value}}"
+  },
+  "truncated": "Mostrando los primeros {{count}} registros. Acota el rango de fechas.",
+  "noData": "No hay lotes pendientes en el rango seleccionado."
+},
     "filters": {
       "dateFrom": "Desde", "dateTo": "Hasta", "partNo": "Número de Parte",
       "operation": "Operación", "allOperations": "Todas las operaciones",

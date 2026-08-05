@@ -525,9 +525,51 @@
     "title": "Incoming Inspection",
     "subtitle": "Containers at TJ Incoming Inspection — status and SLA compliance",
     "tabs": {
-      "summary": "Summary",
-      "rejected": "Rejected Lots"
-    },
+  "dashboard": "Dashboard",
+  "pending": "Pending (Op 10)",
+  "summary": "Summary",
+  "rejected": "Rejected Lots"
+},
+"dashboard": {
+  "dailyTrend": "Daily trend — accepted vs rejected",
+  "cycleTime": "Cycle time vs SLA threshold",
+  "topRejected": "Part numbers with most rejections",
+  "accepted": "Accepted",
+  "rejected": "Rejected",
+  "inspected": "Inspected",
+  "rejectionRate": "Rejection rate",
+  "range": "{{from}}–{{to}}h",
+  "over": "> {{value}}h",
+  "p50": "Median",
+  "p90": "P90",
+  "avg": "Average",
+  "noData": "No data in the selected range."
+},
+"pending": {
+  "title": "Lots pending inspection",
+  "total": "Total pending",
+  "onTime": "Within SLA",
+  "late": "SLA breached",
+  "oldest": "Oldest",
+  "avgWaiting": "Average wait",
+  "aging": "Backlog aging",
+  "columns": {
+    "serialNo": "Serial No",
+    "partNo": "Part No",
+    "receivedAt": "Received",
+    "waiting": "Waiting",
+    "location": "Location",
+    "changeBy": "Received by"
+  },
+  "reconciliation": {
+    "ok": "Reconciled against Plex snapshot ({{snapshot}} containers at Op 10).",
+    "drift": "Mismatch: history reports {{history}} pending lots, Plex snapshot reports {{snapshot}} containers at Op 10 (Δ {{delta}}). Review incremental sync.",
+    "noSnapshot": "No Plex snapshot available — backlog could not be reconciled.",
+    "syncedAt": "Snapshot: {{value}}"
+  },
+  "truncated": "Showing the first {{count}} records. Narrow the date range.",
+  "noData": "No pending lots in the selected range."
+},
     "filters": {
       "dateFrom": "From", "dateTo": "To", "partNo": "Part Number",
       "operation": "Operation", "allOperations": "All operations",
