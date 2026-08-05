@@ -24,6 +24,9 @@ export default function SafetyPage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
   const [filters, setFilters]     = useState<SafetyIncidentFilters>({});
+  const [pendingDate, setPendingDate] = useState<string>("");
+  const [resetReason, setResetReason] = useState<string>("");
+  const [savingReset, setSavingReset] = useState(false);
 
   const [form, setForm] = useState<Partial<SafetyIncidentCreatePayload>>({
     incident_date: new Date().toISOString().split("T")[0],
@@ -56,12 +59,36 @@ export default function SafetyPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleUpdateLastIncident = async (date: string) => {
+  const handleUpdateLastIncident = async () => {
+    if (!pendingDate) return;
+
+    if (!resetReason.trim()) {
+      setError(lang === "es"
+        ? "El motivo del ajuste es obligatorio"
+        : "A reason for the adjustment is required");
+      return;
+    }
+
+    setSavingReset(true);
+    setError(null);
+
     try {
-      const updated = await SafetyService.updateSettings(date || null);
+      const updated = await SafetyService.updateSettings({
+        last_incident_date: pendingDate,
+        reason: resetReason.trim(),
+      });
       setSettings(updated);
-    } catch {
-      setError(lang === "es" ? "Error actualizando fecha" : "Error updating date");
+      setPendingDate("");
+      setResetReason("");
+    } catch (err: any) {
+      const detail = err?.response?.data;
+      setError(
+        detail && typeof detail === "object"
+          ? Object.values(detail).flat().join(" ")
+          : lang === "es" ? "Error actualizando fecha" : "Error updating date"
+      );
+    } finally {
+      setSavingReset(false);
     }
   };
 
@@ -166,19 +193,34 @@ export default function SafetyPage() {
                 </div>
               </div>
 
-              {/* Update last incident date */}
               <div style={s.updateRow}>
-                <label style={s.fieldLabel}>
-                  {lang === "es" ? "Fecha del último incidente:" : "Last incident date:"}
-                </label>
-                <input
-                  type="date"
-                  defaultValue={settings.last_incident_date ?? ""}
-                  max={new Date().toISOString().split("T")[0]}
-                  onChange={(e) => handleUpdateLastIncident(e.target.value)}
-                  style={s.dateInput}
-                />
-              </div>
+  <label style={s.fieldLabel}>
+    {lang === "es" ? "Fecha del último incidente:" : "Last incident date:"}
+  </label>
+  <input
+    type="date"
+    value={pendingDate || settings.last_incident_date || ""}
+    max={new Date().toISOString().split("T")[0]}
+    onChange={(e) => setPendingDate(e.target.value)}
+    style={s.dateInput}
+  />
+  <input
+    type="text"
+    placeholder={lang === "es" ? "Motivo del ajuste (requerido)" : "Reason for adjustment (required)"}
+    value={resetReason}
+    onChange={(e) => setResetReason(e.target.value)}
+    style={s.input}
+  />
+  <button
+    onClick={handleUpdateLastIncident}
+    disabled={!pendingDate || !resetReason.trim() || savingReset}
+    style={s.dateInput}
+  >
+    {savingReset
+      ? (lang === "es" ? "Guardando..." : "Saving...")
+      : (lang === "es" ? "Actualizar contador" : "Update counter")}
+  </button>
+</div>
 
               {/* KPI grid */}
               <div style={s.kpiGrid}>

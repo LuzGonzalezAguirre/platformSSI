@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.production.models import PlantEmployee, AttendanceRecord
+from apps.production.models import PlantEmployee, AttendanceRecord, CcsAttendanceRecord
 
 
 class PlantEmployeeSerializer(serializers.ModelSerializer):
@@ -50,6 +50,30 @@ class AttendanceBulkItemSerializer(serializers.Serializer):
 
 class AttendanceBulkSerializer(serializers.Serializer):
     records = AttendanceBulkItemSerializer(many=True)
+
+
+# ── Grilla diaria CCS (Postgres: CcsAttendanceRecord) ─────────────────────────
+# Hasta hoy esta ruta aceptaba request.data crudo sin validar. Un status con
+# typo entraba silencioso a la tabla.
+
+class CcsAttendanceBulkItemSerializer(serializers.Serializer):
+    employee_id = serializers.IntegerField()
+    date        = serializers.DateField()
+    turno       = serializers.ChoiceField(choices=PlantEmployee.Turno.choices)
+    status      = serializers.ChoiceField(choices=CcsAttendanceRecord.Status.choices)
+    shift       = serializers.ChoiceField(
+        choices=AttendanceRecord.Shift.choices,
+        required=False,
+        default=AttendanceRecord.Shift.FULL,
+    )
+    hours       = serializers.DecimalField(
+        max_digits=5, decimal_places=2, required=False, default=0,
+    )
+
+
+class CcsAttendanceBulkSerializer(serializers.Serializer):
+    records = CcsAttendanceBulkItemSerializer(many=True, allow_empty=True)
+
 
 class EarnedHoursSerializer(serializers.Serializer):
     date         = serializers.DateField(read_only=True)

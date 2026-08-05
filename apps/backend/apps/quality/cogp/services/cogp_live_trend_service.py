@@ -5,46 +5,14 @@ from decimal import Decimal
 from apps.quality.services.plex_client_quality import QualityPlexClient
 from apps.quality.cogp.repositories.cogp_repository import CogpRepository
 from apps.quality.models import BusinessUnit
+from apps.ssi_common.bu_classification import (
+    resolve_bu_from_workcenter,
+    resolve_bu_for_production,
+    VOLVO_HM_WORKCENTERS,
+    PRODUCTION_WORKCENTER_TO_BU,
+)
 
 logger = logging.getLogger(__name__)
-
-VOLVO_HM_WORKCENTERS = {"HM Ensamble Final 2", "HM Ensamble Frontal 2"}
-
-PRODUCTION_WORKCENTER_TO_BU = {
-    "HM Ensamble Final 2": BusinessUnit.VOLVO,
-    "HM Ensamble de Servicio": BusinessUnit.CUMMINS,
-    "TULC Ensamble Final": BusinessUnit.TULC,
-}
-
-
-def resolve_bu_from_workcenter(workcenter_group: str, workcenter: str) -> str | None:
-    """
-    Clasificacion de SCRAP por Workcenter_Group + Workcenter. Confirmado
-    sesion 2026-07-29: dentro de 'Heater Module', HM Ensamble Final 2 y
-    HM Ensamble Frontal 2 son Volvo; el resto de Heater Module es Cummins.
-    'TULC' como Workcenter_Group va directo a TULC sin importar el
-    workcenter especifico. Molding y ambos grupos 'Speed' quedan fuera
-    del scope por ahora (excluidos ya desde el query del proxy).
-    """
-    if workcenter_group == "TULC":
-        return BusinessUnit.TULC
-    if workcenter_group == "Heater Module":
-        if workcenter in VOLVO_HM_WORKCENTERS:
-            return BusinessUnit.VOLVO
-        return BusinessUnit.CUMMINS
-    return None
-
-
-def resolve_bu_for_production(workcenter: str) -> str:
-    """
-    Clasificacion de PRODUCCION por workcenter terminal, fija y sin
-    ambiguedad (confirmado sesion 2026-07-29): HM Ensamble Final 2=VOLVO,
-    HM Ensamble de Servicio=CUMMINS, TULC Ensamble Final=TULC. No usa
-    Part_No/CustomerPartMapping -- se abandono ese criterio porque nombres
-    de Plex como "Cummins/SSI Standard TULC sensor s/a" son ambiguos y
-    clasificaban mal produccion real de TULC como Cummins.
-    """
-    return PRODUCTION_WORKCENTER_TO_BU.get(workcenter, BusinessUnit.SPEED)
 
 
 class CogpLiveTrendService:
@@ -55,6 +23,10 @@ class CogpLiveTrendService:
     Clasificacion por fuente distinta segun el dato:
     - SCRAP: por Workcenter_Group + Workcenter (resolve_bu_from_workcenter).
     - PRODUCCION: por Workcenter terminal, fijo (resolve_bu_for_production).
+
+    Ambas funciones viven ahora en apps.ssi_common.bu_classification --
+    se reexportan arriba para no romper importadores existentes
+    (ver cogp_pareto_service.py).
     """
 
     def __init__(

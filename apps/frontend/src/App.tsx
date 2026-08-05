@@ -26,6 +26,7 @@ import RejectionReportPage from "./modules/quality/RejectionReportPage";
 import CogpDashboardPage from "./modules/quality/cogp/CogpDashboardPage";
 import CogpMappingPage from "./modules/quality/cogp/CogpMappingPage";
 import DowntimeSettingsPage from "./modules/quality/downtime-settings/DowntimeSettingsPage";
+import PmpPage from "./modules/maintenance/pmp/PmpPage";
 
 
 // ════════════════════════════════════════════════════════════════════════
@@ -131,6 +132,7 @@ function AppRoutes() {
         <Route path="/quality/cogp/mapping" element={<CogpMappingPage />} />
         <Route path="/quality/downtime/settings" element={<DowntimeSettingsPage />} />
         <Route path="/quality/scrap-rate" element={<ScrapRatePage />} />
+        <Route path="/maintenance/pmp" element={<PmpPage />} />
       </Routes>
     </AppShell>
   );

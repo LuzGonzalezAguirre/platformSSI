@@ -1,10 +1,11 @@
 import apiClient from "../../../services/api.client";
 import {
   PlantEmployee, AttendanceRecord,
-  PlantEmployeeCreatePayload, AttendanceBulkPayload,
+  PlantEmployeeCreatePayload, AttendanceBulkPayload,DailyProductivity,
 } from "./types";
 
 const BASE = "/production";
+
 
 export const AssistanceService = {
   listEmployees: (turno?: "A" | "B", includeInactive = false): Promise<PlantEmployee[]> =>
@@ -32,10 +33,10 @@ export const AssistanceService = {
   reactivateCcsEmployee: (id: number): Promise<any> =>
     apiClient.post(`${BASE}/ccs/employees/${id}/reactivate/`).then((r: any) => r.data),
 
-  getAttendance: (date: string, turno?: "A" | "B"): Promise<AttendanceRecord[]> =>
-    apiClient
-      .get(`${BASE}/attendance/`, { params: { date, ...(turno ? { turno } : {}) } })
-      .then((r: any) => r.data),
+getDailyProductivity: (date: string, turno?: "A" | "B"): Promise<DailyProductivity> =>
+  apiClient
+    .get(`${BASE}/productivity/daily/`, { params: { date, ...(turno ? { turno } : {}) } })
+    .then((r: any) => r.data),
 
   saveAttendance: (payload: AttendanceBulkPayload): Promise<{ saved: number }> =>
     apiClient.post(`${BASE}/attendance/`, payload).then((r: any) => r.data),

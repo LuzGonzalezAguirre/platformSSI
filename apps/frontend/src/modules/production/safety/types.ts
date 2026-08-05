@@ -3,6 +3,7 @@ export interface SafetySettings {
   plant: string;
   days_without_incident: number;
   last_incident_date: string | null;
+  baseline_date: string | null;
   updated_at: string;
 }
 
@@ -17,8 +18,21 @@ export interface SafetyIncident {
   root_cause: string;
   status: IncidentStatus;
   reported_by_name: string;
+  resets_counter: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface SafetyCounterEvent {
+  id: number;
+  source: "manual" | "incident";
+  incident: number | null;
+  previous_incident_date: string | null;
+  new_incident_date: string | null;
+  previous_days: number;
+  reason: string;
+  created_by_name: string;
+  created_at: string;
 }
 
 export type IncidentType =
@@ -26,12 +40,20 @@ export type IncidentType =
   | "first_aid"
   | "recordable"
   | "lost_time"
+  | "covid_positive"
   | "property_damage"
   | "environmental";
 
 export type Severity = "low" | "medium" | "high" | "critical";
 
 export type IncidentStatus = "open" | "in_progress" | "closed";
+
+export const COUNTER_RESETTING_TYPES: IncidentType[] = [
+  "first_aid",
+  "recordable",
+  "lost_time",
+  "covid_positive",
+];
 
 export interface SafetyIncidentCreatePayload {
   incident_date: string;
@@ -43,6 +65,12 @@ export interface SafetyIncidentCreatePayload {
   root_cause?: string;
 }
 
+export interface SafetySettingsUpdatePayload {
+  last_incident_date?: string | null;
+  baseline_date?: string | null;
+  reason: string;
+}
+
 export interface SafetyIncidentFilters {
   type?: IncidentType;
   status?: IncidentStatus;
@@ -52,19 +80,20 @@ export interface SafetyIncidentFilters {
 }
 
 export const INCIDENT_TYPE_LABELS: Record<IncidentType, { es: string; en: string }> = {
-  near_miss:       { es: "Casi Accidente", en: "Near Miss" },
-  first_aid:       { es: "Primeros Auxilios", en: "First Aid" },
-  recordable:      { es: "Registrable", en: "Recordable" },
-  lost_time:       { es: "Tiempo Perdido", en: "Lost Time" },
-  property_damage: { es: "Daño a Propiedad", en: "Property Damage" },
-  environmental:   { es: "Ambiental", en: "Environmental" },
+  near_miss:       { es: "Casi Accidente",     en: "Near Miss" },
+  first_aid:       { es: "Primeros Auxilios",  en: "First Aid" },
+  recordable:      { es: "Registrable",        en: "Recordable" },
+  lost_time:       { es: "Tiempo Perdido",     en: "Lost Time" },
+  covid_positive:  { es: "COVID Positivo",     en: "COVID Positive" },
+  property_damage: { es: "Daño a Propiedad",   en: "Property Damage" },
+  environmental:   { es: "Ambiental",          en: "Environmental" },
 };
 
 export const SEVERITY_LABELS: Record<Severity, { es: string; en: string }> = {
-  low:      { es: "Bajo",     en: "Low"      },
-  medium:   { es: "Medio",    en: "Medium"   },
-  high:     { es: "Alto",     en: "High"     },
-  critical: { es: "Crítico",  en: "Critical" },
+  low:      { es: "Bajo",    en: "Low"      },
+  medium:   { es: "Medio",   en: "Medium"   },
+  high:     { es: "Alto",    en: "High"     },
+  critical: { es: "Crítico", en: "Critical" },
 };
 
 export const SEVERITY_COLORS: Record<Severity, string> = {
@@ -75,9 +104,9 @@ export const SEVERITY_COLORS: Record<Severity, string> = {
 };
 
 export const STATUS_LABELS: Record<IncidentStatus, { es: string; en: string }> = {
-  open:        { es: "Abierto",      en: "Open"        },
-  in_progress: { es: "En Progreso",  en: "In Progress" },
-  closed:      { es: "Cerrado",      en: "Closed"      },
+  open:        { es: "Abierto",     en: "Open"        },
+  in_progress: { es: "En Progreso", en: "In Progress" },
+  closed:      { es: "Cerrado",     en: "Closed"      },
 };
 
 export const STATUS_COLORS: Record<IncidentStatus, string> = {

@@ -56,13 +56,15 @@
     "qualityDowntime": "Downtime",
     "qualityCogp": "COGP",
     "qualityCogpMapping": "COGP Mapping",
-    "qualityScrapRate": "Scrap Rate"
+    "qualityScrapRate": "Scrap Rate",
+    "maintenancePmp": "PM Program"
 
 
 
 
   }
 },
+
 "scrapRate": {
   "title": "Scrap Rate — Pieces",
   "subtitle": "Weekly trend of produced pieces vs scrap. Source: COGP (Plex).",
@@ -586,6 +588,74 @@
     "tulc": "TULC",
     "global": "Global"
   }
+},
+"pmp": {
+  "title": "Preventive Maintenance Program",
+  "subtitle": "Annual calendar of scheduled PMs by due date",
+  "loading": "Loading calendar...",
+  "loadError": "Could not load the program. Please try again.",
+  "noData": "No data",
+  "selectMonth": "Month",
+  "selectYear": "Year",
+  "fleets": {
+    "all": "All"
+  },
+  "status": {
+    "complete": "Complete",
+    "open": "Open",
+    "hold": "Hold",
+    "cancelled": "Cancelled"
+  },
+  "legend": {
+    "allDone": "All complete",
+    "hasHold": "Has PMs on hold",
+    "pending": "Work pending"
+  },
+  "kpis": {
+    "totalMonth": "PMs this month",
+    "totalYear": "Total {{year}}",
+    "byDueDate": "Scheduled by due date",
+    "fullYear": "Full-year plan",
+    "monthCompletion": "Month completion",
+    "activeBase": "of {{count}} active PMs (cancelled excluded)",
+    "byClient": "Fleet breakdown"
+  },
+  "calendar": {
+    "prev": "Previous month",
+    "next": "Next month",
+    "today": "Today",
+    "unit": "WR",
+    "dayLabel": "Day {{day}}, {{count}} work requests"
+  },
+  "panel": {
+    "title": "Work requests",
+    "estHours": "Est. hours",
+    "closed": "Closed",
+    "empty": "Select a day",
+    "noEvents": "No scheduled PMs for this day."
+  },
+  "bu": {
+    "volvo": "Volvo",
+    "cummins": "Cummins",
+    "tulc": "TULC",
+    "unclassified": "Unclassified"
+  },
+  "fields": {
+    "description": "Description",
+    "type": "Type",
+    "bu": "Business unit",
+    "equipmentId": "Equipment ID",
+    "equipmentDesc": "Equipment",
+    "equipmentGroup": "Equipment group",
+    "workcenter": "Workcenter",
+    "department": "Department",
+    "assignedTo": "Assigned to",
+    "requestDate": "Request date",
+    "dueDate": "Due date",
+    "completedDate": "Completed date",
+    "scheduledHours": "Scheduled hours",
+    "maintenanceHours": "Actual hours",
+    "failures": "Failures"
+  }
 }
-
 }

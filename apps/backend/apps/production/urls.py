@@ -3,7 +3,7 @@ from apps.production.views.targets_views import (
     BusinessUnitListView, WeeklyTargetView, WeeklyWIPView,OEERecordView,
 )
 from apps.production.views.safety_views import (
-    SafetySettingsView, SafetyIncidentListCreateView, SafetyIncidentUpdateView,
+    SafetySettingsView, SafetyIncidentListCreateView, SafetyIncidentUpdateView,SafetyCounterHistoryView,
 )
 from apps.production.views.assistance_views import (
     PlantEmployeeListCreateView, PlantEmployeeDetailView,
@@ -18,6 +18,9 @@ from apps.production.views.ccs_views import (
 from apps.production.views.ops_report_views import OpsDailySummaryView, OpsWeeklyTableView
 from apps.production.views.ops_report_views import OpsDailyExportView
 from apps.production.views.ops_report_views import OpsDailyPDFExportView
+
+from apps.production.views.productivity_views import DailyProductivityView
+
 
 urlpatterns = [
     path("business-units/",              BusinessUnitListView.as_view()),
@@ -53,4 +56,7 @@ urlpatterns = [
     path("chairs/breaks/",       ChairBreaksView.as_view()),
     path("chairs/daily-chart/",  ChairDailyChartView.as_view()),
     path("chairs/turno-chart/",  ChairTurnoChartView.as_view()),
+
+    path("productivity/daily/", DailyProductivityView.as_view()),
+    path("safety/counter-history/", SafetyCounterHistoryView.as_view()),
 ]

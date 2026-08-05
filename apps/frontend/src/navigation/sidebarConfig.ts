@@ -26,13 +26,7 @@ export const sidebarConfig: NavSection[] = [
         icon: "LayoutDashboard",
         allowedRoles: ALL_ROLES,
       },
-      {
-      id: "operational-panel.cogp",
-      labelKey: "nav.items.qualityCogp",
-      path: "/quality/cogp",
-      icon: "TrendingDown",
-      allowedRoles: ALL_ROLES,
-    },
+      
     
     ],
   },
@@ -122,6 +116,13 @@ export const sidebarConfig: NavSection[] = [
         allowedRoles: SUPERVISORY_ROLES,
       },
       {
+      id: "quality.cogp",
+      labelKey: "nav.items.qualityCogp",
+      path: "/quality/cogp",
+      icon: "TrendingDown",
+      allowedRoles: ALL_ROLES,
+    },
+      {
         id: "quality.qwall-group",
         labelKey: "nav.items.qualityQwallGroup",
         path: "",
@@ -196,7 +197,13 @@ export const sidebarConfig: NavSection[] = [
         icon: "ClipboardList",
         allowedRoles: ALL_ROLES,
       },
-      
+      {
+        id: "maintenance.pmp",
+        labelKey: "nav.items.maintenancePmp",
+        path: "/maintenance/pmp",
+        icon: "CalendarDays",
+        allowedRoles: ALL_ROLES,
+      },
     ],
   },
   {

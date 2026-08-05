@@ -13,6 +13,8 @@ from apps.maintenance.views.ca_views import (
     EquipmentCatalogView,
     AssigneeCatalogView,
 )
+from apps.maintenance.views.pmp_views import PmpCalendarView
+
 
 urlpatterns = [
     path("overview/kpis/",                        MaintenanceKPIView.as_view()),
@@ -29,4 +31,5 @@ urlpatterns = [
     path("corrective-actions/metrics/",           CorrectiveActionMetricsView.as_view()),
     path("equipment-catalog/",                    EquipmentCatalogView.as_view()),
     path("assignee-catalog/",                     AssigneeCatalogView.as_view()),
+    path("pmp/calendar/", PmpCalendarView.as_view(), name="pmp-calendar"),
 ]

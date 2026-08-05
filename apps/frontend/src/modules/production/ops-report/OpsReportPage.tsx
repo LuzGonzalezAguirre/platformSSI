@@ -10,6 +10,7 @@ import { SafetySettings } from "../safety/types";
 import { AssistanceService } from "../assistance/assistance.service";
 import ProductionTable from "./ProductionTable";
 import ProductionCharts from "./ProductionCharts";
+import type { DailyProductivity } from "../assistance/types";
 
 function todayStr() {
   return new Date().toISOString().split("T")[0];
@@ -288,8 +289,7 @@ export default function OpsReportPage() {
   const [activeClient, setActiveClient] = useState<"volvo" | "cummins" | "tulc">("volvo");
   const [summary, setSummary]           = useState<DailySummary | null>(null);
   const [safety, setSafety]             = useState<SafetySettings | null>(null);
-  const [paidHours, setPaidHours]       = useState<number>(0);
-  const [earnedHoursManual, setEarnedHoursManual] = useState<number | null>(null);
+  const [productivity, setProductivity] = useState<DailyProductivity | null>(null);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
 
@@ -318,21 +318,12 @@ export default function OpsReportPage() {
       setSafety(saf);
 
       // Horas pagadas desde asistencia
-      try {
-        const records = await AssistanceService.getAttendance(selectedDate);
-        const total   = records.reduce((acc: number, r: any) => acc + (parseFloat(r.hours) || 0), 0);
-        setPaidHours(total);
-      } catch {
-        setPaidHours(0);
-      }
-
-      // Horas ganadas manuales desde EarnedHoursRecord
-      try {
-        const ehRecord = await AssistanceService.getEarnedHours(selectedDate);
-        setEarnedHoursManual(ehRecord ? parseFloat(ehRecord.earned_hours) : null);
-      } catch {
-        setEarnedHoursManual(null);
-      }
+     try {
+  const prod = await AssistanceService.getDailyProductivity(selectedDate);
+  setProductivity(prod);
+} catch {
+  setProductivity(null);
+}
 
       // OEE live (Plex / override manual legado) — sigue el rango del viewMode
       await loadOEE(selectedDate, viewMode);
@@ -347,11 +338,11 @@ export default function OpsReportPage() {
   useEffect(() => { load(); }, [load]);
 
   // Earned hours: priorizar entrada manual, fallback a Plex
-  const earnedHours = earnedHoursManual ?? 0;
-
-  const productivityPct = paidHours > 0 && earnedHours > 0
-    ? Math.min((earnedHours / paidHours) * 100, 100)
-    : 0;
+  const paidHours       = productivity?.paid_hours       ? parseFloat(productivity.paid_hours)       : 0;
+  const earnedHours     = productivity?.earned_hours     ? parseFloat(productivity.earned_hours)     : 0;
+  const productivityPct = productivity?.productivity_pct ? parseFloat(productivity.productivity_pct) : 0;
+  const attendanceSaved = productivity?.attendance_saved ?? false;
+  const hasManualEarned = productivity?.earned_hours != null;
 
   const generalYield = summary?.total.yield_pct ?? 0;
 
@@ -450,10 +441,12 @@ export default function OpsReportPage() {
           <div style={s.productivityCard}>
             <div style={s.prodBarSection}>
               <KPIBar
-                label={lang === "es" ? "Productividad" : "Productivity"}
-                value={productivityPct} target={85}
-                subLabel={`${earnedHours.toFixed(1)} / ${paidHours.toFixed(1)} hrs`}
-              />
+  label={lang === "es" ? "Productividad" : "Productivity"}
+  value={productivityPct} target={85}
+  subLabel={attendanceSaved
+    ? `${earnedHours.toFixed(1)} / ${paidHours.toFixed(1)} hrs`
+    : (lang === "es" ? "sin asistencia" : "no attendance")}
+/>
             </div>
             <div style={s.prodBarSection}>
               <KPIBar
@@ -468,16 +461,20 @@ export default function OpsReportPage() {
               <Clock size={16} color="var(--color-text-secondary)" />
               <div>
                 <div style={s.earnedHoursValue}>
-                  {earnedHours.toFixed(1)} / {paidHours.toFixed(1)}
-                </div>
-                <div style={s.earnedHoursLabel}>
-                  {lang === "es" ? "Horas ganadas / pagadas" : "Earned / Paid Hours"}
-                  {earnedHoursManual !== null && (
-                    <span style={{ marginLeft: "0.375rem", color: "#3b82f6", fontSize: "0.7rem" }}>
-                      (manual)
-                    </span>
-                  )}
-                </div>
+  {attendanceSaved
+    ? `${earnedHours.toFixed(1)} / ${paidHours.toFixed(1)}`
+    : "—"}
+</div>
+<div style={s.earnedHoursLabel}>
+  {attendanceSaved
+    ? (lang === "es" ? "Horas ganadas / pagadas" : "Earned / Paid Hours")
+    : (lang === "es" ? "Sin asistencia capturada" : "Attendance not captured")}
+  {hasManualEarned && attendanceSaved && (
+    <span style={{ marginLeft: "0.375rem", color: "#3b82f6", fontSize: "0.7rem" }}>
+      (manual)
+    </span>
+  )}
+</div>
               </div>
             </div>
           </div>

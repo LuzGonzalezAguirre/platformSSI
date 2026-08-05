@@ -55,10 +55,80 @@
     "qualityDowntime": "Downtime",
     "qualityCogp": "COGP",
     "qualityCogpMapping": "Mapeo COGP",
-    "qualityScrapRate": "Scrap Rate"
+    "qualityScrapRate": "Scrap Rate",
+    "maintenancePmp": "Programa PM"
 
   }
   },
+ "pmp": {
+  "title": "Programa de Mantenimiento Preventivo",
+  "subtitle": "Calendario anual de PM programados por fecha de vencimiento",
+  "loading": "Cargando calendario...",
+  "loadError": "No se pudo cargar el programa. Intenta de nuevo.",
+  "noData": "Sin datos",
+  "selectMonth": "Mes",
+  "selectYear": "Año",
+  "fleets": {
+    "all": "Todos"
+  },
+  "status": {
+    "complete": "Completado",
+    "open": "Abierto",
+    "hold": "En espera",
+    "cancelled": "Cancelado"
+  },
+  "legend": {
+    "allDone": "Todo completado",
+    "hasHold": "Con PM en espera",
+    "pending": "Con trabajo pendiente"
+  },
+  "kpis": {
+    "totalMonth": "PM del mes",
+    "totalYear": "Total {{year}}",
+    "byDueDate": "Programados por fecha de vencimiento",
+    "fullYear": "Plan anual completo",
+    "monthCompletion": "Avance del mes",
+    "activeBase": "sobre {{count}} PM vigentes (excluye cancelados)",
+    "byClient": "Desglose por cliente"
+  },
+  "calendar": {
+    "prev": "Mes anterior",
+    "next": "Mes siguiente",
+    "today": "Hoy",
+    "unit": "WR",
+    "dayLabel": "Día {{day}}, {{count}} work requests"
+  },
+  "panel": {
+    "title": "Work requests",
+    "estHours": "Horas est.",
+    "closed": "Cerrados",
+    "empty": "Selecciona un día",
+    "noEvents": "No hay PM programados este día."
+  },
+  "bu": {
+    "volvo": "Volvo",
+    "cummins": "Cummins",
+    "tulc": "TULC",
+    "unclassified": "Sin clasificar"
+  },
+  "fields": {
+    "description": "Descripción",
+    "type": "Tipo",
+    "bu": "Unidad de negocio",
+    "equipmentId": "ID de equipo",
+    "equipmentDesc": "Equipo",
+    "equipmentGroup": "Grupo de equipo",
+    "workcenter": "Workcenter",
+    "department": "Departamento",
+    "assignedTo": "Asignado a",
+    "requestDate": "Fecha de solicitud",
+    "dueDate": "Fecha programada",
+    "completedDate": "Fecha de cierre",
+    "scheduledHours": "Horas planeadas",
+    "maintenanceHours": "Horas reales",
+    "failures": "Fallas"
+  }
+},
   "cogpMapping": {
   "title": "Mapeo Part → Unidad de Negocio (COGP)",
   "subtitle": "Catálogo de partes clasificadas por unidad de negocio, con fuente de clasificación",

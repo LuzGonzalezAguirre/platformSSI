@@ -73,6 +73,7 @@ class CcsAttendanceRecord(models.Model):
     class Status(models.TextChoices):
         PRESENT = "present", "Present"
         ABSENT  = "absent",  "Absent"
+        VACATION = "vacation", "Vacation"
         LEAVE   = "leave",   "Leave"
         SICK    = "sick",    "Sick"
 

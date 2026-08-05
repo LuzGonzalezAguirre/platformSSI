@@ -6,10 +6,12 @@ import {
   PlantEmployee, AttendanceRecord,
   AttendanceStatus, AttendanceShift,
   DEPARTMENTS, STATUS_LABELS, STATUS_COLORS,
-  SHIFT_LABELS, DEFAULT_HOURS,
+  SHIFT_LABELS, DEFAULT_HOURS,ATTENDANCE_STATUSES,
+  isZeroHourStatus, isPlannedAbsence,
+  DailyProductivity,
 } from "./types";
 
-
+const NO_DISMISS = 2 ** 31 - 1;
 type Tab = "attendance" | "employees" | "productivity";
 
 interface EditModal {
@@ -19,8 +21,21 @@ interface EditModal {
   saving: boolean;
 }
 
+
 function todayStr() {
   return new Date().toISOString().split("T")[0];
+}
+
+function useAutoDismiss<T>(
+  value: T | null,
+  clear: (v: null) => void,
+  ms = 4000,
+) {
+  useEffect(() => {
+    if (value === null) return;
+    const t = setTimeout(() => clear(null), ms);
+    return () => clearTimeout(t);
+  }, [value, clear, ms]);
 }
 
 export default function AssistancePage() {
@@ -110,12 +125,17 @@ export default function AssistancePage() {
     setDraft((prev) => {
       const next = [...prev];
       const row  = { ...next[idx], [field]: value };
-      if (field === "status" && value === "absent") {
+      if (field === "status" && isZeroHourStatus(value as AttendanceStatus)) {
         row.hours = "0"; row.shift = "none";
       }
-      if (field === "shift" && row.status !== "absent") {
+      if (field === "shift" && !isZeroHourStatus(row.status)) {
         row.hours = String(defaultHoursForRow(value as AttendanceShift, row.turno));
       }
+      if (field === "status" && !isZeroHourStatus(value as AttendanceStatus) && row.hours === "0") {
+        row.shift = "full";
+        row.hours = String(defaultHoursForRow("full", row.turno));
+      }
+      
       next[idx] = row;
       return next;
     });
@@ -217,10 +237,16 @@ export default function AssistancePage() {
     }
   };
   // Stats
-  const total      = draft.length;
+const total      = draft.length;
   const present    = draft.filter((r) => r.status === "present").length;
   const absent     = draft.filter((r) => r.status === "absent").length;
+  const vacation   = draft.filter((r) => isPlannedAbsence(r.status)).length;
   const totalHours = draft.reduce((acc, r) => acc + (parseFloat(r.hours) || 0), 0);
+
+  // Ausencia planeada fuera del denominador: un empleado de vacaciones
+  // no baja el % de asistencia del turno.
+  const headcountBase = total - vacation;
+  const attendancePct = headcountBase > 0 ? (present / headcountBase) * 100 : 0;
 
   const filteredEmployees = employees.filter((e) => {
     const matchTurno  = empFilter ? e.turno === empFilter : true;
@@ -251,21 +277,19 @@ const [savedEarned, setSavedEarned]     = useState<any>(null);
 const [savingEH, setSavingEH]           = useState(false);
 const [ehMsg, setEhMsg]                 = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+const [prodData, setProdData] = useState<DailyProductivity | null>(null);
+
 const loadEarnedHours = useCallback(async (date: string) => {
   try {
-    const [record, attRecords] = await Promise.all([
-      AssistanceService.getEarnedHours(date),
-      AssistanceService.getAttendance(date),
-    ]);
-    setSavedEarned(record);
-    setEarnedHours(record ? parseFloat(record.earned_hours) : 0);
-    setEarnedNotes(record?.notes ?? "");
-    const paid = attRecords.reduce(
-    (acc: number, r: AttendanceRecord) => acc + (parseFloat(r.hours) || 0),
-    0
-    );
-    setPaidHoursRef(paid);
+    const data = await AssistanceService.getDailyProductivity(date);
+    setProdData(data);
+    setEarnedHours(data.earned_hours ? parseFloat(data.earned_hours) : 0);
+    setEarnedNotes(data.notes ?? "");
+    setPaidHoursRef(data.paid_hours ? parseFloat(data.paid_hours) : 0);
+    setSavedEarned(data.recorded_at ? { recorded_at: data.recorded_at } : null);
   } catch {
+    setProdData(null);
+    setPaidHoursRef(0);
     setSavedEarned(null);
   }
 }, []);
@@ -273,6 +297,15 @@ const loadEarnedHours = useCallback(async (date: string) => {
 useEffect(() => {
   if (activeTab === "productivity") loadEarnedHours(prodDate);
 }, [activeTab, prodDate, loadEarnedHours]);
+
+// ── Limpieza de mensajes ──────────────────────────────────────────────
+useEffect(() => { setAttMsg(null); }, [selectedDate, turnoFilter]);
+useEffect(() => { setEhMsg(null);  }, [prodDate]);
+useEffect(() => { setAttMsg(null); setEhMsg(null); setEmpMsg(null); }, [activeTab]);
+
+useAutoDismiss(attMsg, setAttMsg, attMsg?.type === "error" ? NO_DISMISS  : 4000);
+useAutoDismiss(ehMsg,  setEhMsg,  ehMsg?.type  === "error" ? NO_DISMISS  : 4000);
+useAutoDismiss(empMsg, setEmpMsg, empMsg?.type === "error" ? NO_DISMISS  : 4000);
 
 const handleSaveEarnedHours = async () => {
   setSavingEH(true); setEhMsg(null);
@@ -297,10 +330,12 @@ const handleDeleteEarnedHours = async () => {
   }
 };
 
-const productivityPct = paidHoursRef > 0 && earnedHours > 0
-  ? Math.min((earnedHours / paidHoursRef) * 100, 100)
+const productivityPct = prodData?.productivity_pct
+  ? parseFloat(prodData.productivity_pct)
   : 0;
   return (
+
+
     <div style={s.page}>
       <div style={s.pageHeader}>
         <div>
@@ -378,6 +413,14 @@ const productivityPct = paidHoursRef > 0 && earnedHours > 0
             <div style={s.statCard}>
               <div style={s.statValue}>{totalHours.toFixed(1)}</div>
               <div style={s.statLabel}>{lang === "es" ? "Horas totales" : "Total Hours"}</div>
+            </div>
+            <div style={s.statCard}>
+              <div style={{ ...s.statValue, color: STATUS_COLORS.vacation }}>{vacation}</div>
+              <div style={s.statLabel}>{lang === "es" ? "Vacaciones" : "Vacation"}</div>
+            </div>
+            <div style={s.statCard}>
+              <div style={s.statValue}>{attendancePct.toFixed(1)}%</div>
+              <div style={s.statLabel}>{lang === "es" ? "Asistencia" : "Attendance"}</div>
             </div>
           </div>
 
@@ -810,23 +853,15 @@ const productivityPct = paidHoursRef > 0 && earnedHours > 0
       </div>
     </div>
 
-    {paidHoursRef > 0 ? (
-      <div style={s.msgBanner}>
-        {lang === "es" ? "Horas pagadas (asistencia):" : "Paid Hours (attendance):"}{" "}
-        <strong>{paidHoursRef.toFixed(1)} hrs</strong>
-      </div>
-    ) : (
-      <div style={{
-        ...s.readOnlyBanner,
-        color: "#f59e0b",
-        borderColor: "rgba(245,158,11,0.3)",
-        background: "rgba(245,158,11,0.08)",
-      }}>
-        {lang === "es"
-          ? "Sin asistencia guardada para esta fecha. Guarda asistencia primero."
-          : "No attendance saved for this date. Save attendance first."}
-      </div>
-    )}
+    {prodData?.attendance_saved && (
+  <div style={s.msgBanner}>
+    {lang === "es" ? "Horas pagadas (asistencia):" : "Paid Hours (attendance):"}{" "}
+    <strong>{paidHoursRef.toFixed(1)} hrs</strong>
+    {" — "}
+    {prodData.headcount_present} {lang === "es" ? "presentes" : "present"}
+    {prodData.headcount_absent > 0 && `, ${prodData.headcount_absent} ${lang === "es" ? "ausentes" : "absent"}`}
+  </div>
+)}
 
     <div style={s.addFormGrid}>
       <div style={s.fieldGroup}>

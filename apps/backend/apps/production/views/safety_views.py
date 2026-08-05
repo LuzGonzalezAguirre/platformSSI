@@ -1,33 +1,40 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from apps.production.services.safety_service import SafetyService
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.permissions.drf import module_permission
 from apps.production.serializers.safety import (
     SafetySettingsSerializer, SafetySettingsUpdateSerializer,
     SafetyIncidentSerializer, SafetyIncidentCreateSerializer,
-    SafetyIncidentUpdateSerializer,
+    SafetyIncidentUpdateSerializer, SafetyCounterEventSerializer,
 )
+from apps.production.services.safety_service import SafetyService
+
+ProductionRead   = module_permission("production", write_action="view")
+ProductionCreate = module_permission("production", write_action="create")
+ProductionEdit   = module_permission("production", write_action="edit")
 
 
 class SafetySettingsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ProductionEdit]
 
     def get(self, request):
-        plant = request.query_params.get("plant", "Tijuana")
-        obj   = SafetyService.get_settings(plant)
+        obj = SafetyService.get_settings(request.query_params.get("plant", "Tijuana"))
         return Response(SafetySettingsSerializer(obj).data)
 
     def patch(self, request):
-        plant = request.query_params.get("plant", "Tijuana")
         serializer = SafetySettingsUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        obj = SafetyService.update_settings(plant, serializer.validated_data, request.user)
+        obj = SafetyService.update_settings(
+            request.query_params.get("plant", "Tijuana"),
+            serializer.validated_data,
+            request.user,
+        )
         return Response(SafetySettingsSerializer(obj).data)
 
 
 class SafetyIncidentListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ProductionCreate]
 
     def get(self, request):
         filters = {
@@ -44,14 +51,27 @@ class SafetyIncidentListCreateView(APIView):
         serializer = SafetyIncidentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         incident = SafetyService.create_incident(serializer.validated_data, request.user)
-        return Response(SafetyIncidentSerializer(incident).data, status=status.HTTP_201_CREATED)
+        return Response(
+            SafetyIncidentSerializer(incident).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class SafetyIncidentUpdateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ProductionEdit]
 
     def patch(self, request, pk: int):
         serializer = SafetyIncidentUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         incident = SafetyService.update_incident(pk, serializer.validated_data)
         return Response(SafetyIncidentSerializer(incident).data)
+
+
+class SafetyCounterHistoryView(APIView):
+    permission_classes = [ProductionRead]
+
+    def get(self, request):
+        events = SafetyService.list_counter_events(
+            request.query_params.get("plant", "Tijuana")
+        )
+        return Response(SafetyCounterEventSerializer(events, many=True).data)

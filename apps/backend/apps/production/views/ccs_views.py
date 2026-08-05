@@ -9,6 +9,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status as http_status
+from apps.production.models import CcsAttendanceRecord
+from apps.production.serializers.assistance import CcsAttendanceBulkSerializer
+from apps.production.services.attendance_policy import AttendancePolicy
+from django.db import transaction
  
 PROXY_URL   = os.getenv("QWALL_PROXY_URL",   "http://host.docker.internal:8002")
 PROXY_TOKEN = os.getenv("QWALL_PROXY_TOKEN", "")
@@ -264,3 +268,63 @@ class CcsEmployeeReactivateView(APIView):
 
     def post(self, request, pk: int):
         return _proxy_post(f"/attendance/employees/{pk}/reactivate", {})
+
+
+class CcsAttendanceDailyView(APIView):
+    permission_classes = [IsAuthenticated]
+ 
+    def get(self, request):
+        date_str = request.query_params.get("date")
+        turno    = request.query_params.get("turno")
+ 
+        # 1. Employees from SQL Server via proxy (returns defaults for status/hours)
+        employees_resp = _proxy_get("/attendance/daily", {"date": date_str, "turno": turno})
+        if employees_resp.status_code != 200:
+            return employees_resp
+        employees = list(employees_resp.data)
+ 
+        # 2. Overlay PostgreSQL attendance records for that date
+        if date_str:
+            att_map = {
+                r.ccs_employee_id: r
+                for r in CcsAttendanceRecord.objects.filter(date=date_str)
+            }
+            for emp in employees:
+                rec = att_map.get(emp["employee_id"])
+                if rec:
+                    emp["id"]          = rec.id
+                    emp["status"]      = rec.status
+                    emp["hours"]       = str(rec.hours)
+                    emp["recorded_at"] = rec.recorded_at.isoformat() if rec.recorded_at else None
+ 
+        return Response(employees)
+ 
+    def post(self, request):
+        serializer = CcsAttendanceBulkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+ 
+        records = serializer.validated_data["records"]
+        saved   = 0
+ 
+        with transaction.atomic():
+            for r in records:
+                status_value = r["status"]
+                CcsAttendanceRecord.objects.update_or_create(
+                    ccs_employee_id=r["employee_id"],
+                    date=r["date"],
+                    defaults={
+                        "turno":       r["turno"],
+                        "status":      status_value,
+                        "hours":       AttendancePolicy.resolve_hours(
+                            status_value, r.get("hours", 0),
+                        ),
+                        "recorded_by": request.user,
+                    },
+                )
+                saved += 1
+ 
+        summary = AttendancePolicy.summarize([
+            {"status": r["status"], "hours": r.get("hours", 0)} for r in records
+        ])
+ 
+        return Response({"saved": saved, "summary": summary})
