@@ -5,7 +5,7 @@ import { usePmpData } from "./usePmpData";
 import PmpKpiSection from "./PmpKpiSection";
 import PmpCalendar from "./PmpCalendar";
 import PmpDetailPanel from "./PmpDetailPanel";
-import { DayBucket, PM, buKey, dateKey, normalizeStatus } from "./types";
+import { DayBucket, PM, buKey, dateKey, eventStatus } from "./types";
 
 const selectStyle: React.CSSProperties = {
   height: 36, padding: "0 0.5rem", fontSize: "0.875rem",
@@ -60,16 +60,11 @@ export default function PmpPage() {
         total: 0, complete: 0, open: 0, hold: 0, cancelled: 0,
       };
       b.total += 1;
-      b[normalizeStatus(ev.status)] += 1;
+      b[eventStatus(ev)] += 1;
       map.set(key, b);
     }
     return map;
   }, [monthEvents]);
-
-  const maxCount = useMemo(
-    () => Math.max(1, ...[...buckets.values()].map((b) => b.total)),
-    [buckets]
-  );
 
   const selectedRequests = useMemo(
     () => (selected ? monthEvents.filter((e) => e.due_date.slice(0, 10) === selected) : []),
@@ -89,14 +84,23 @@ export default function PmpPage() {
     return [...acc.values()];
   }, [data, availableFleets]);
 
-  const yearTotal = useMemo(() => {
-    if (!data) return 0;
-    if (fleet === "all") return data.kpis.total_year;
-    return data.kpis.by_bu_year.find((b) => buKey(b.bu) === buKey(fleet))?.count ?? 0;
+  // El % anual se calcula en backend sobre el año completo: el frontend solo
+  // recibe los eventos del mes, así que aquí no hay base para derivarlo.
+  const yearStats = useMemo(() => {
+    if (!data?.kpis.year_stats) return null;
+    const key = fleet === "all" ? "all" : buKey(fleet);
+    return data.kpis.year_stats[key] ?? null;
   }, [data, fleet]);
 
+  const yearTotal = useMemo(() => {
+    if (!data) return 0;
+    if (yearStats) return yearStats.total;
+    if (fleet === "all") return data.kpis.total_year;
+    return data.kpis.by_bu_year.find((b) => buKey(b.bu) === buKey(fleet))?.count ?? 0;
+  }, [data, fleet, yearStats]);
+
   const countBy = (s: string) =>
-    monthEvents.filter((e) => normalizeStatus(e.status) === s).length;
+    monthEvents.filter((e) => eventStatus(e) === s).length;
 
   const shiftMonth = (delta: number) => {
     const next = new Date(year, month - 1 + delta, 1);
@@ -201,6 +205,7 @@ export default function PmpPage() {
             hold={countBy("hold")}
             cancelled={countBy("cancelled")}
             fleets={fleetCounts}
+            yearStats={yearStats}
           />
 
           <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "minmax(0, 1fr) 22rem", alignItems: "start" }}>

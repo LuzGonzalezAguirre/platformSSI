@@ -653,12 +653,17 @@
     "hasHold": "Has PMs on hold",
     "pending": "Work pending"
   },
-  "kpis": {
+"kpis": {
     "totalMonth": "PMs this month",
     "totalYear": "Total {{year}}",
     "byDueDate": "Scheduled by due date",
     "fullYear": "Full-year plan",
     "monthCompletion": "Month completion",
+    "yearCompletion": "Year completion",
+    "ytdCompliance": "Compliance to date",
+    "noDue": "No PMs due yet this year",
+    "overdue_one": "{{count}} overdue",
+    "overdue_other": "{{count}} overdue",
     "activeBase": "of {{count}} active PMs (cancelled excluded)",
     "byClient": "Fleet breakdown"
   },

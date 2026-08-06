@@ -1,26 +1,35 @@
 # apps/quality/views/downtime_assignment_views.py
 from datetime import date as date_cls
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from apps.quality.models.downtime_workcenter_assignment import DowntimeWorkcenterAssignment
 from apps.quality.serializers import (
-    DowntimeAssignmentRowSerializer,
+    DowntimeAssignmentGroupNodeSerializer,
     DowntimeAssignmentsBulkWriteSerializer,
 )
-from apps.quality.services import downtime_workcenter_service
+from apps.quality.services import downtime_assignment_service
+from apps.quality.services.downtime_assignment_resolver import INHERITANCE_LOOKBACK_DAYS
 
 
 class DowntimeAssignmentsView(APIView):
     """
-    GET  ?date=YYYY-MM-DD  → todos los workcenters activos + su inspector
-                              asignado ese día (null si no se ha asignado).
-    PUT  {date, assignments: [...]} → guarda/actualiza TODAS las filas de
-                              ese día de un jalón. Sin restricción de fecha
-                              — se puede editar cualquier día, pasado o
-                              futuro, tantas veces como se quiera.
+    GET  ?date=YYYY-MM-DD
+        Árbol group → subgroup → workcenters con el inspector efectivo en
+        cada nivel. Incluye herencia del día anterior (hasta
+        INHERITANCE_LOOKBACK_DAYS): los valores heredados vienen con
+        `inherited_from` poblado para que la UI los distinga de los
+        confirmados. Nada se persiste al leer.
+
+    PUT  {date, groups: [...], overrides: [...]}
+        REPLACE-SET por día: lo que no venga se borra para esa fecha.
+        Guardar materializa lo heredado como decisión explícita del día.
+
+    ⚠️ RBAC pendiente: el PUT debería exigir
+       admin | quality_engineer | supervisor
+       vía user.roles.values_list("role__slug", flat=True).
+       Hoy cualquier usuario autenticado puede reasignar toda la planta.
     """
     permission_classes = [IsAuthenticated]
 
@@ -33,44 +42,27 @@ class DowntimeAssignmentsView(APIView):
         except ValueError:
             return Response({"error": "Formato de date inválido."}, status=400)
 
-        workcenters = downtime_workcenter_service.list_active_workcenters()
-        existing = {
-            a.workcenter_id: a
-            for a in DowntimeWorkcenterAssignment.objects.filter(date=target_date)
-        }
-
-        rows = []
-        for wc in workcenters:
-            a = existing.get(wc.id)
-            rows.append({
-                "workcenter_id": wc.id,
-                "workcenter_name": wc.name,
-                "date": date_str,
-                "inspector_user_id": a.inspector_user_id if a else None,
-                "inspector_name": a.inspector_name if a else None,
-            })
-
-        serializer = DowntimeAssignmentRowSerializer(rows, many=True)
-        return Response({"date": date_str, "results": serializer.data})
+        tree = downtime_assignment_service.build_assignment_tree(target_date)
+        serializer = DowntimeAssignmentGroupNodeSerializer(tree, many=True)
+        return Response({
+            "date": date_str,
+            "inheritance_lookback_days": INHERITANCE_LOOKBACK_DAYS,
+            "groups": serializer.data,
+        })
 
     def put(self, request):
         serializer = DowntimeAssignmentsBulkWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        target_date = serializer.validated_data["date"]
-        items = serializer.validated_data["assignments"]
 
         user = request.user if request.user.is_authenticated else None
-        saved_ids = []
-        for item in items:
-            obj, _ = DowntimeWorkcenterAssignment.objects.update_or_create(
-                workcenter_id=item["workcenter_id"],
-                date=target_date,
-                defaults={
-                    "inspector_user_id": item.get("inspector_user_id"),
-                    "inspector_name": item.get("inspector_name"),
-                    "updated_by": user,
-                },
+        try:
+            result = downtime_assignment_service.save_assignments(
+                target_date=serializer.validated_data["date"],
+                groups=serializer.validated_data["groups"],
+                overrides=serializer.validated_data["overrides"],
+                user=user,
             )
-            saved_ids.append(obj.id)
+        except downtime_assignment_service.DowntimeAssignmentError as exc:
+            return Response({"error": str(exc)}, status=400)
 
-        return Response({"date": target_date.isoformat(), "saved": len(saved_ids)})
+        return Response(result)

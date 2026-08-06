@@ -39,10 +39,12 @@ from ..cogp.models import (
 
 from .downtime_workcenter import DowntimeWorkcenter
 from .downtime_workcenter_assignment import DowntimeWorkcenterAssignment
+from .downtime_group_assignment import DowntimeGroupAssignment
 
 __all__ = [
     'DowntimeWorkcenter',
-'DowntimeWorkcenterAssignment',
+    'DowntimeWorkcenterAssignment',
+    'DowntimeGroupAssignment',
     'ClassificationSource',
     'QualityTarget',
     'Problem',

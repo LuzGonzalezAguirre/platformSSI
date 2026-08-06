@@ -28,14 +28,25 @@ from .downtime_serializers import (
 )
 from .downtime_workcenter_serializers import DowntimeWorkcenterSerializer
 from .downtime_assignment_serializers import (
-    DowntimeAssignmentRowSerializer,
+    DowntimeResolvedValueSerializer,
+    DowntimeAssignmentWorkcenterNodeSerializer,
+    DowntimeAssignmentScopeNodeSerializer,
+    DowntimeAssignmentGroupNodeSerializer,
+    DowntimeGroupAssignmentWriteSerializer,
+    DowntimeOverrideWriteSerializer,
     DowntimeAssignmentsBulkWriteSerializer,
     DowntimeSummaryRowSerializer,
+    DowntimeCustomerRowSerializer,
 )
 
 __all__ = [
     'DowntimeWorkcenterSerializer',
-    'DowntimeAssignmentRowSerializer',
+    'DowntimeResolvedValueSerializer',
+    'DowntimeAssignmentWorkcenterNodeSerializer',
+    'DowntimeAssignmentScopeNodeSerializer',
+    'DowntimeAssignmentGroupNodeSerializer',
+    'DowntimeGroupAssignmentWriteSerializer',
+    'DowntimeOverrideWriteSerializer',
     'DowntimeAssignmentsBulkWriteSerializer',
     'DowntimeSummaryRowSerializer',
     'QualityTargetSerializer',
@@ -59,4 +70,5 @@ __all__ = [
     'DowntimeLogsQuerySerializer',
     'DowntimeTrendPointSerializer',
     'DowntimeTrendQuerySerializer',
+    'DowntimeCustomerRowSerializer',
 ]

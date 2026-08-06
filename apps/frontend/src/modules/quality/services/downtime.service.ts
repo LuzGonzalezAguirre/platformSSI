@@ -48,9 +48,19 @@ export interface DowntimeSummaryRow {
 }
 
 export interface DowntimeSummaryResponse {
-  date_from: string;
-  date_to:   string;
-  rows:      DowntimeSummaryRow[];
+  date_from:    string;
+  date_to:      string;
+  rows:         DowntimeSummaryRow[];
+  by_customer:  DowntimeCustomerRow[];
+}
+
+export interface DowntimeCustomerRow {
+  customer:          string;
+  total_minutes:     number;
+  total_hours:       number;
+  incident_count:    number;
+  workcenter_count:  number;
+  share_pct:         number;
 }
 
 const BASE = "/quality/downtime";

@@ -11,6 +11,7 @@ export interface PmpEvent {
   due_date:              string;
   completed_date:        string | null;
   status:                string;
+  status_norm?:          PmStatus;
   type:                  string;
   assigned_to:           string;
   equipment_id:          string;
@@ -34,8 +35,34 @@ export interface PmpDayCell {
   by_bu: Record<string, number>;
 }
 
-export interface PmpMonthCount { month: number; count: number; }
-export interface PmpBuCount    { bu: string; count: number; }
+export interface PmpMonthCount {
+  month:     number;
+  count:     number;
+  active?:   number;
+  complete?: number;
+  pct?:      number | null;
+}
+
+export interface PmpBuCount { bu: string; count: number; }
+
+/**
+ * plan_pct -> avance sobre el plan anual completo (incluye PM que aun no vencen).
+ * ytd_pct  -> cumplimiento sobre lo que ya vencio (schedule compliance).
+ * null significa "sin base de calculo", nunca 0.
+ */
+export interface PmpYearStats {
+  total:        number;
+  cancelled:    number;
+  active:       number;
+  complete:     number;
+  hold:         number;
+  open:         number;
+  due_active:   number;
+  due_complete: number;
+  overdue:      number;
+  plan_pct:     number | null;
+  ytd_pct:      number | null;
+}
 
 export interface PmpKpis {
   total_year:         number;
@@ -46,12 +73,14 @@ export interface PmpKpis {
   by_month:           PmpMonthCount[];
   by_bu_month:        PmpBuCount[];
   by_bu_year:         PmpBuCount[];
+  year_stats?:        Record<string, PmpYearStats>;
 }
 
 export interface PmpCalendarResponse {
   year:          number;
   month:         number;
   days_in_month: number;
+  as_of?:        string;
   kpis:          PmpKpis;
   days:          PmpDayCell[];
   events:        PmpEvent[];
@@ -77,6 +106,7 @@ export const PM = {
   successSoft:  "rgba(18,135,111,0.15)",
   hold:         "#B45309",
   holdSoft:     "rgba(180,83,9,0.15)",
+  danger:       "#B91C1C",
   mono:         "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
 };
 
@@ -100,6 +130,9 @@ export function buColor(bu: string): string {
  * Estados reales confirmados en Plex (sesion 2026-08-03):
  * Complete, Open, Hold, Cancelled. Cualquier valor no reconocido cae a "open"
  * para que aparezca como pendiente en vez de desaparecer del conteo.
+ *
+ * El backend ya manda status_norm con esta misma logica; esta funcion queda
+ * como fallback para respuestas viejas en cache del navegador.
  */
 export function normalizeStatus(raw: string): PmStatus {
   const s = (raw || "").toLowerCase();
@@ -107,6 +140,10 @@ export function normalizeStatus(raw: string): PmStatus {
   if (s.includes("complet"))  return "complete";
   if (s.includes("hold"))     return "hold";
   return "open";
+}
+
+export function eventStatus(ev: { status: string; status_norm?: PmStatus }): PmStatus {
+  return ev.status_norm ?? normalizeStatus(ev.status);
 }
 
 export function pad(n: number): string {

@@ -9,6 +9,7 @@ from apps.quality.serializers import (
     DowntimeTrendPointSerializer,
     DowntimeTrendQuerySerializer,
     DowntimeSummaryRowSerializer,
+    DowntimeCustomerRowSerializer,
 )
 from apps.quality.services import downtime_service
 
@@ -31,10 +32,14 @@ class DowntimeSummaryView(APIView):
             return Response({"error": str(exc)}, status=400)
 
         serializer = DowntimeSummaryRowSerializer(result["rows"], many=True)
+        customer_serializer = DowntimeCustomerRowSerializer(
+            result["by_customer"], many=True,
+        )
         return Response({
             "date_from": result["date_from"],
             "date_to": result["date_to"],
             "rows": serializer.data,
+            "by_customer": customer_serializer.data,
         })
 
 

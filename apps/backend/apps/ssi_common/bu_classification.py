@@ -93,3 +93,68 @@ def resolve_bu_for_finished_goods(workcenter: str | None) -> str | None:
     if not workcenter:
         return None
     return SCRAP_RATE_WORKCENTER_TO_BU.get(workcenter.strip())
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CLIENTE (distinto de Business Unit)
+#
+# BusinessUnit es la unidad de negocio interna; el cliente es a quien se le
+# surte. Coinciden para Volvo/Cummins/TULC pero no para Speed, que es una
+# BU cuyo cliente es John Deere.
+#
+# Capa ADITIVA: no altera ninguno de los tres criterios de arriba ni su
+# valor de retorno, asi que COGP y Scrap Rate no se enteran de que existe.
+# Se apoya en resolve_bu_from_workcenter (el criterio amplio) porque el
+# consumidor -- KPIs de Downtime -- necesita clasificar TODO el piso, no
+# solo los workcenters terminales.
+# ─────────────────────────────────────────────────────────────────────────
+
+CUSTOMER_VOLVO = "Volvo"
+CUSTOMER_CUMMINS = "Cummins"
+CUSTOMER_JOHN_DEERE = "John Deere"
+CUSTOMER_TULC = "TULC"
+
+# Orden fijo de despliegue en KPIs. Un cliente sin downtime en el rango se
+# pinta en cero en vez de desaparecer -- una rejilla de KPIs que cambia de
+# forma segun los datos es ilegible en una estacion compartida de planta.
+CUSTOMER_DISPLAY_ORDER = (
+    CUSTOMER_VOLVO,
+    CUSTOMER_CUMMINS,
+    CUSTOMER_JOHN_DEERE,
+    CUSTOMER_TULC,
+)
+
+_BU_TO_CUSTOMER = {
+    BusinessUnit.VOLVO:   CUSTOMER_VOLVO,
+    BusinessUnit.CUMMINS: CUSTOMER_CUMMINS,
+    BusinessUnit.TULC:    CUSTOMER_TULC,
+}
+
+# Grupos cuyo cliente no se deduce de la BU. Se resuelve por grupo completo
+# porque dentro de Speed no hay particion por cliente conocida.
+GROUP_TO_CUSTOMER = {
+    "Speed": CUSTOMER_JOHN_DEERE,
+
+    # ⚠️ PENDIENTE DE CONFIRMAR CON NEGOCIO (2026-08-06):
+    # 'Speed - WSS/JET/BA' tiene 7 workcenters activos y ningun cliente
+    # asignado. Mientras siga comentado cae al bucket "Sin clasificar" y
+    # se ve en el KPI gris. Descomentar SOLO cuando planta lo confirme.
+    # "Speed - WSS/JET/BA": CUSTOMER_JOHN_DEERE,
+}
+
+
+def resolve_customer_from_workcenter(
+    workcenter_group: str | None,
+    workcenter: str,
+) -> str | None:
+    """
+    Cliente al que pertenece un workcenter. None = sin clasificar; el
+    consumidor debe MOSTRARLO, no esconderlo -- un workcenter sin cliente
+    es un hueco de configuracion, no un dato que se pueda tirar.
+    """
+    if not workcenter_group:
+        return None
+    bu = resolve_bu_from_workcenter(workcenter_group, workcenter)
+    if bu is not None:
+        return _BU_TO_CUSTOMER.get(bu)
+    return GROUP_TO_CUSTOMER.get(workcenter_group)

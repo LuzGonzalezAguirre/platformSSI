@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Settings } from "lucide-react";
-import { DowntimeService, DowntimePreset, DowntimeLogRow, DowntimeLogsResponse, DowntimeSummaryRow, DowntimeTrendPoint, DowntimeTrendGranularity } from "../services/downtime.service";
+import { DowntimeService, DowntimePreset, DowntimeLogRow, DowntimeLogsResponse, 
+  DowntimeSummaryRow, DowntimeTrendPoint, DowntimeTrendGranularity,
+  DowntimeCustomerRow
+ } from "../services/downtime.service";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const yesterdayStr = () => {
@@ -37,6 +40,35 @@ function KPICard({ label, value, topColor }: { label: string; value: string; top
         {label}
       </span>
       <span style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--color-text-primary)", lineHeight: 1.1 }}>{value}</span>
+    </div>
+  );
+}
+
+const CUSTOMER_COLORS: Record<string, string> = {
+  "Volvo":          "#1e3a5f",
+  "Cummins":        "#dc2626",
+  "John Deere":     "#16a34a",
+  "TULC":           "#f59e0b",
+  "Sin clasificar": "#94a3b8",
+};
+
+function CustomerKPICard({ row, l }: { row: DowntimeCustomerRow; l: boolean }) {
+  return (
+    <div style={{
+      background: "var(--color-surface)", border: "1px solid var(--color-border)",
+      borderTop: `3px solid ${CUSTOMER_COLORS[row.customer] ?? "#94a3b8"}`,
+      borderRadius: "var(--radius-lg)", padding: "0.75rem 0.85rem",
+      display: "flex", flexDirection: "column", gap: "0.2rem", justifyContent: "center",
+    }}>
+      <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--color-text-secondary)" }}>
+        {row.customer === "Sin clasificar" && !l ? "Unclassified" : row.customer}
+      </span>
+      <span style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--color-text-primary)", lineHeight: 1.1 }}>
+        {row.total_minutes} min
+      </span>
+      <span style={{ fontSize: "0.66rem", color: "var(--color-text-tertiary)" }}>
+        {row.total_hours.toFixed(2)}h · {row.share_pct.toFixed(1)}%
+      </span>
     </div>
   );
 }
@@ -316,6 +348,7 @@ export default function DowntimePage() {
   const [dateTo, setDateTo] = useState(yesterdayStr());
   const [data, setData] = useState<DowntimeLogsResponse | null>(null);
   const [summary, setSummary] = useState<DowntimeSummaryRow[] | null>(null);
+  const [byCustomer, setByCustomer] = useState<DowntimeCustomerRow[] | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -339,6 +372,7 @@ export default function DowntimePage() {
       ]);
       setData(logsRes);
       setSummary(summaryRes.rows);
+      setByCustomer(summaryRes.by_customer);
     } catch (e: any) {
       setError(e?.response?.data?.error || (l ? "Error cargando datos" : "Error loading data"));
     } finally {
@@ -437,7 +471,7 @@ export default function DowntimePage() {
       )}
 
       {/* KPIs del rango seleccionado */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.75rem", alignItems: "stretch" }}>
         <KPICard
           label={l ? "Incidencias" : "Incidents"}
           value={loading ? "…" : String(data?.count ?? 0)}
@@ -448,11 +482,11 @@ export default function DowntimePage() {
           value={loading ? "…" : `${Math.round((data?.total_hours ?? 0) * 60)} min = ${(data?.total_hours ?? 0).toFixed(2)}h`}
           topColor="#ef4444"
         />
-        <KPICard
-          label={l ? "Promedio por incidencia" : "Avg per incident"}
-          value={loading ? "…" : `${Math.round(avgHoursPerIncident * 60)} min = ${avgHoursPerIncident.toFixed(2)}h`}
-          topColor="#10b981"
-        />
+      
+        {byCustomer?.map((row) => (
+          <CustomerKPICard key={row.customer} row={row} l={l} />
+        ))}
+        
       </div>
 
       {/* Columna izquierda: Tabla + Resumen | Columna derecha: Tendencia + Pareto WC */}

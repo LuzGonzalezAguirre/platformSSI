@@ -2,11 +2,14 @@
 import logging
 from datetime import date, timedelta
 from typing import Optional
-
 from django.core.cache import cache
-
 from apps.quality.services import downtime_repository
-
+from apps.quality.services import downtime_assignment_resolver
+from apps.quality.services import downtime_workcenter_service
+from apps.ssi_common.bu_classification import (
+    CUSTOMER_DISPLAY_ORDER,
+    resolve_customer_from_workcenter,
+)
 logger = logging.getLogger(__name__)
 
 CACHE_TTL_SECONDS = 10 * 60  # 10 minutos, convención del proyecto
@@ -19,7 +22,7 @@ TREND_CACHE_TTL_SECONDS = 10 * 60
 FIXED_REASON = "Quality"
 # Solo Down — Setup queda excluido aunque el proxy traiga ambos (5445/5449).
 FIXED_STATUS = "Down"
-
+UNCLASSIFIED_CUSTOMER = "Sin clasificar"
 
 class DowntimeServiceError(Exception):
     pass
@@ -90,27 +93,22 @@ def get_logs(
     return result
 
 
-def get_summary(
-    preset: str,
-    date_from: Optional[date] = None,
-    date_to: Optional[date] = None,
-) -> dict:
+def _cached_plex_aggregation(resolved_from: date, resolved_to: date) -> list[dict]:
     """
-    Agrupa los logs por (fecha, workcenter): suma de minutos, conteo de
-    incidencias, y el inspector asignado a ese workcenter ese día (join
-    contra DowntimeWorkcenterAssignment por nombre de workcenter + fecha).
+    ÚNICA parte cacheada: la agregación de Plex por (fecha, workcenter).
+    Una sola llamada ODBC por rango, bucketing en Python (ERP Protection Rule).
+
+    El inspector NO entra aquí a propósito — ver get_summary().
     """
-    from apps.quality.models.downtime_workcenter_assignment import DowntimeWorkcenterAssignment
-
-    resolved_from, resolved_to = resolve_date_range(preset, date_from, date_to)
-
-    cache_key = f"downtime:summary:v1:{resolved_from.isoformat()}:{resolved_to.isoformat()}"
+    cache_key = f"downtime:agg:v3:{resolved_from.isoformat()}:{resolved_to.isoformat()}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
     try:
-        raw_logs = downtime_repository.fetch_logs(resolved_from, resolved_to, reason=FIXED_REASON)
+        raw_logs = downtime_repository.fetch_logs(
+            resolved_from, resolved_to, reason=FIXED_REASON,
+        )
     except downtime_repository.DowntimeRepositoryError as exc:
         raise DowntimeServiceError(str(exc)) from exc
 
@@ -122,42 +120,124 @@ def get_summary(
         workcenter = row.get("Workcenter")
         if not log_date_raw or not workcenter:
             continue
-        day_key = str(log_date_raw)[:10]
-        key = (day_key, workcenter)
-        if key not in grouped:
-            grouped[key] = {"total_hours": 0.0, "incident_count": 0}
-        grouped[key]["total_hours"] += float(row.get("Log_Hours") or 0)
-        grouped[key]["incident_count"] += 1
+        key = (str(log_date_raw)[:10], workcenter)
+        bucket = grouped.setdefault(key, {"total_hours": 0.0, "incident_count": 0})
+        bucket["total_hours"] += float(row.get("Log_Hours") or 0)
+        bucket["incident_count"] += 1
 
-    assignments = (
-        DowntimeWorkcenterAssignment.objects
-        .filter(date__gte=resolved_from, date__lte=resolved_to)
-        .select_related("workcenter")
-    )
-    assignment_map = {
-        (a.date.isoformat(), a.workcenter.name): a.inspector_name
-        for a in assignments
-    }
-
-    rows = []
-    for (day_key, workcenter), agg in grouped.items():
-        rows.append({
+    aggregation = [
+        {
             "date": day_key,
             "workcenter": workcenter,
             "total_minutes": round(agg["total_hours"] * 60),
             "incident_count": agg["incident_count"],
-            "inspector_name": assignment_map.get((day_key, workcenter)),
+        }
+        for (day_key, workcenter), agg in grouped.items()
+    ]
+    aggregation.sort(key=lambda r: (r["date"], r["workcenter"]))
+
+    cache.set(cache_key, aggregation, CACHE_TTL_SECONDS)
+    return aggregation
+
+def _bucket_by_customer(aggregation: list[dict]) -> list[dict]:
+    """
+    Minutos y incidencias por cliente. Cruza la agregacion de Plex (que solo
+    trae el nombre del workcenter) contra el catalogo local de Postgres para
+    obtener el Workcenter_Group, y de ahi al cliente.
+
+    CERO llamadas extra a Plex: el catalogo ya vive en Postgres via
+    sync_workcenters. Por eso esto corre FUERA del cache de agregacion --
+    la clasificacion puede cambiar con un sync o un deploy y debe reflejarse
+    de inmediato, igual que la resolucion de inspectores.
+    """
+    group_map = downtime_workcenter_service.get_workcenter_group_map()
+
+    buckets: dict[str, dict] = {}
+    unknown_workcenters: set[str] = set()
+
+    for item in aggregation:
+        workcenter = item["workcenter"]
+        customer = resolve_customer_from_workcenter(
+            group_map.get(workcenter), workcenter,
+        )
+        if customer is None:
+            customer = UNCLASSIFIED_CUSTOMER
+            unknown_workcenters.add(workcenter)
+
+        bucket = buckets.setdefault(customer, {
+            "total_minutes": 0, "incident_count": 0, "workcenters": set(),
+        })
+        bucket["total_minutes"] += item["total_minutes"]
+        bucket["incident_count"] += item["incident_count"]
+        bucket["workcenters"].add(workcenter)
+
+    if unknown_workcenters:
+        # WARNING y no DEBUG a proposito: cada nombre en esta lista son
+        # minutos de downtime que no se le estan cargando a ningun cliente.
+        logger.warning(
+            "downtime by_customer: %s workcenters sin cliente resuelto: %s",
+            len(unknown_workcenters), sorted(unknown_workcenters),
+        )
+
+    total_minutes = sum(b["total_minutes"] for b in buckets.values())
+
+    ordered = list(CUSTOMER_DISPLAY_ORDER)
+    if UNCLASSIFIED_CUSTOMER in buckets:
+        ordered.append(UNCLASSIFIED_CUSTOMER)
+
+    rows = []
+    for customer in ordered:
+        bucket = buckets.get(customer)
+        minutes = bucket["total_minutes"] if bucket else 0
+        rows.append({
+            "customer": customer,
+            "total_minutes": minutes,
+            "total_hours": round(minutes / 60, 2),
+            "incident_count": bucket["incident_count"] if bucket else 0,
+            "workcenter_count": len(bucket["workcenters"]) if bucket else 0,
+            "share_pct": round(minutes / total_minutes * 100, 1) if total_minutes else 0.0,
+        })
+    return rows
+
+def get_summary(
+    preset: str,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+) -> dict:
+    """
+    Minutos + incidencias por (fecha, workcenter), con el inspector efectivo
+    de ese día resuelto por jerarquía scope + herencia.
+
+    CACHE PARTIDO — deliberado:
+      · agregación de Plex  → Redis 10 min  (ODBC caro, protege el ERP)
+      · inspector           → Postgres live (barato, 2 queries)
+
+    Antes ambas cosas vivían en el mismo objeto cacheado, así que un cambio
+    de inspector tardaba hasta 10 minutos en verse en el reporte. Ahora se
+    ve al instante sin agregarle ni una llamada a Plex.
+    """
+    resolved_from, resolved_to = resolve_date_range(preset, date_from, date_to)
+
+    aggregation = _cached_plex_aggregation(resolved_from, resolved_to)
+    resolution = downtime_assignment_resolver.resolve_range_by_iso(
+        resolved_from, resolved_to,
+    )
+
+    rows = []
+    for item in aggregation:
+        resolved = resolution.get((item["date"], item["workcenter"]))
+        rows.append({
+            **item,
+            "inspector_name": resolved["inspector_name"] if resolved else None,
+            "inspector_inherited_from": resolved["inherited_from"] if resolved else None,
         })
 
-    rows.sort(key=lambda r: (r["date"], r["workcenter"]))
-
-    result = {
+    return {
         "date_from": resolved_from.isoformat(),
         "date_to": resolved_to.isoformat(),
         "rows": rows,
+        "by_customer": _bucket_by_customer(aggregation),
     }
-    cache.set(cache_key, result, CACHE_TTL_SECONDS)
-    return result
 
 
 def get_trend(

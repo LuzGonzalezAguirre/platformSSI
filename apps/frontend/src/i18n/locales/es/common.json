@@ -82,12 +82,17 @@
     "hasHold": "Con PM en espera",
     "pending": "Con trabajo pendiente"
   },
-  "kpis": {
+"kpis": {
     "totalMonth": "PM del mes",
     "totalYear": "Total {{year}}",
     "byDueDate": "Programados por fecha de vencimiento",
     "fullYear": "Plan anual completo",
     "monthCompletion": "Avance del mes",
+    "yearCompletion": "Avance del año",
+    "ytdCompliance": "Cumplimiento a la fecha",
+    "noDue": "Aún no hay PM vencidos este año",
+    "overdue_one": "{{count}} vencido",
+    "overdue_other": "{{count}} vencidos",
     "activeBase": "sobre {{count}} PM vigentes (excluye cancelados)",
     "byClient": "Desglose por cliente"
   },

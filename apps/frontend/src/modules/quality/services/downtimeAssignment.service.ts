@@ -1,16 +1,52 @@
 import apiClient from "../../../services/api.client";
 
-export interface DowntimeWorkcenterRow {
-  id: number;
-  name: string;
-  workcenter_group: string;
-  active: boolean;
+const DOWNTIME_BASE = "/quality/downtime";
+// role_id=4 = Quality Inspector en ssi_Roles (CCS) — confirmado.
+const INSPECTOR_ROLE_ID = 4;
+
+export type AssignmentSource = "workcenter" | "subgroup" | "group" | null;
+
+export interface DowntimeResolvedValue {
+  inspector_user_id: number | null;
+  inspector_name: string | null;
+  source: AssignmentSource;
+  inherited_from: string | null;
 }
 
-export interface DowntimeAssignmentRow {
+export interface DowntimeWorkcenterNode extends DowntimeResolvedValue {
   workcenter_id: number;
   workcenter_name: string;
+}
+
+export interface DowntimeScopeNode extends DowntimeResolvedValue {
+  group_key: string;
+  subgroup_key: string;
+  label: string;
+  workcenters: DowntimeWorkcenterNode[];
+}
+
+export interface DowntimeGroupNode {
+  group_key: string;
+  label: string;
+  workcenter_count: number;
+  subgroups: DowntimeScopeNode[];
+}
+
+export interface DowntimeAssignmentTree {
   date: string;
+  inheritance_lookback_days: number;
+  groups: DowntimeGroupNode[];
+}
+
+export interface DowntimeGroupWrite {
+  group_key: string;
+  subgroup_key: string;
+  inspector_user_id: number | null;
+  inspector_name: string | null;
+}
+
+export interface DowntimeOverrideWrite {
+  workcenter_id: number;
   inspector_user_id: number | null;
   inspector_name: string | null;
 }
@@ -25,35 +61,30 @@ export interface QWallInspector {
   created_at: string;
 }
 
-const DOWNTIME_BASE = "/quality/downtime";
-// role_id=4 = Quality Inspector en ssi_Roles (CCS) — confirmado, son los
-// únicos asignables a un workcenter según la tabla de roles real.
-const INSPECTOR_ROLE_ID = 4;
+export const scopeId = (groupKey: string, subgroupKey: string): string =>
+  `${groupKey}::${subgroupKey}`;
 
 export const DowntimeAssignmentService = {
-  getWorkcenters: async (): Promise<DowntimeWorkcenterRow[]> => {
-    const { data } = await apiClient.get(`${DOWNTIME_BASE}/workcenters/`);
-    return data.results;
-  },
-
-  getAssignments: async (date: string): Promise<DowntimeAssignmentRow[]> => {
-    const { data } = await apiClient.get(`${DOWNTIME_BASE}/assignments/`, { params: { date } });
-    return data.results;
+  getTree: async (date: string): Promise<DowntimeAssignmentTree> => {
+    const { data } = await apiClient.get(`${DOWNTIME_BASE}/assignments/`, {
+      params: { date },
+    });
+    return data;
   },
 
   saveAssignments: async (
     date: string,
-    assignments: { workcenter_id: number; inspector_user_id: number | null; inspector_name: string | null }[],
-  ): Promise<{ date: string; saved: number }> => {
-    const { data } = await apiClient.put(`${DOWNTIME_BASE}/assignments/`, { date, assignments });
+    groups: DowntimeGroupWrite[],
+    overrides: DowntimeOverrideWrite[],
+  ): Promise<{ date: string; groups_saved: number; overrides_saved: number }> => {
+    const { data } = await apiClient.put(`${DOWNTIME_BASE}/assignments/`, {
+      date,
+      groups,
+      overrides,
+    });
     return data;
   },
 
-  // Reusa el endpoint YA EXISTENTE de QWall Settings (mismo que alimenta
-  // UsersTab.tsx) — no se creó nada nuevo en el backend para esto.
-  // ⚠️ Verifica esta ruta con un curl antes de confiar en ella — se infirió
-  // por el patrón consistente del resto de endpoints de qwall_settings_urls.py,
-  // no se vio el archivo real de ese urls.py.
   getInspectors: async (): Promise<QWallInspector[]> => {
     const { data } = await apiClient.get("/quality/qwall/settings/users/");
     const all: QWallInspector[] = data.data ?? [];
