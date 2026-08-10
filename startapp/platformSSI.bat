@@ -19,6 +19,10 @@ echo Iniciando Plex ODBC Proxy...
 start "Plex ODBC Proxy" cmd /k "C:\Users\ssi.production\platformSSI\platformSSI\startapp\start_proxy.bat"
 timeout /t 3 /nobreak >nul
 
+echo Iniciando QWall Proxy...
+start "QWall SQL Proxy" cmd /k "C:\Users\ssi.production\platformSSI\platformSSI\startapp\start_qwall_proxy.bat"
+timeout /t 3 /nobreak >nul
+
 echo Iniciando platformSSI...
 cd /d "C:\Users\ssi.production\platformSSI\platformSSI"
 docker compose up -d
