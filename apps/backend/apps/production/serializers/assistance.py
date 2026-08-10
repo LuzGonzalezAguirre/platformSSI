@@ -7,7 +7,7 @@ class PlantEmployeeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = PlantEmployee
-        fields = ["id", "name", "department", "turno", "user_name", "is_active", "created_at"]
+        fields = ["id", "name", "department", "turno", "barcode_id", "user_name", "is_active", "created_at"]
         read_only_fields = ["id", "created_at"]
 
     def get_user_name(self, obj) -> str | None:
@@ -17,13 +17,13 @@ class PlantEmployeeSerializer(serializers.ModelSerializer):
 class PlantEmployeeCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model  = PlantEmployee
-        fields = ["name", "department", "turno"]
+        fields = ["name", "department", "turno", "barcode_id"]
 
 
 class PlantEmployeeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model  = PlantEmployee
-        fields = ["name", "department", "turno"]
+        fields = ["name", "department", "turno", "barcode_id"]
 
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):

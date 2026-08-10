@@ -8,6 +8,7 @@ from apps.production.views.safety_views import (
 from apps.production.views.assistance_views import (
     PlantEmployeeListCreateView, PlantEmployeeDetailView,
     AttendanceView, EarnedHoursView,
+    PlantEmployeeReactivateView,
 )
 from apps.production.views.ccs_views import (
     CcsCheckInView, CcsCheckOutView, CcsOvertimeView, CcsTodayStatusView,
@@ -38,6 +39,7 @@ urlpatterns = [
     path("ops/oee/", OEERecordView.as_view()),
     path("ops/export/daily/", OpsDailyExportView.as_view()),
     path("ops/export/pdf/", OpsDailyPDFExportView.as_view()),
+    path("employees/<int:pk>/reactivate/", PlantEmployeeReactivateView.as_view()),
 
     # CCS — Barcode attendance
     path("ccs/check-in/",         CcsCheckInView.as_view()),

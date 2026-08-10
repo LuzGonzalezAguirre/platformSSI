@@ -82,8 +82,8 @@ export default function AssistancePage() {
     setLoadingAtt(true);
     setError(null);
     try {
-      const data = await AssistanceService.getCcsAttendance(
-        selectedDate, turnoFilter || undefined,
+      const data = await AssistanceService.getAttendance(
+  selectedDate, turnoFilter || undefined,
       );
       setRecords(data);
     } catch {
@@ -100,8 +100,8 @@ export default function AssistancePage() {
   const loadEmployees = useCallback(async () => {
     setLoadingEmp(true);
     try {
-      const data = await AssistanceService.getCcsEmployees({ include_inactive: showInactive });
-      setEmployees(data.map((e: any) => ({ ...e, is_active: !!e.is_active })));
+      const data = await AssistanceService.listEmployees(undefined, showInactive);
+setEmployees(data.map((e: any) => ({ ...e, is_active: !!e.is_active })));
     } catch {
       setError(lang === "es" ? "Error cargando empleados" : "Error loading employees");
     } finally {
@@ -144,16 +144,15 @@ export default function AssistancePage() {
   const saveAttendance = async () => {
     setSavingAtt(true); setAttMsg(null);
     try {
-      const result = await AssistanceService.saveCcsAttendance(
-        draft.map((r) => ({
-          employee_id: r.employee_id,
-          date:        r.date,
-          turno:       r.turno,
-          status:      r.status,
-          shift:       r.shift,
-          hours:       parseFloat(r.hours) || 0,
-        }))
-      );
+      const result = await AssistanceService.saveAttendance({
+  records: draft.map((r) => ({
+    employee_id: r.employee_id,
+    date:        r.date,
+    status:      r.status,
+    shift:       r.shift,
+    hours:       parseFloat(r.hours) || 0,
+  })),
+});
       setAttMsg({
         type: "success",
         text: lang === "es"
@@ -175,10 +174,10 @@ export default function AssistancePage() {
     }
     setAddingEmp(true); setEmpMsg(null);
     try {
-      await AssistanceService.createCcsEmployee({
-        name: newEmp.name, department: newEmp.department, turno: newEmp.turno,
-        ...(newEmp.barcode_id.trim() ? { barcode_id: newEmp.barcode_id.trim() } : {}),
-      });
+      await AssistanceService.createEmployee({
+  name: newEmp.name, department: newEmp.department, turno: newEmp.turno,
+  ...(newEmp.barcode_id.trim() ? { barcode_id: newEmp.barcode_id.trim() } : {}),
+});
       setEmpMsg({ type: "success", text: lang === "es" ? `'${newEmp.name}' agregado` : `'${newEmp.name}' added` });
       setNewEmp({ name: "", department: "Assembly", turno: "A", barcode_id: "" });
       setShowAddForm(false);
@@ -203,12 +202,12 @@ export default function AssistancePage() {
     if (!editModal.employee) return;
     setEditModal((p) => ({ ...p, saving: true }));
     try {
-      const updated = await AssistanceService.updateCcsEmployee(editModal.employee.id, {
-        name: editModal.draft.name,
-        department: editModal.draft.department,
-        turno: editModal.draft.turno,
-        ...(editModal.draft.barcode_id.trim() ? { barcode_id: editModal.draft.barcode_id.trim() } : {}),
-      });
+      const updated = await AssistanceService.updateEmployee(editModal.employee.id, {
+  name: editModal.draft.name,
+  department: editModal.draft.department,
+  turno: editModal.draft.turno,
+  ...(editModal.draft.barcode_id.trim() ? { barcode_id: editModal.draft.barcode_id.trim() } : {}),
+});
       setEmployees((prev) => prev.map((e) => (e.id === updated.id ? { ...updated, is_active: !!updated.is_active } : e)));
       setEditModal({ open: false, employee: null, draft: { name: "", department: "Assembly", turno: "A", barcode_id: "" }, saving: false });
       setEmpMsg({ type: "success", text: lang === "es" ? "Empleado actualizado" : "Employee updated" });
@@ -220,7 +219,7 @@ export default function AssistancePage() {
 
   const handleDeactivate = async (emp: PlantEmployee) => {
     try {
-      const updated = await AssistanceService.deactivateCcsEmployee(emp.id);
+      const updated = await AssistanceService.deactivateEmployee(emp.id);
       setEmployees((prev) => prev.map((e) => (e.id === updated.id ? { ...updated, is_active: false } : e)));
       setEmpMsg({ type: "success", text: lang === "es" ? `'${emp.name}' desactivado` : `'${emp.name}' deactivated` });
     } catch {
@@ -229,7 +228,7 @@ export default function AssistancePage() {
   };
   const handleReactivate = async (emp: PlantEmployee) => {
     try {
-      const updated = await AssistanceService.reactivateCcsEmployee(emp.id);
+      const updated = await AssistanceService.reactivateEmployee(emp.id);
       setEmployees((prev) => prev.map((e) => (e.id === updated.id ? { ...updated, is_active: true } : e)));
       setEmpMsg({ type: "success", text: lang === "es" ? `'${emp.name}' reactivado` : `'${emp.name}' reactivated` });
     } catch {

@@ -41,7 +41,13 @@ class PlantEmployeeDetailView(APIView):
         employee = AssistanceService.deactivate_employee(pk)
         return Response(PlantEmployeeSerializer(employee).data)
 
+class PlantEmployeeReactivateView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request, pk: int):
+        employee = AssistanceService.reactivate_employee(pk)
+        return Response(PlantEmployeeSerializer(employee).data)
+    
 class AttendanceView(APIView):
     permission_classes = [IsAuthenticated]
 

@@ -1,34 +1,28 @@
 from decimal import Decimal, InvalidOperation
 
-from apps.production.models import CcsAttendanceRecord
+# ── Semántica de estatus ──────────────────────────────────────────────────
+# Fuente única de verdad, compartida por AttendanceRecord y CcsAttendanceRecord
+# (ambos modelos usan los mismos valores de string). Cualquier consumidor debe
+# importar de aquí y NUNCA comparar contra literales sueltos.
 
-Status = CcsAttendanceRecord.Status
-
-# ── Semántica de estatus ──────────────────────────────────────────────────────
-# Fuente única de verdad. Cualquier consumidor (views, services, reportes)
-# debe importar de aquí y NUNCA comparar contra literales sueltos.
+PRESENT  = "present"
+ABSENT   = "absent"
+VACATION = "vacation"
+LEAVE    = "leave"
+SICK     = "sick"
 
 # Estatus que fuerzan 0 horas pagadas.
-ZERO_HOUR_STATUSES = frozenset({
-    Status.ABSENT,
-    Status.VACATION,
-})
+ZERO_HOUR_STATUSES = frozenset({ABSENT, VACATION})
 
 # Ausencia planeada: se descuenta del denominador de headcount porque el
 # empleado no estaba programado para trabajar. NO es ausentismo.
-PLANNED_ABSENCE_STATUSES = frozenset({
-    Status.VACATION,
-})
+PLANNED_ABSENCE_STATUSES = frozenset({VACATION})
 
 # Ausencia no planeada: sí cuenta como ausentismo.
-UNPLANNED_ABSENCE_STATUSES = frozenset({
-    Status.ABSENT,
-})
+UNPLANNED_ABSENCE_STATUSES = frozenset({ABSENT})
 
 # Estatus que representan presencia física en piso.
-PRESENCE_STATUSES = frozenset({
-    Status.PRESENT,
-})
+PRESENCE_STATUSES = frozenset({PRESENT})
 
 ZERO = Decimal("0")
 

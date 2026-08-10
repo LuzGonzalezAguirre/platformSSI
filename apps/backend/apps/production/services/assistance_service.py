@@ -26,6 +26,13 @@ class AssistanceService:
         if not employee:
             raise NotFound(f"Employee {pk} not found.")
         return AssistanceRepository.deactivate_employee(employee)
+    
+    @staticmethod
+    def reactivate_employee(pk: int):
+        employee = AssistanceRepository.get_employee(pk)
+        if not employee:
+            raise NotFound(f"Employee {pk} not found.")
+        return AssistanceRepository.reactivate_employee(employee)
 
     @staticmethod
     def get_attendance(attendance_date: date, turno: str | None = None):

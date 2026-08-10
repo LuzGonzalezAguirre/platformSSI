@@ -1,4 +1,5 @@
 from datetime import date
+from itertools import count
 from django.db.models import QuerySet
 from apps.production.models import PlantEmployee, AttendanceRecord
 from apps.production.models import PlantEmployee, AttendanceRecord, EarnedHoursRecord
@@ -40,6 +41,12 @@ class AssistanceRepository:
         return employee
 
     @staticmethod
+    def reactivate_employee(employee: PlantEmployee) -> PlantEmployee:
+        employee.is_active = True
+        employee.save(update_fields=["is_active"])
+        return employee
+
+    @staticmethod
     def get_attendance_for_date(attendance_date: date, turno: str | None = None) -> QuerySet:
         qs = AttendanceRecord.objects.select_related("employee").filter(date=attendance_date)
         if turno:
@@ -48,10 +55,14 @@ class AssistanceRepository:
 
     @staticmethod
     def bulk_upsert_attendance(records: list[dict], user) -> int:
+        from apps.production.services.attendance_policy import AttendancePolicy
         count = 0
         for rec in records:
-            employee_id = rec.pop("employee_id")
-            rec_date    = rec.pop("date")
+            employee_id  = rec.pop("employee_id")
+            rec_date     = rec.pop("date")
+            status_value = rec["status"]
+            rec["hours"] = AttendancePolicy.resolve_hours(status_value, rec.get("hours", 0))
+            rec["shift"] = AttendancePolicy.resolve_shift(status_value, rec.get("shift", "full"))
             AttendanceRecord.objects.update_or_create(
                 employee_id=employee_id,
                 date=rec_date,
