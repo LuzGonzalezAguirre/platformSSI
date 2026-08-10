@@ -56,13 +56,23 @@ class AssistanceRepository:
     @staticmethod
     def bulk_upsert_attendance(records: list[dict], user) -> int:
         from apps.production.services.attendance_policy import AttendancePolicy
+
+        employee_ids = [rec["employee_id"] for rec in records]
+        turno_by_employee = dict(
+            PlantEmployee.objects.filter(id__in=employee_ids).values_list("id", "turno")
+        )
+
         count = 0
         for rec in records:
             employee_id  = rec.pop("employee_id")
             rec_date     = rec.pop("date")
             status_value = rec["status"]
-            rec["hours"] = AttendancePolicy.resolve_hours(status_value, rec.get("hours", 0))
-            rec["shift"] = AttendancePolicy.resolve_shift(status_value, rec.get("shift", "full"))
+            turno        = turno_by_employee.get(employee_id, "A")
+
+            rec["shift"] = AttendancePolicy.resolve_shift(status_value, rec["shift"])
+            rec["hours"] = AttendancePolicy.resolve_hours(
+                status_value, rec.get("hours", 0), shift=rec["shift"], turno=turno,
+            )
             AttendanceRecord.objects.update_or_create(
                 employee_id=employee_id,
                 date=rec_date,

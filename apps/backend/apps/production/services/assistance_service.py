@@ -1,7 +1,8 @@
 from datetime import date
+from unittest import result
 from rest_framework.exceptions import NotFound
 from apps.production.repositories.assistance_repository import AssistanceRepository
-
+from apps.production.services.attendance_policy import AttendancePolicy
 
 class AssistanceService:
 
@@ -51,7 +52,7 @@ class AssistanceService:
                     "date":     attendance_date,
                     "status":   "present",
                     "shift":    "full",
-                    "hours":    12.0,
+                    "hours":    AttendancePolicy.resolve_hours("present", 0, shift="full", turno=emp.turno),
                     "_unsaved": True,
                 })
         return result

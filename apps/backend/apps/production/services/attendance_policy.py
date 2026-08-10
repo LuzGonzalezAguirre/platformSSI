@@ -25,7 +25,7 @@ UNPLANNED_ABSENCE_STATUSES = frozenset({ABSENT})
 PRESENCE_STATUSES = frozenset({PRESENT})
 
 ZERO = Decimal("0")
-
+FULL_SHIFT_HOURS = {"A": Decimal("12.0"), "B": Decimal("11.0")}
 
 class AttendancePolicy:
 
@@ -88,3 +88,23 @@ class AttendancePolicy:
             "attendance_pct": attendance_pct,
             "paid_hours":     float(paid_hours),
         }
+
+    
+    @staticmethod
+    def resolve_hours(status: str, requested_hours, shift: str | None = None, turno: str | None = None) -> Decimal:
+        """
+        Las horas no las decide el cliente, las decide el estatus (y, para
+        shift=full, el turno). Un cliente puede mandar 12h con status=vacation;
+        el backend gana siempre. shift/turno son opcionales: si no se pasan,
+        se comporta igual que antes (usado por el checador CCS, que no aplica
+        esta regla).
+        """
+        if status in ZERO_HOUR_STATUSES:
+            return ZERO 
+        if shift == "full" and turno in FULL_SHIFT_HOURS:
+            return FULL_SHIFT_HOURS[turno]
+        try:
+            hours = Decimal(str(requested_hours))
+        except (InvalidOperation, TypeError, ValueError):
+            return ZERO
+        return hours if hours > ZERO else ZERO
