@@ -1,5 +1,5 @@
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from apps.quality.services.plex_client_quality import QualityPlexClient
@@ -15,6 +15,18 @@ from apps.ssi_common.bu_classification import (
 logger = logging.getLogger(__name__)
 
 
+def _date_windows(start_date: date, end_date: date, chunk_days: int) -> list[tuple[date, date]]:
+    """Parte [start_date, end_date] en ventanas cerradas de a lo sumo
+    chunk_days, sin traslape y cubriendo el rango completo."""
+    windows: list[tuple[date, date]] = []
+    cursor = start_date
+    while cursor <= end_date:
+        window_end = min(cursor + timedelta(days=chunk_days - 1), end_date)
+        windows.append((cursor, window_end))
+        cursor = window_end + timedelta(days=1)
+    return windows
+
+
 class CogpLiveTrendService:
     """
     Calcula tendencia semanal de COGP en vivo, directo desde Plex (via
@@ -27,7 +39,18 @@ class CogpLiveTrendService:
     Ambas funciones viven ahora en apps.ssi_common.bu_classification --
     se reexportan arriba para no romper importadores existentes
     (ver cogp_pareto_service.py).
+
+    ERP Protection: el proxy topa cogp/scrap-range y cogp/production-range
+    en 180 dias por llamada (mismo limite documentado en ScrapRateService).
+    Se usan ventanas de CHUNK_DAYS=168 para quedar holgadamente debajo. Un
+    rango de un año son 3 ventanas; nunca se le pide a Plex el rango
+    completo en una sola query, sin importar que "en vivo" quiera decir
+    sin cache -- sigue siendo una sola pasada por ventana, no un loop por
+    dia ni por workcenter.
     """
+
+    CHUNK_DAYS = 168
+    MAX_FETCH_CHUNKS = 6
 
     def __init__(
         self,
@@ -38,14 +61,33 @@ class CogpLiveTrendService:
         self.repository = repository or CogpRepository()
 
     def get_weekly_trend(self, start_date: date, end_date: date) -> dict:
+        if end_date < start_date:
+            raise ValueError("end_date debe ser mayor o igual a start_date.")
+
+        span_days = (end_date - start_date).days + 1
+        max_span_days = self.CHUNK_DAYS * self.MAX_FETCH_CHUNKS
+        if span_days > max_span_days:
+            raise ValueError(
+                f"El rango cubre {span_days} dias y el maximo es "
+                f"{max_span_days} ({self.MAX_FETCH_CHUNKS} ventanas de "
+                f"{self.CHUNK_DAYS} dias). Reduce el periodo solicitado."
+            )
+
         cost_model_key = self.client.get_cogp_cost_model()["cost_model_key"]
 
-        scrap_rows = self.client.get_cogp_scrap_range(
-            start_date.isoformat(), end_date.isoformat()
-        )
-        production_rows = self.client.get_cogp_production_range(
-            start_date.isoformat(), end_date.isoformat(), cost_model_key
-        )
+        scrap_rows: list[dict] = []
+        production_rows: list[dict] = []
+        for window_start, window_end in _date_windows(start_date, end_date, self.CHUNK_DAYS):
+            scrap_rows.extend(
+                self.client.get_cogp_scrap_range(
+                    window_start.isoformat(), window_end.isoformat()
+                )
+            )
+            production_rows.extend(
+                self.client.get_cogp_production_range(
+                    window_start.isoformat(), window_end.isoformat(), cost_model_key
+                )
+            )
 
         weekly: dict[tuple, dict] = {}
 
