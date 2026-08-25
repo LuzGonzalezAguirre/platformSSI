@@ -151,17 +151,28 @@ export interface QWallPartNumber {
 
 
 export const QWallService = {
-  getReport: async (startDate: string, endDate: string, includeTest = false, buId?: number): Promise<QWallReport> => {
-  const { data } = await apiClient.get("/quality/qwall/", {
-    params: {
-      start_date:   startDate,
-      end_date:     endDate,
-      include_test: String(includeTest),
-      ...(buId ? { bu_id: buId } : {}),
-    },
-  });
-  return data;
-},
+  /**
+   * buId acepta un solo numero (compat con llamadores existentes, ej.
+   * QWallDashboardPage.tsx) o un array (multi-select real, usado por
+   * QWallPage.tsx). Sin buId -> sin filtro, trae todas las BU.
+   */
+  getReport: async (
+    startDate: string,
+    endDate: string,
+    includeTest = false,
+    buId?: number | number[]
+  ): Promise<QWallReport> => {
+    const buIds = buId === undefined ? [] : Array.isArray(buId) ? buId : [buId];
+    const { data } = await apiClient.get("/quality/qwall/", {
+      params: {
+        start_date:   startDate,
+        end_date:     endDate,
+        include_test: String(includeTest),
+        ...(buIds.length > 0 ? { bu_id: buIds } : {}),
+      },
+    });
+    return data;
+  },
 
 getTrend: async (
   granularity: QWallTrendGranularity,

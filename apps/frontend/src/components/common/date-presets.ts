@@ -3,6 +3,7 @@ export type DatePreset =
   | "current_week" | "next_week" | "previous_week" | "last_7_days"
   | "month_to_date" | "current_month" | "previous_month"
   | "next_30_days" | "last_30_days" | "last_60_days" | "last_90_days"
+  | "year_to_date" | "last_26_weeks" | "last_52_weeks"
   | "custom";
 
 export interface DateRange {
@@ -84,5 +85,22 @@ export function resolvePreset(preset: Exclude<DatePreset, "custom">): DateRange 
 
     case "last_90_days":
       return { start: fmt(addDays(now, -90)), end: fmt(now) };
+
+    // ── rangos largos (tendencias semanales, ej. Scrap Rate) ──────────
+    // Alineados a lunes ISO, igual que iso_week_spine() en el backend --
+    // el backend expande a semana completa de todas formas, pero mandar
+    // ya el lunes evita que el "requested range" mostrado difiera del
+    // rango efectivo por unos dias.
+
+    case "year_to_date": {
+      const first = new Date(now.getFullYear(), 0, 1);
+      return { start: fmt(first), end: fmt(now) };
+    }
+
+    case "last_26_weeks":
+      return { start: fmt(addDays(mondayOf(now), -26 * 7)), end: fmt(now) };
+
+    case "last_52_weeks":
+      return { start: fmt(addDays(mondayOf(now), -52 * 7)), end: fmt(now) };
   }
 }

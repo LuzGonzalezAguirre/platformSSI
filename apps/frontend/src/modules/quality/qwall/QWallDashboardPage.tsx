@@ -7,18 +7,24 @@ import {
 } from "../services/qwall.service";
 import ParetoChart from "./ParetoChart";
 import TrendChart from "./TrendChart";
+import DateRangeSelector, { PresetGroup } from "../../../components/common/DateRangeSelector";
+import { DateRange, resolvePreset } from "../../../components/common/date-presets";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const todayStr = (): string => new Date().toISOString().slice(0, 10);
-
-function getPreset(mode: "week" | "month" | "year"): [string, string] {
-  const d = new Date();
-  const end = todayStr();
-  if (mode === "week")  { d.setDate(d.getDate() - 7);       return [d.toISOString().slice(0, 10), end]; }
-  if (mode === "month") { d.setMonth(d.getMonth() - 1);     return [d.toISOString().slice(0, 10), end]; }
-  d.setFullYear(d.getFullYear() - 1);                        return [d.toISOString().slice(0, 10), end];
-}
+// Único preset que no viene incluido en los grupos estándar de
+// DateRangeSelector: "Año" en este dashboard significa año calendario
+// (1 enero → hoy), igual que en Scrap Rate. "Semana" y "Mes" sí matchean
+// con los presets incorporados (last_7_days / last_30_days) y no requieren
+// grupo extra.
+const DASHBOARD_EXTRA_PRESET_GROUPS: PresetGroup[] = [
+  {
+    title_es: "Año", title_en: "Year",
+    options: [
+      { preset: "year_to_date", es: "Año a la Fecha", en: "Year to Date" },
+    ],
+  },
+];
 
 function semaphore(val: number, target: number, lowerBetter = false): string {
   if (lowerBetter) return val <= target ? "#10b981" : val <= target * 1.5 ? "#f59e0b" : "#ef4444";
@@ -69,8 +75,6 @@ function deriveFromRows(rows: QWallRow[]) {
     rows,
   };
 }
-
-type TimeMode = "week" | "month" | "year";
 
 const card: React.CSSProperties = {
   background: "var(--color-surface)",
@@ -641,9 +645,7 @@ export default function QWallDashboardPage() {
   const { i18n } = useTranslation();
   const l        = i18n.language === "es";
 
-  const [mode,        setMode]        = useState<TimeMode>("week");
-  const [startDate,   setStartDate]   = useState<string>(getPreset("week")[0]);
-  const [endDate,     setEndDate]     = useState<string>(todayStr());
+  const [dateRange,   setDateRange]   = useState<DateRange>(() => resolvePreset("last_7_days"));
   const [data,        setData]        = useState<QWallReport | null>(null);
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState<string | null>(null);
@@ -664,20 +666,13 @@ export default function QWallDashboardPage() {
     ? partCatalog.find(p => p.bu_name === buFilter)?.bu_id
     : undefined;
 
-  const applyPreset = (m: TimeMode) => {
-    setMode(m);
-    const [s, e] = getPreset(m);
-    setStartDate(s);
-    setEndDate(e);
-  };
-
-  const load = useCallback(async (s = startDate, e = endDate) => {
+  const load = useCallback(async (range: DateRange = dateRange) => {
     setLoading(true);
     setError(null);
     try {
       const [report, pointFails] = await Promise.all([
-        QWallService.getReport(s, e, includeTest, buId),
-        QWallService.getFailByPoint(s, e, includeTest, buId),
+        QWallService.getReport(range.start, range.end, includeTest, buId),
+        QWallService.getFailByPoint(range.start, range.end, includeTest, buId),
       ]);
       setData(report);
       setFailByPoint(pointFails);
@@ -686,12 +681,13 @@ export default function QWallDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, includeTest, buId, l]);
+  }, [dateRange, includeTest, buId, l]);
 
   // Auto-reload cuando cambia el toggle de pruebas/producción o el filtro de BU
-  // (el backend ya filtra por bu_id, no se re-deriva client-side)
+  // (el backend ya filtra por bu_id, no se re-deriva client-side). Los cambios
+  // de rango de fecha siguen requiriendo click manual en ↻, igual que antes.
   useEffect(() => {
-    if (data !== null) load(startDate, endDate);
+    if (data !== null) load(dateRange);
   }, [includeTest, buId]);
 
   const derived        = data ? deriveFromRows(data.rows) : null;
@@ -700,14 +696,6 @@ export default function QWallDashboardPage() {
   const flagCount         = data?.flag_count ?? 0;
   const changeoverCount   = data?.changeover_count ?? 0;
   const pointFailItems    = failByPoint?.items ?? [];
-
-  const toggleStyle = (active: boolean): React.CSSProperties => ({
-    padding: "0.3rem 0.75rem", fontSize: "0.75rem", fontWeight: 600,
-    borderRadius: "var(--radius-sm, 6px)", cursor: "pointer",
-    border: "1px solid var(--color-border)",
-    background: active ? "#3b82f6" : "var(--color-surface)",
-    color:      active ? "#fff"    : "var(--color-text-secondary)",
-  });
 
   const inputStyle: React.CSSProperties = {
     padding: "0.3rem 0.5rem", fontSize: "0.75rem",
@@ -732,21 +720,12 @@ export default function QWallDashboardPage() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-          {/* Presets */}
-          <div style={{ display: "flex", gap: "0.25rem" }}>
-            {(["week", "month", "year"] as TimeMode[]).map(m => (
-              <button key={m} style={toggleStyle(mode === m)} onClick={() => applyPreset(m)}>
-                {m === "week" ? (l ? "Semana" : "Week") : m === "month" ? (l ? "Mes" : "Month") : (l ? "Año" : "Year")}
-              </button>
-            ))}
-          </div>
-
-          {/* Fechas */}
-          <input type="date" value={startDate} max={endDate} style={inputStyle}
-            onChange={e => { setStartDate(e.target.value); setMode("week"); }} />
-          <span style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)" }}>→</span>
-          <input type="date" value={endDate} max={todayStr()} style={inputStyle}
-            onChange={e => { setEndDate(e.target.value); setMode("week"); }} />
+          <DateRangeSelector
+            value={dateRange}
+            onChange={setDateRange}
+            defaultPreset="last_7_days"
+            extraGroups={DASHBOARD_EXTRA_PRESET_GROUPS}
+          />
 
           {/* Filtro BU */}
           <select style={inputStyle} value={buFilter} onChange={e => setBuFilter(e.target.value)}>
@@ -769,7 +748,7 @@ export default function QWallDashboardPage() {
           </button>
 
           {/* Reload */}
-          <button onClick={() => load(startDate, endDate)} disabled={loading}
+          <button onClick={() => load(dateRange)} disabled={loading}
             style={{ ...inputStyle, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.5 : 1 }}>
             {loading ? "..." : "↻"}
           </button>
@@ -823,7 +802,7 @@ export default function QWallDashboardPage() {
 
           {/* ── FILA 2: Part Number Summary ── */}
           <PartNumberSummarySection
-            buId={buId} startDate={startDate} endDate={endDate} includeTest={includeTest}
+            buId={buId} startDate={dateRange.start} endDate={dateRange.end} includeTest={includeTest}
             pass={derived.summary.pass} fail={derived.summary.fail}
           />
 
@@ -835,8 +814,8 @@ export default function QWallDashboardPage() {
              <div style={card}>
             <div style={cardTitle}>{l ? "Tendencia" : "Trend"}</div>
             <TrendChart
-              startDate={startDate}
-              endDate={endDate}
+              startDate={dateRange.start}
+              endDate={dateRange.end}
               includeTest={includeTest}
               buId={buId}
               locale={i18n.language}
@@ -845,8 +824,8 @@ export default function QWallDashboardPage() {
             <div style={card}>
               <div style={cardTitle}>{l ? "Top fallas (Pareto)" : "Top fail modes (Pareto)"}</div>
               <ParetoChart
-                startDate={startDate}
-                endDate={endDate}
+                startDate={dateRange.start}
+                endDate={dateRange.end}
                 includeTest={includeTest}
                 buId={buId}
                 lang={l ? "es" : "en"}

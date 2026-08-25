@@ -4,6 +4,9 @@ import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Info, X } from "lucide-react";
 import apiClient from "../../services/api.client";
+import DateRangeSelector from "../../components/common/DateRangeSelector";
+import { DateRange, resolvePreset } from "../../components/common/date-presets";
+import { QWallService, QWallPartNumber } from "./services/qwall.service";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,8 +39,7 @@ interface FailModeNode {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const fmt      = (iso: string) => iso.replace("T", " ").slice(0, 16);
+const fmt = (iso: string) => iso.replace("T", " ").slice(0, 16);
 
 // ── Info Modal ────────────────────────────────────────────────────────────────
 
@@ -334,8 +336,7 @@ export default function RejectionReportPage() {
   const lang = i18n.language.startsWith("es") ? "es" : "en";
   const l    = lang === "es";
 
-  const [startDate,   setStartDate]   = useState(todayStr());
-  const [endDate,     setEndDate]     = useState(todayStr());
+  const [dateRange,   setDateRange]   = useState<DateRange>(() => resolvePreset("today"));
   const [buId,        setBuId]        = useState("");
   const [includeTest, setIncludeTest] = useState(false);
   const [data,        setData]        = useState<FailModeNode[]>([]);
@@ -344,12 +345,27 @@ export default function RejectionReportPage() {
   const [error,       setError]       = useState<string | null>(null);
   const [modal,       setModal]       = useState<Inspection | null>(null);
 
+  // Catálogo dinámico de BU, mismo origen que QWallPage/QWallDashboardPage
+  // (ssi_BusinessUnits vía getPartNumbers) -- reemplaza el <option> hardcodeado
+  // que le faltaba TULC y no tenía forma de verificar que bu_id=1 fuera Volvo.
+  const [partCatalog, setPartCatalog] = useState<QWallPartNumber[]>([]);
+  useEffect(() => {
+    QWallService.getPartNumbers().then(setPartCatalog).catch(() => {});
+  }, []);
+  const buCatalog = (() => {
+    const seen = new Map<number, string>();
+    for (const p of partCatalog) {
+      if (!seen.has(p.bu_id)) seen.set(p.bu_id, p.bu_name);
+    }
+    return [...seen.entries()].map(([id, name]) => ({ bu_id: id, bu_name: name }));
+  })();
+
   const load = useCallback(async () => {
   setLoading(true); setError(null);
   try {
     const params: Record<string, string> = {
-      start_date:   startDate,
-      end_date:     endDate,
+      start_date:   dateRange.start,
+      end_date:     dateRange.end,
       include_test: includeTest ? "true" : "false",
       lang,
     };
@@ -361,14 +377,14 @@ export default function RejectionReportPage() {
   } finally {
     setLoading(false);
   }
-}, [startDate, endDate, buId, includeTest, lang, l]);
+}, [dateRange, buId, includeTest, lang, l]);
 
   const downloadPdf = useCallback(async () => {
     setPdfLoading(true);
     try {
       const params = new URLSearchParams({
-        start_date:   startDate,
-        end_date:     endDate,
+        start_date:   dateRange.start,
+        end_date:     dateRange.end,
         lang:         lang,
         include_test: includeTest ? "true" : "false",
       });
@@ -383,13 +399,13 @@ export default function RejectionReportPage() {
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
       a.href     = url;
-      a.download = `rechazos_${startDate}_${endDate}.pdf`;
+      a.download = `rechazos_${dateRange.start}_${dateRange.end}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
       setPdfLoading(false);
     }
-  }, [startDate, endDate, buId, lang, includeTest]);
+  }, [dateRange, buId, lang, includeTest]);
 
   const totalRejections = data.reduce((s, n) => s + n.count, 0);
 
@@ -411,42 +427,35 @@ export default function RejectionReportPage() {
   return (
     <div style={{ padding: "1.5rem" }}>
 
-      {/* Header */}
-      <div style={{ marginBottom: "1.25rem" }}>
-        <h1 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700,
-          color: "var(--color-text-primary)" }}>
-          {l ? "Piezas Rechazadas" : "Rejected Parts"}
-        </h1>
-        <p style={{ margin: "0.25rem 0 0", fontSize: "0.8rem",
-          color: "var(--color-text-secondary)" }}>
-          {l ? "Agrupado por modo de falla" : "Grouped by fail mode"}
-        </p>
-      </div>
+      {/* Header + Filtros en la misma fila */}
+      <div style={{ display: "flex", justifyContent: "space-between",
+        alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", marginBottom: "1.25rem" }}>
 
-      {/* Filters */}
-      <div style={{ display: "flex", alignItems: "flex-end",
-        gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700,
+            color: "var(--color-text-primary)" }}>
+            {l ? "Piezas Rechazadas" : "Rejected Parts"}
+          </h1>
+          <p style={{ margin: "0.25rem 0 0", fontSize: "0.8rem",
+            color: "var(--color-text-secondary)" }}>
+            {l ? "Agrupado por modo de falla" : "Grouped by fail mode"}
+          </p>
+        </div>
 
-        {/* Controles izquierda */}
-        <div style={{ display: "flex", gap: "0.75rem",
-          alignItems: "flex-end", flex: 1, flexWrap: "wrap" }}>
+        {/* Filtros */}
+        <div style={{ display: "flex", alignItems: "flex-end",
+          gap: "0.75rem", flexWrap: "wrap" }}>
 
-          {/* Desde */}
+          {/* Rango de fechas */}
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
             <label style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
-              {l ? "Desde" : "From"}
+              {l ? "Fechas" : "Dates"}
             </label>
-            <input type="date" style={inp} value={startDate}
-              onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-
-          {/* Hasta */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-            <label style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
-              {l ? "Hasta" : "To"}
-            </label>
-            <input type="date" style={inp} value={endDate}
-              onChange={(e) => setEndDate(e.target.value)} />
+            <DateRangeSelector
+              value={dateRange}
+              onChange={setDateRange}
+              defaultPreset="today"
+            />
           </div>
 
           {/* Business Unit */}
@@ -456,10 +465,9 @@ export default function RejectionReportPage() {
             </label>
             <select style={inp} value={buId} onChange={(e) => setBuId(e.target.value)}>
               <option value="">{l ? "Todas" : "All"}</option>
-              <option value="1">Volvo</option>
-              <option value="2">John Deere</option>
-              <option value="3">Cummins</option>
-              <option value="4">Harley-Davidson</option>
+              {buCatalog.map((b) => (
+                <option key={b.bu_id} value={String(b.bu_id)}>{b.bu_name}</option>
+              ))}
             </select>
           </div>
 
@@ -505,17 +513,17 @@ export default function RejectionReportPage() {
           <button onClick={load} disabled={loading} style={btn("#3b82f6", loading)}>
             {loading ? (l ? "Cargando..." : "Loading...") : (l ? "Consultar" : "Load")}
           </button>
-        </div>
 
-        {/* PDF — extremo derecho */}
-        <button
-          onClick={downloadPdf}
-          disabled={pdfLoading || data.length === 0}
-          style={btn("#ef4444", pdfLoading || data.length === 0)}
-          title={l ? "Descargar PDF completo con fotos" : "Download full PDF with photos"}
-        >
-          {pdfLoading ? "..." : "↓ PDF"}
-        </button>
+          {/* PDF */}
+          <button
+            onClick={downloadPdf}
+            disabled={pdfLoading || data.length === 0}
+            style={btn("#ef4444", pdfLoading || data.length === 0)}
+            title={l ? "Descargar PDF completo con fotos" : "Download full PDF with photos"}
+          >
+            {pdfLoading ? "..." : "↓ PDF"}
+          </button>
+        </div>
       </div>
 
       {/* Contador total */}

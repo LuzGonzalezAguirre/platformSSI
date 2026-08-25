@@ -6,46 +6,37 @@ import {
   ScrapRateBusinessUnit,
 } from "../services/cogp.service";
 import ScrapRateComboChart from "./ScrapRateComboChart";
+import BUSelect from "../../../components/common/BUSelect";
+import DateRangeSelector, { PresetGroup } from "../../../components/common/DateRangeSelector";
+import { DateRange, resolvePreset } from "../../../components/common/date-presets";
 
-const BU_OPTIONS: ScrapRateBusinessUnit[] = ["GLOBAL", "VOLVO", "CUMMINS", "TULC"];
+// Opciones LOCALES, no vienen de useFilterChoices(): el endpoint compartido
+// de choices incluye JOHN_DEERE (ACTIVE_FILTER_BU_CODES), pero
+// resolve_bu_for_finished_goods no lo clasifica -- pedirlo devolveria
+// ceros silenciosos. Scrap Rate solo entiende los 3 BUs trackeados por
+// ScrapRateService.TRACKED_BUS.
+const SCRAP_RATE_BU_OPTIONS: ScrapRateBusinessUnit[] = ["VOLVO", "CUMMINS", "TULC"];
 
-const todayStr = (): string => new Date().toISOString().slice(0, 10);
-
-function mondayOffset(weeksBack: number): string {
-  const d = new Date();
-  const day = (d.getDay() + 6) % 7; // lunes = 0
-  d.setDate(d.getDate() - day - weeksBack * 7);
-  return d.toISOString().slice(0, 10);
-}
-
-function ytdStart(): string {
-  return `${new Date().getFullYear()}-01-01`;
-}
-
-type Preset = "ytd" | "w13" | "w26" | "w52";
-
-function presetRange(p: Preset): [string, string] {
-  const end = todayStr();
-  if (p === "ytd") return [ytdStart(), end];
-  if (p === "w13") return [mondayOffset(12), end];
-  if (p === "w26") return [mondayOffset(25), end];
-  return [mondayOffset(51), end];
-}
+// Presets propios de esta pantalla: Scrap Rate es una tendencia semanal de
+// hasta 104 semanas (ScrapRateService.MAX_WEEKS), y los grupos incorporados
+// de DateRangeSelector topan en 90 dias -- no alcanzan para YTD ni para
+// 26/52 semanas, que eran el uso principal de este reporte.
+const SCRAP_RATE_EXTRA_PRESET_GROUPS: PresetGroup[] = [
+  {
+    title_es: "Tendencia", title_en: "Trend",
+    options: [
+      { preset: "year_to_date",   es: "Año a la Fecha",     en: "Year to Date" },
+      { preset: "last_26_weeks",  es: "Últimas 26 Semanas", en: "Last 26 Weeks" },
+      { preset: "last_52_weeks",  es: "Últimas 52 Semanas", en: "Last 52 Weeks" },
+    ],
+  },
+];
 
 const card: React.CSSProperties = {
   background: "var(--color-surface)",
   border: "1px solid var(--color-border)",
   borderRadius: "var(--radius-lg, 10px)",
   padding: "1.25rem",
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: "0.35rem 0.6rem",
-  fontSize: "0.78rem",
-  borderRadius: "var(--radius-sm, 6px)",
-  border: "1px solid var(--color-border)",
-  background: "var(--color-surface)",
-  color: "var(--color-text-primary)",
 };
 
 function toggleStyle(active: boolean): React.CSSProperties {
@@ -86,20 +77,22 @@ function KpiTile({ label, value, color }: { label: string; value: string; color?
 export default function ScrapRatePage() {
   const { t } = useTranslation();
 
-  const [startDate, setStartDate] = useState<string>(presetRange("ytd")[0]);
-  const [endDate, setEndDate] = useState<string>(todayStr());
-  const [businessUnit, setBusinessUnit] = useState<ScrapRateBusinessUnit>("GLOBAL");
+  const [dateRange, setDateRange] = useState<DateRange>(() => resolvePreset("last_90_days"));
+  // Vacio = "sin filtro" = el backend suma los 3 BUs trackeados. Mismo
+  // significado que tenia el sentinel "GLOBAL" antes, pero ahora expresado
+  // como ausencia de seleccion en vez de un cuarto valor especial.
+  const [businessUnits, setBusinessUnits] = useState<ScrapRateBusinessUnit[]>([]);
   const [data, setData] = useState<ScrapRateResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
 
   const load = useCallback(
-    async (s: string, e: string, bu: ScrapRateBusinessUnit) => {
+    async (range: DateRange, bus: ScrapRateBusinessUnit[]) => {
       setLoading(true);
       setError(null);
       try {
-        const res = await CogpService.getScrapRateWeekly(s, e, bu);
+        const res = await CogpService.getScrapRateWeekly(range.start, range.end, bus);
         setData(res);
       } catch (err: any) {
         setError(err?.response?.data?.detail ?? t("scrapRate.loadError"));
@@ -113,8 +106,8 @@ export default function ScrapRatePage() {
   // Dependencias explicitas y completas: sin esto el efecto se re-dispara
   // en cada render y genera un loop de requests contra el proxy.
   useEffect(() => {
-    load(startDate, endDate, businessUnit);
-  }, [load, startDate, endDate, businessUnit]);
+    load(dateRange, businessUnits);
+  }, [load, dateRange, businessUnits]);
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -125,14 +118,15 @@ export default function ScrapRatePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen]);
 
-  const applyPreset = (p: Preset) => {
-    const [s, e] = presetRange(p);
-    setStartDate(s);
-    setEndDate(e);
-  };
-
   const totals = data?.totals;
   const ratePct = totals?.scrap_rate_pct ? parseFloat(totals.scrap_rate_pct) : null;
+
+  // Label legible para el titulo de fullscreen. business_units en la
+  // respuesta ya viene resuelto por el backend (nunca vacio), asi que
+  // reflejamos lo que el backend realmente calculo, no el draft local.
+  const buLabel = (data?.business_units ?? businessUnits)
+    .map((bu) => t(`scrapRate.businessUnits.${bu.toLowerCase()}`))
+    .join(", ") || t("scrapRate.allBusinessUnits");
 
   const chart = (
     <ScrapRateComboChart
@@ -153,36 +147,27 @@ export default function ScrapRatePage() {
       </div>
 
       <div style={{ ...card, display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
-        <div style={{ display: "flex", gap: "0.35rem" }}>
-          {BU_OPTIONS.map((bu) => (
-            <button
-              key={bu}
-              style={toggleStyle(businessUnit === bu)}
-              onClick={() => setBusinessUnit(bu)}
-            >
-              {t(`scrapRate.businessUnits.${bu.toLowerCase()}`)}
-            </button>
-          ))}
-        </div>
+        <BUSelect
+          value={businessUnits}
+          onChange={(bu: string[]) => setBusinessUnits(bu as ScrapRateBusinessUnit[])}
+          options={SCRAP_RATE_BU_OPTIONS.map((bu) => ({
+            value: bu,
+            label: t(`scrapRate.businessUnits.${bu.toLowerCase()}`),
+          }))}
+        />
 
         <div style={{ width: 1, alignSelf: "stretch", background: "var(--color-border)" }} />
 
-        <div style={{ display: "flex", gap: "0.35rem" }}>
-          {(["ytd", "w13", "w26", "w52"] as Preset[]).map((p) => (
-            <button key={p} style={toggleStyle(false)} onClick={() => applyPreset(p)}>
-              {t(`scrapRate.presets.${p}`)}
-            </button>
-          ))}
-        </div>
+        <DateRangeSelector
+          value={dateRange}
+          onChange={setDateRange}
+          defaultPreset="last_90_days"
+          extraGroups={SCRAP_RATE_EXTRA_PRESET_GROUPS}
+        />
 
-        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", marginLeft: "auto" }}>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={inputStyle} />
-          <span style={{ color: "var(--color-text-secondary)" }}>→</span>
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={inputStyle} />
-          <button style={toggleStyle(false)} onClick={() => setFullscreen(true)}>
-            {t("scrapRate.fullscreen")}
-          </button>
-        </div>
+        <button style={{ ...toggleStyle(false), marginLeft: "auto" }} onClick={() => setFullscreen(true)}>
+          {t("scrapRate.fullscreen")}
+        </button>
       </div>
 
       {error && (
@@ -240,7 +225,7 @@ export default function ScrapRatePage() {
         >
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--color-text-primary)" }}>
-              {t("scrapRate.title")} · {t(`scrapRate.businessUnits.${businessUnit.toLowerCase()}`)}
+              {t("scrapRate.title")} · {buLabel}
             </div>
             <div style={{ fontSize: "0.78rem", color: "var(--color-text-secondary)" }}>
               {data?.start_date} → {data?.end_date}

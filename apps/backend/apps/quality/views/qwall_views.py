@@ -13,7 +13,7 @@ from apps.quality.services.qwall_service import QWallService
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-PROXY_URL = os.getenv("QWALL_PROXY_URL", "http://host.docker.internal:8002")
+PROXY_URL = os.getenv("QWALL_PaROXY_URL", "http://host.docker.internal:8002")
 HEADERS = {"Authorization": f"Bearer {os.getenv('QWALL_PROXY_TOKEN', '')}"}
 
 # Excel styling constants
@@ -37,6 +37,17 @@ def _fmt_duration(seconds) -> str:
         return "0:00"
     s = int(seconds)
     return f"{s // 60}:{str(s % 60).zfill(2)}"
+
+
+def _parse_bu_ids(request) -> list[int]:
+    """
+    Lee `bu_id` repetido (?bu_id=1&bu_id=2) del query string. Nombre distinto
+    al `bu` generico del resto del proyecto a proposito: bu_id es un FK a
+    ssi_BusinessUnits en CCS, un catalogo completamente independiente de
+    BusinessUnit/BU_CHOICES (ssi_common) -- no es el mismo concepto.
+    """
+    raw = request.query_params.getlist("bu_id")
+    return [int(v) for v in raw if str(v).strip()]
 
 
 def _build_excel(data: dict, start_date: date, end_date: date, include_test: bool = False) -> bytes:
@@ -234,7 +245,12 @@ def _build_excel(data: dict, start_date: date, end_date: date, include_test: boo
 class QWallReportView(APIView):
     """
     Reporte de inspecciones Q-Wall.
-    CÓDIGO ORIGINAL QUE FUNCIONABA — Solo GET.
+
+    `bu_id` acepta cero, uno o varios valores repetidos (?bu_id=1&bu_id=2) --
+    contrato multi-select, igual que el resto de filtros del proyecto, pero
+    con nombre propio porque bu_id es un FK a un catalogo de CCS
+    (ssi_BusinessUnits) independiente de BU_CHOICES/BusinessUnit. Sin
+    seleccion, QWallService.get_report trae todas las BU sin filtrar.
     """
     permission_classes = [IsAuthenticated]
 
@@ -244,7 +260,6 @@ class QWallReportView(APIView):
         end_raw = request.query_params.get("end_date", str(today))
         fmt = request.query_params.get("export", "json")
         include_test = request.query_params.get("include_test", "false").lower() == "true"
-        bu_raw = request.query_params.get("bu_id")
         locale = _get_locale(request)
 
         try:
@@ -254,7 +269,7 @@ class QWallReportView(APIView):
             return Response({"error": "Formato de fecha inválido. Use YYYY-MM-DD."}, status=400)
 
         try:
-            bu_id = int(bu_raw) if bu_raw else None
+            bu_ids = _parse_bu_ids(request)
         except ValueError:
             return Response({"error": "bu_id inválido."}, status=400)
 
@@ -267,7 +282,10 @@ class QWallReportView(APIView):
         # ═══════════════════════════════════════════════════════════════════════
         # IMPORTANTE: QWallService.get_report es ESTÁTICO
         # ═══════════════════════════════════════════════════════════════════════
-        data = QWallService.get_report(start_date, end_date, include_test=include_test, bu_id=bu_id, locale=locale)
+        data = QWallService.get_report(
+            start_date, end_date, include_test=include_test,
+            bu_ids=bu_ids or None, locale=locale,
+        )
 
         if fmt == "xlsx":
             try:

@@ -20,7 +20,13 @@ GLOBAL_KEY = "GLOBAL"
 
 TRACKED_BUS = (BusinessUnit.VOLVO, BusinessUnit.CUMMINS, BusinessUnit.TULC)
 
-ALLOWED_BUSINESS_UNITS = frozenset({*TRACKED_BUS, GLOBAL_KEY})
+# Set de BUs que el usuario puede PEDIR (query param `bu`). GLOBAL no esta
+# aqui a proposito: dejo de ser un valor seleccionable y paso a ser el
+# resultado de "no seleccionar nada" (ver get_weekly_scrap_rate). El bucket
+# interno con clave GLOBAL se sigue calculando (ver _fetch_and_bucket) pero
+# es contabilidad vestigial -- se deja porque tocarlo no da ningun beneficio
+# y el cache ya tiene semanas cerradas bajo v3 con esa forma.
+ALLOWED_BUSINESS_UNITS = frozenset(TRACKED_BUS)
 
 # Part_Type de Plex que representan producto terminado. Con el filtro por
 # workcenter terminal este desglose es casi redundante -- se conserva porque
@@ -142,6 +148,13 @@ class ScrapRateService:
     por workcenter es en Python, post-fetch: NO se agrega una query por
     workcenter.
 
+    SELECCION DE BU (multi-select real): cada fila de Plex se clasifica en
+    su BU real (VOLVO/CUMMINS/TULC) al momento del fetch, SIN importar que
+    BU pidio el usuario -- el fetch nunca dependio del filtro. Por eso pedir
+    un subconjunto arbitrario de BUs es sumar buckets ya cacheados, no una
+    query nueva. Sin `business_units` (None o lista vacia), se asume la
+    suma de los 3 BUs trackeados.
+
     DEPENDENCIA ABIERTA: requiere que cogp/scrap-range y
     cogp/production-range devuelvan la columna Quantity. Mientras el proxy
     solo devuelva Extended_Cost, el guard de _fetch_and_bucket levanta
@@ -170,6 +183,11 @@ class ScrapRateService:
     #   v2 = purga de los ceros cacheados cuando el proxy no devolvia Quantity.
     #   v3 = scrap restringido a workcenters terminales (mismo criterio que
     #        produccion). Todo lo cacheado en v2 tiene el numerador inflado.
+    #
+    # NOTA: el cambio de business_unit singular a business_units (lista con
+    # suma dinamica) NO sube la version. La forma del bucket cacheado por
+    # semana no cambio -- solo cambio como se ensambla la respuesta al
+    # final, y eso pasa fuera del cache en cada request.
     CACHE_VERSION = "v3"
 
     def __init__(self, client: QualityPlexClient | None = None):
@@ -193,11 +211,17 @@ class ScrapRateService:
         self,
         start_date: date,
         end_date: date,
-        business_unit: str = GLOBAL_KEY,
+        business_units: list[str] | None = None,
     ) -> dict:
-        if business_unit not in ALLOWED_BUSINESS_UNITS:
+        if business_units:
+            normalized_bus = sorted({bu.strip().upper() for bu in business_units})
+        else:
+            normalized_bus = sorted(TRACKED_BUS)
+
+        invalid = [bu for bu in normalized_bus if bu not in ALLOWED_BUSINESS_UNITS]
+        if invalid:
             raise ValueError(
-                f"business_unit invalido: {business_unit}. "
+                f"business_unit invalido: {', '.join(invalid)}. "
                 f"Validos: {', '.join(sorted(ALLOWED_BUSINESS_UNITS))}."
             )
 
@@ -243,14 +267,12 @@ class ScrapRateService:
             bucket = cached.get(
                 key_by_week[(w["iso_year"], w["iso_week"])], _empty_bucket()
             )
-            bu_data = bucket.get(
-                business_unit,
-                {"produced_qty": 0, "scrap_qty": 0, "scrap_qty_finished": 0},
-            )
 
-            produced = bu_data["produced_qty"]
-            scrap = bu_data["scrap_qty"]
-            scrap_finished = bu_data["scrap_qty_finished"]
+            produced = sum(bucket[bu]["produced_qty"] for bu in normalized_bus)
+            scrap = sum(bucket[bu]["scrap_qty"] for bu in normalized_bus)
+            scrap_finished = sum(
+                bucket[bu]["scrap_qty_finished"] for bu in normalized_bus
+            )
             input_qty = produced + scrap
 
             total_produced += produced
@@ -278,7 +300,7 @@ class ScrapRateService:
         total_input = total_produced + total_scrap
 
         return {
-            "business_unit": business_unit,
+            "business_units": normalized_bus,
             "start_date": spine[0]["week_start"].isoformat(),
             "end_date": spine[-1]["week_end"].isoformat(),
             "requested_start_date": start_date.isoformat(),

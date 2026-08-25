@@ -59,7 +59,13 @@ export type CogpPeriod = "day" | "week" | "month";
 
 // ── Scrap Rate (piezas) ───────────────────────────────────────────────
 
-export type ScrapRateBusinessUnit = "GLOBAL" | "VOLVO" | "CUMMINS" | "TULC";
+/**
+ * BUs seleccionables para Scrap Rate. NO incluye "GLOBAL" ni "JOHN_DEERE":
+ * GLOBAL dejo de ser un valor pedible (ahora es "sin seleccion = suma de
+ * los 3"), y John Deere no esta clasificado por resolve_bu_for_finished_goods
+ * en el backend -- pedirlo devolveria ceros silenciosos.
+ */
+export type ScrapRateBusinessUnit = "VOLVO" | "CUMMINS" | "TULC";
 
 export interface ScrapRateWeek {
   iso_year: number;
@@ -94,7 +100,9 @@ export interface ScrapRateMeta {
 }
 
 export interface ScrapRateResponse {
-  business_unit: ScrapRateBusinessUnit;
+  /** BUs efectivamente usadas por el backend. Vacio nunca ocurre en la
+   *  respuesta: sin seleccion, el backend ya resolvio a los 3 trackeados. */
+  business_units: ScrapRateBusinessUnit[];
   /** Rango expandido a semanas ISO completas por el backend. */
   start_date: string;
   end_date: string;
@@ -121,14 +129,22 @@ export const CogpService = {
       .get(`${BASE}/pareto/`, { params: { period, date } })
       .then((r: any) => r.data),
 
+  /**
+   * businessUnits vacio -> no se manda `bu` en absoluto, el backend asume
+   * los 3 trackeados. api.client.ts serializa el array como ?bu=X&bu=Y.
+   */
   getScrapRateWeekly: (
     startDate: string,
     endDate: string,
-    businessUnit: ScrapRateBusinessUnit
+    businessUnits: ScrapRateBusinessUnit[]
   ): Promise<ScrapRateResponse> =>
     apiClient
       .get(`${BASE}/scrap-rate/`, {
-        params: { start_date: startDate, end_date: endDate, business_unit: businessUnit },
+        params: {
+          start_date: startDate,
+          end_date: endDate,
+          ...(businessUnits.length > 0 ? { bu: businessUnits } : {}),
+        },
       })
       .then((r: any) => r.data),
 };

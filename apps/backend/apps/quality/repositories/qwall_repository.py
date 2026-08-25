@@ -9,12 +9,35 @@ HEADERS    = {"Authorization": f"Bearer {PROXY_TOKEN}"}
 CACHE_TTL  = 300
 
 
+def _normalize_bu_ids(bu_ids: int | list[int] | None) -> list[int] | None:
+    """
+    Acepta int suelto (compat con get_trend/get_pareto/get_part_number_summary,
+    que siguen mandando un solo bu_id) o una lista real (get_report, multi-select).
+    Normaliza a lista ordenada y deduplicada, o None si no hay filtro.
+
+    Esto existe para NO forzar a get_trend/get_pareto/get_part_number_summary a
+    cambiar su firma solo porque get_report ahora soporta multi-select -- esos
+    tres siguen fuera de alcance de este cambio.
+    """
+    if bu_ids is None:
+        return None
+    if isinstance(bu_ids, int):
+        return [bu_ids]
+    normalized = sorted({int(b) for b in bu_ids})
+    return normalized or None
+
+
+def _bu_cache_fragment(bu_ids: list[int] | None) -> str:
+    return ",".join(str(b) for b in bu_ids) if bu_ids else "all"
+
+
 class QWallRepository:
 
     @staticmethod
-    def get_inspections(start_date: date, end_date: date, bu_id: int | None = None) -> list[dict]:
-        cache_key = f"qwall:raw:{start_date}:{end_date}:bu={bu_id or 'all'}"
-        cached    = cache.get(cache_key)
+    def get_inspections(start_date: date, end_date: date, bu_ids: int | list[int] | None = None) -> list[dict]:
+        normalized = _normalize_bu_ids(bu_ids)
+        cache_key  = f"qwall:raw:{start_date}:{end_date}:bu={_bu_cache_fragment(normalized)}"
+        cached     = cache.get(cache_key)
         if cached is not None:
             return cached
 
@@ -23,7 +46,7 @@ class QWallRepository:
             json={
                 "start_date": start_date.strftime("%Y-%m-%d"),
                 "end_date":   end_date.strftime("%Y-%m-%d"),
-                "bu_id":      bu_id,
+                "bu_ids":     normalized,
             },
             headers=HEADERS,
             timeout=30,
@@ -34,9 +57,10 @@ class QWallRepository:
         return rows
 
     @staticmethod
-    def get_flag_count(start_date: date, end_date: date, bu_id: int | None = None) -> int:
-        cache_key = f"qwall:flags:{bu_id or 'all'}:{start_date}:{end_date}"
-        cached    = cache.get(cache_key)
+    def get_flag_count(start_date: date, end_date: date, bu_ids: int | list[int] | None = None) -> int:
+        normalized = _normalize_bu_ids(bu_ids)
+        cache_key  = f"qwall:flags:{_bu_cache_fragment(normalized)}:{start_date}:{end_date}"
+        cached     = cache.get(cache_key)
         if cached is not None:
             return cached
 
@@ -45,7 +69,7 @@ class QWallRepository:
             params={
                 "start_date": start_date.strftime("%Y-%m-%d"),
                 "end_date":   end_date.strftime("%Y-%m-%d"),
-                **({"bu_id": bu_id} if bu_id else {}),
+                **({"bu_ids": normalized} if normalized else {}),
             },
             headers=HEADERS,
             timeout=30,
@@ -56,9 +80,10 @@ class QWallRepository:
         return count
 
     @staticmethod
-    def get_piece_flags(start_date: date, end_date: date, bu_id: int | None = None) -> list[dict]:
-        cache_key = f"qwall:piece_flags:{bu_id or 'all'}:{start_date}:{end_date}"
-        cached    = cache.get(cache_key)
+    def get_piece_flags(start_date: date, end_date: date, bu_ids: int | list[int] | None = None) -> list[dict]:
+        normalized = _normalize_bu_ids(bu_ids)
+        cache_key  = f"qwall:piece_flags:{_bu_cache_fragment(normalized)}:{start_date}:{end_date}"
+        cached     = cache.get(cache_key)
         if cached is not None:
             return cached
 
@@ -67,7 +92,7 @@ class QWallRepository:
             params={
                 "start_date": start_date.strftime("%Y-%m-%d"),
                 "end_date":   end_date.strftime("%Y-%m-%d"),
-                **({"bu_id": bu_id} if bu_id else {}),
+                **({"bu_ids": normalized} if normalized else {}),
             },
             headers=HEADERS,
             timeout=30,

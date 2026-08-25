@@ -60,27 +60,32 @@ def _filter_test(rows: list[dict], include_test: bool) -> list[dict]:
     return [r for r in rows if not _is_test_wo(r.get("work_order"))]
 
 
+def _bu_ids_cache_fragment(bu_ids: list[int] | None) -> str:
+    return ",".join(str(b) for b in sorted(bu_ids)) if bu_ids else "all"
+
+
 class QWallService:
 
     @staticmethod
     def _cache_key(start_date: date, end_date: date, include_test: bool,
-                    bu_id: int | None, locale: str) -> str:
-        raw = f"qwall:{start_date}:{end_date}:test={include_test}:bu={bu_id or 'all'}:loc={locale}"
+                    bu_ids: list[int] | None, locale: str) -> str:
+        raw = (f"qwall:{start_date}:{end_date}:test={include_test}:"
+               f"bu={_bu_ids_cache_fragment(bu_ids)}:loc={locale}")
         return hashlib.md5(raw.encode()).hexdigest()
 
     @staticmethod
     def get_report(start_date: date, end_date: date, include_test: bool = False,
-                    bu_id: int | None = None, locale: str = "es") -> dict:
-        key    = QWallService._cache_key(start_date, end_date, include_test, bu_id, locale)
+                    bu_ids: list[int] | None = None, locale: str = "es") -> dict:
+        key    = QWallService._cache_key(start_date, end_date, include_test, bu_ids, locale)
         cached = cache.get(key)
         if cached:
             return cached
 
         # ssi_PieceFlagRecords es una tabla distinta a ssi_Inspections — query
         # independiente al proxy, no se anexa al SELECT de inspecciones.
-        flag_count = QWallRepository.get_flag_count(start_date, end_date, bu_id)
+        flag_count = QWallRepository.get_flag_count(start_date, end_date, bu_ids)
 
-        rows = QWallRepository.get_inspections(start_date, end_date, bu_id)
+        rows = QWallRepository.get_inspections(start_date, end_date, bu_ids)
 
         if not rows:
             result = QWallService._empty_response()
@@ -98,7 +103,7 @@ class QWallService:
 
         # Una sola consulta a ssi_PieceFlagRecords para todo el rango — el cruce
         # con las inspecciones se hace en memoria por inspection_id, nunca N+1.
-        flag_rows = QWallRepository.get_piece_flags(start_date, end_date, bu_id)
+        flag_rows = QWallRepository.get_piece_flags(start_date, end_date, bu_ids)
 
         result = QWallService._aggregate(filtered_rows, locale, flag_rows)
         result["flag_count"] = flag_count

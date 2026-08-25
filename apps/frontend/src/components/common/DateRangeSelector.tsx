@@ -2,15 +2,24 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { DatePreset, DateRange, resolvePreset } from "./date-presets";
 
+export interface OptionDef { preset: DatePreset; es: string; en: string; }
+export interface PresetGroup { title_es: string; title_en: string; options: OptionDef[]; }
+
 interface Props {
   value: DateRange;
   onChange: (range: DateRange) => void;
   defaultPreset?: DatePreset;
+  /**
+   * Grupos de presets adicionales, concatenados despues de los grupos
+   * incorporados (Dias/Semanas/Meses). Pensado para pantallas de
+   * tendencia larga (ej. Scrap Rate: YTD, ultimas 26/52 semanas) que no
+   * encajan en el vocabulario general de dias/semanas/meses cortos.
+   * Sin esta prop el componente se comporta exactamente igual que antes.
+   */
+  extraGroups?: PresetGroup[];
 }
 
-interface OptionDef { preset: DatePreset; es: string; en: string; }
-
-const GROUPS: { title_es: string; title_en: string; options: OptionDef[] }[] = [
+const GROUPS: PresetGroup[] = [
   {
     title_es: "Días", title_en: "Days",
     options: [
@@ -45,13 +54,15 @@ function formatShort(dateStr: string): string {
   return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export default function DateRangeSelector({ value, onChange, defaultPreset = "custom" }: Props) {
+export default function DateRangeSelector({ value, onChange, defaultPreset = "custom", extraGroups }: Props) {
   const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("es") ? "es" : "en";
 
   const [preset, setPreset] = useState<DatePreset>(defaultPreset);
   const [open, setOpen]     = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  const allGroups = extraGroups && extraGroups.length > 0 ? [...GROUPS, ...extraGroups] : GROUPS;
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -69,7 +80,7 @@ export default function DateRangeSelector({ value, onChange, defaultPreset = "cu
 
   const currentLabel = (() => {
     if (preset === "custom") return lang === "es" ? "(rango personalizado)" : "(select custom range)";
-    for (const g of GROUPS) {
+    for (const g of allGroups) {
       const opt = g.options.find((o) => o.preset === preset);
       if (opt) return lang === "es" ? opt.es : opt.en;
     }
@@ -108,7 +119,7 @@ export default function DateRangeSelector({ value, onChange, defaultPreset = "cu
           >
             {lang === "es" ? "(rango personalizado)" : "(select custom range)"}
           </div>
-          {GROUPS.map((g) => (
+          {allGroups.map((g) => (
             <div key={g.title_en}>
               <div style={s.groupTitle}>{lang === "es" ? g.title_es : g.title_en}</div>
               {g.options.map((o) => (

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Flag as FlagIcon } from "lucide-react";
 import {
@@ -9,17 +9,13 @@ import {
   QWallPartRow,
   QWallPartNumber,
 } from "../services/qwall.service";
+import BUSelect from "../../../components/common/BUSelect";
+import DateRangeSelector from "../../../components/common/DateRangeSelector";
+import { DateRange, resolvePreset } from "../../../components/common/date-presets";
 
 interface LegacyFailMode { fail_mode: string; count: number; }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-const todayStr = (): string => new Date().toISOString().slice(0, 10);
-const daysAgo  = (n: number): string => {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-};
 
 function fmtDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -217,60 +213,66 @@ export default function QWallPage() {
   const { i18n, t } = useTranslation();
   const l        = i18n.language === "es";
 
-  const [startDate,   setStartDate]   = useState<string>(daysAgo(7));
-  const [endDate,     setEndDate]     = useState<string>(todayStr());
+  const [dateRange,   setDateRange]   = useState<DateRange>(() => resolvePreset("last_7_days"));
   const [data,        setData]        = useState<QWallReport | null>(null);
   const [loading,     setLoading]     = useState<boolean>(false);
   const [error,       setError]       = useState<string | null>(null);
   const [includeTest, setIncludeTest] = useState<boolean>(false);
 
-  // Catálogo BU / PN
-  const [partCatalog, setPartCatalog] = useState<QWallPartNumber[]>([]);
-  const [buFilter,    setBuFilter]    = useState<string>("");
+  // Catálogo BU / PN — se sigue derivando de partCatalog (decisión: no
+  // cambiar a /qwall/settings/business-units/ por ahora). Multi-select real:
+  // selectedBuIds guarda bu_id como STRING porque BUSelect trabaja con
+  // string[] (mismo contrato que el resto del proyecto) — se castea a
+  // number[] solo al llamar al servicio.
+  const [partCatalog,   setPartCatalog]   = useState<QWallPartNumber[]>([]);
+  const [selectedBuIds, setSelectedBuIds] = useState<string[]>([]);
 
   useEffect(() => {
     QWallService.getPartNumbers().then(setPartCatalog).catch(() => {});
   }, []);
 
-  const buList: string[] = [...new Set(partCatalog.map((p) => p.bu_name))].sort();
+  // Catálogo único bu_id -> bu_name, derivado de partCatalog (mismo origen
+  // que antes, solo que ahora se preserva el id además del nombre).
+  const buCatalog = useMemo(() => {
+    const seen = new Map<number, string>();
+    for (const p of partCatalog) {
+      if (!seen.has(p.bu_id)) seen.set(p.bu_id, p.bu_name);
+    }
+    return [...seen.entries()].map(([bu_id, bu_name]) => ({ bu_id, bu_name }));
+  }, [partCatalog]);
 
-  const pnForBu: string[] = buFilter
-    ? partCatalog.filter((p) => p.bu_name === buFilter).map((p) => p.ssiPN)
+  const pnForBu: string[] = selectedBuIds.length > 0
+    ? partCatalog.filter((p) => selectedBuIds.includes(String(p.bu_id))).map((p) => p.ssiPN)
     : partCatalog.map((p) => p.ssiPN);
 
-  // bu_id correspondiente al nombre de BU seleccionado — el backend filtra por
-  // bu_id (mismo mecanismo que QWallDashboardPage), para que flag_count y el
-  // resto de campos calculados en backend salgan correctos para la BU activa.
-  const buId: number | undefined = buFilter
-    ? partCatalog.find((p) => p.bu_name === buFilter)?.bu_id
-    : undefined;
+  const buIdsForService: number[] = selectedBuIds.map(Number);
 
   const load = useCallback(async () => {
   setLoading(true);
   setError(null);
   try {
-    const result = await QWallService.getReport(startDate, endDate, includeTest, buId);
+    const result = await QWallService.getReport(dateRange.start, dateRange.end, includeTest, buIdsForService);
     setData(result);
   } catch {
     setError(l ? "Error al cargar datos de Q-Wall." : "Failed to load Q-Wall data.");
   } finally {
     setLoading(false);
   }
-}, [startDate, endDate, includeTest, buId, l]);
+}, [dateRange, includeTest, selectedBuIds, l]);
 
 // Auto-reload cuando cambia el toggle o el filtro de BU (solo si ya hay datos)
 useEffect(() => {
   if (data !== null) {
     load();
   }
-}, [includeTest, buId]);
+}, [includeTest, selectedBuIds]);
 
   const filters = useTableFilters(data?.rows ?? [], pnForBu);
 
   // Reset partNo al cambiar BU
   useEffect(() => {
     filters.setPartNo("");
-  }, [buFilter]);
+  }, [selectedBuIds]);
 
   // KPIs y aggregados derivados del subset BU-filtrado
   const subsetRows  = filters.filtered;
@@ -282,6 +284,13 @@ useEffect(() => {
   const byInspector = deriveByInspector(allBuRows);
   const byPart      = deriveByPart(allBuRows);
   const failModes   = deriveFailModes(allBuRows);
+
+  // Label legible para el badge de modo activo — nombres de las BU
+  // seleccionadas, en el mismo orden que buCatalog.
+  const selectedBuLabel = buCatalog
+    .filter((b) => selectedBuIds.includes(String(b.bu_id)))
+    .map((b) => b.bu_name)
+    .join(", ");
 
   return (
     <div style={s.page}>
@@ -296,25 +305,18 @@ useEffect(() => {
         </div>
 
         <div style={s.filters}>
-          <span style={s.label}>{l ? "Desde:" : "From:"}</span>
-          <input type="date" value={startDate} max={endDate} style={s.input}
-            onChange={(e) => setStartDate(e.target.value)} />
+          <DateRangeSelector
+            value={dateRange}
+            onChange={setDateRange}
+            defaultPreset="last_7_days"
+          />
 
-          <span style={s.label}>{l ? "Hasta:" : "To:"}</span>
-          <input type="date" value={endDate} max={todayStr()} style={s.input}
-            onChange={(e) => setEndDate(e.target.value)} />
-
-          {/* Filtro BU */}
-          <select
-            style={s.input}
-            value={buFilter}
-            onChange={(e) => setBuFilter(e.target.value)}
-          >
-            <option value="">{l ? "— Todas las BU —" : "— All BUs —"}</option>
-            {buList.map((bu) => (
-              <option key={bu} value={bu}>{bu}</option>
-            ))}
-          </select>
+          {/* Filtro BU — multi-select real */}
+          <BUSelect
+            value={selectedBuIds}
+            onChange={(v: string[]) => setSelectedBuIds(v)}
+            options={buCatalog.map((b) => ({ value: String(b.bu_id), label: b.bu_name }))}
+          />
 
           {/* Toggle pruebas/producción */}
           <button
@@ -344,7 +346,7 @@ useEffect(() => {
           {data && (
             <button
               style={s.btnOutline}
-              onClick={() => QWallService.downloadExcel(startDate, endDate, includeTest)}
+              onClick={() => QWallService.downloadExcel(dateRange.start, dateRange.end, includeTest)}
             >
               <Download size={13} /> Excel
             </button>
@@ -371,14 +373,14 @@ useEffect(() => {
       {data && !loading && (
         <>
           {/* Badge modo activo */}
-          {buFilter && (
+          {selectedBuIds.length > 0 && (
             <div>
               <span style={{
                 background: "rgba(59,130,246,0.1)", color: "#3b82f6",
                 border: "1px solid #3b82f6", borderRadius: 8,
                 padding: "0.25rem 0.75rem", fontSize: "0.8rem", fontWeight: 600,
               }}>
-                BU: {buFilter} · {kpis.total} {l ? "inspecciones" : "inspections"}
+                BU: {selectedBuLabel} · {kpis.total} {l ? "inspecciones" : "inspections"}
               </span>
             </div>
           )}
