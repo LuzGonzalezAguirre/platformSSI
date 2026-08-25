@@ -1,7 +1,5 @@
 import apiClient from "../../../services/api.client";
 
-export type DowntimePreset = "today" | "yesterday" | "this_week" | "this_month" | "custom";
-
 export interface DowntimeLogRow {
   log_date:               string | null;
   log_hours:              number | null;
@@ -63,34 +61,46 @@ export interface DowntimeCustomerRow {
   share_pct:         number;
 }
 
+interface StandardFilterParams {
+  bu?: string[];
+  workcenter?: string[];
+  shift?: string[];
+}
+
 const BASE = "/quality/downtime";
 
 export const DowntimeService = {
   getLogs: async (
-    preset: DowntimePreset,
-    dateFrom?: string,
-    dateTo?: string,
+    start: string,
+    end: string,
+    filters?: StandardFilterParams,
   ): Promise<DowntimeLogsResponse> => {
-    const params: Record<string, string> = { preset };
-    if (preset === "custom") {
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo)   params.date_to   = dateTo;
-    }
-    const { data } = await apiClient.get(`${BASE}/logs/`, { params });
+    const { data } = await apiClient.get(`${BASE}/logs/`, {
+      params: {
+        start_date: start,
+        end_date: end,
+        bu: filters?.bu,
+        workcenter: filters?.workcenter,
+        shift: filters?.shift,
+      },
+    });
     return data;
   },
 
   getSummary: async (
-    preset: DowntimePreset,
-    dateFrom?: string,
-    dateTo?: string,
+    start: string,
+    end: string,
+    filters?: StandardFilterParams,
   ): Promise<DowntimeSummaryResponse> => {
-    const params: Record<string, string> = { preset };
-    if (preset === "custom") {
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo)   params.date_to   = dateTo;
-    }
-    const { data } = await apiClient.get(`${BASE}/summary/`, { params });
+    const { data } = await apiClient.get(`${BASE}/summary/`, {
+      params: {
+        start_date: start,
+        end_date: end,
+        bu: filters?.bu,
+        workcenter: filters?.workcenter,
+        shift: filters?.shift,
+      },
+    });
     return data;
   },
 

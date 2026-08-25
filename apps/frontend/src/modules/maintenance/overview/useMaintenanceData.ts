@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { MaintenanceService } from "./overview.service";
-import { MaintenanceKPIs, DowntimeReason, DateRange, OEEData, OEETrendPoint, DowntimeByMonth } from "./types";
+import { MaintenanceKPIs, DowntimeReason, OEEData, OEETrendPoint, DowntimeByMonth } from "./types";
+import { StandardFilters } from "../../../components/common/StandardFilters.types";
 
-
-export function useMaintenanceData(range: DateRange) {
+export function useMaintenanceData(filters: StandardFilters) {
   const [kpis,          setKpis]          = useState<MaintenanceKPIs | null>(null);
   const [reasons,       setReasons]       = useState<DowntimeReason[]>([]);
   const [grandTotal,    setGrandTotal]    = useState<number>(0);
@@ -14,16 +14,20 @@ export function useMaintenanceData(range: DateRange) {
   const [error,         setError]         = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!range.start || !range.end) return;
+    if (!filters.start || !filters.end) return;
     setLoading(true);
     setError(null);
     try {
       const [kpiRes, reasonRes, oeeRes, trendRes, monthRes] = await Promise.all([
-        MaintenanceService.getKPIs(range.start, range.end),
-        MaintenanceService.getReasons(range.start, range.end),
-        MaintenanceService.getOEELive(range.start, range.end),
-        MaintenanceService.getOEETrend(range.start, range.end),
-        MaintenanceService.getDowntimeByMonth(range.start, range.end),
+        MaintenanceService.getKPIs(filters.start, filters.end, {
+          bu: filters.bu,
+          workcenter: filters.workcenter,
+          shift: filters.shift,
+        }),
+        MaintenanceService.getReasons(filters.start, filters.end),
+        MaintenanceService.getOEELive(filters.start, filters.end),
+        MaintenanceService.getOEETrend(filters.start, filters.end),
+        MaintenanceService.getDowntimeByMonth(filters.start, filters.end),
       ]);
       setKpis(kpiRes.data);
       setReasons(reasonRes.data);
@@ -36,7 +40,7 @@ export function useMaintenanceData(range: DateRange) {
     } finally {
       setLoading(false);
     }
-  }, [range.start, range.end]);
+  }, [filters.start, filters.end, filters.bu, filters.workcenter, filters.shift]);
 
   useEffect(() => { load(); }, [load]);
 

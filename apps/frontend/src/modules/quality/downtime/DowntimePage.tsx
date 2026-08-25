@@ -2,29 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Settings } from "lucide-react";
-import { DowntimeService, DowntimePreset, DowntimeLogRow, DowntimeLogsResponse, 
+import { DowntimeService, DowntimeLogsResponse,
   DowntimeSummaryRow, DowntimeTrendPoint, DowntimeTrendGranularity,
   DowntimeCustomerRow
  } from "../services/downtime.service";
-
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const yesterdayStr = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
-};
-const PRESETS: DowntimePreset[] = ["today", "yesterday", "this_week", "this_month", "custom"];
-
-const presetLabel = (p: DowntimePreset, l: boolean): string => {
-  const labels: Record<DowntimePreset, [string, string]> = {
-    today:      ["Hoy", "Today"],
-    yesterday:  ["Ayer", "Yesterday"],
-    this_week:  ["Esta semana", "This week"],
-    this_month: ["Este mes", "This month"],
-    custom:     ["Rango personalizado", "Custom range"],
-  };
-  return l ? labels[p][0] : labels[p][1];
-};
+import { useStandardFilters } from "../../../components/common/useStandardFilters";
+import FilterBar from "../../../components/common/FilterBar";
 
 // ── KPI card ──────────────────────────────────────────────────────────────────
 
@@ -76,9 +59,6 @@ function CustomerKPICard({ row, l }: { row: DowntimeCustomerRow; l: boolean }) {
 // ── Trend chart (SVG inline, sin librerías externas) ────────────────────────
 
 const LINE_COLOR = "#1e3a5f";
-// Alturas fijas para que las tarjetas de ambas columnas queden parejas —
-// Tabla/Tendencia comparten TOP_CARD_HEIGHT, Resumen/Pareto comparten
-// BOTTOM_CARD_HEIGHT, independientemente de cuánto contenido tengan.
 const TOP_CARD_HEIGHT = 350;
 const BOTTOM_CARD_HEIGHT = 300;
 
@@ -109,8 +89,8 @@ function TrendChart({ points, l, granularity }: { points: DowntimeTrendPoint[]; 
 
   const isoWeekNumber = (d: Date): number => {
     const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const dayNum = (date.getUTCDay() + 6) % 7; // Lunes = 0
-    date.setUTCDate(date.getUTCDate() - dayNum + 3); // jueves de esa semana
+    const dayNum = (date.getUTCDay() + 6) % 7;
+    date.setUTCDate(date.getUTCDate() - dayNum + 3);
     const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
     const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
     firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
@@ -188,12 +168,7 @@ function TrendChart({ points, l, granularity }: { points: DowntimeTrendPoint[]; 
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
-
-// ── Pareto por Workcenter — agrega minutos de `summary` (ya agrupado por
-// fecha+workcenter) sumando todas las fechas del rango por workcenter,
-// sin pegarle de nuevo al backend — mismo dato ya cargado, solo reagrupado
-// en cliente. Mismo patrón visual que el Pareto de defectos en QualityPanelPage.
+// ── Pareto por Workcenter ─────────────────────────────────────────────────────
 
 function computeWorkcenterPareto(rows: DowntimeSummaryRow[]) {
   const map = new Map<string, { minutes: number; incidents: number }>();
@@ -260,14 +235,12 @@ function WorkcenterParetoChart({ rows, l }: { rows: DowntimeSummaryRow[]; l: boo
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: "block", overflow: "visible" }}
         onMouseLeave={() => setHover(null)}>
 
-        {/* Eje izquierdo — minutos */}
         {minutesTicks.map((v) => (
           <g key={`m-${v}`}>
             <line x1={PAD.left} y1={yBar(v)} x2={PAD.left + iW} y2={yBar(v)} stroke="var(--color-border)" strokeWidth="1" strokeDasharray="3,3" />
             <text x={PAD.left - 6} y={yBar(v) + 3} fontSize="9" fill="var(--color-text-tertiary)" textAnchor="end">{v}</text>
           </g>
         ))}
-        {/* Eje derecho — % acumulado */}
         {pctTicks.map((p) => (
           <text key={`p-${p}`} x={PAD.left + iW + 6} y={yPct(p) + 3} fontSize="9" fill={PARETO_LINE_COLOR} textAnchor="start">
             {p}%
@@ -276,7 +249,6 @@ function WorkcenterParetoChart({ rows, l }: { rows: DowntimeSummaryRow[]; l: boo
 
         <line x1={PAD.left} y1={PAD.top + iH} x2={PAD.left + iW} y2={PAD.top + iH} stroke="var(--color-border)" strokeWidth="1" />
 
-        {/* Barras */}
         {pareto.map((p, i) => {
           const x = xCenter(i) - barW / 2;
           const y = yBar(p.minutes);
@@ -302,7 +274,6 @@ function WorkcenterParetoChart({ rows, l }: { rows: DowntimeSummaryRow[]; l: boo
           );
         })}
 
-        {/* Línea de % acumulado */}
         <polyline points={linePts} fill="none" stroke={PARETO_LINE_COLOR} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         {pareto.map((p, i) => (
           <circle
@@ -336,6 +307,8 @@ function WorkcenterParetoChart({ rows, l }: { rows: DowntimeSummaryRow[]; l: boo
   );
 }
 
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export default function DowntimePage() {
 
   const { i18n } = useTranslation();
@@ -343,9 +316,8 @@ export default function DowntimePage() {
   const l = lang === "es";
   const navigate = useNavigate();
 
-  const [preset, setPreset] = useState<DowntimePreset>("custom");
-  const [dateFrom, setDateFrom] = useState(yesterdayStr());
-  const [dateTo, setDateTo] = useState(yesterdayStr());
+  const { draft, setDraft, applied, apply } = useStandardFilters("yesterday");
+
   const [data, setData] = useState<DowntimeLogsResponse | null>(null);
   const [summary, setSummary] = useState<DowntimeSummaryRow[] | null>(null);
   const [byCustomer, setByCustomer] = useState<DowntimeCustomerRow[] | null>(null);
@@ -358,17 +330,16 @@ export default function DowntimePage() {
   const [trendLoading, setTrendLoading] = useState(false);
   const [trendError, setTrendError] = useState<string | null>(null);
 
-  const isCustomIncomplete = preset === "custom" && (!dateFrom || !dateTo);
-
   const load = useCallback(async () => {
-    if (isCustomIncomplete) return;
+    if (!applied.start || !applied.end) return;
     setLoading(true);
     setSummaryLoading(true);
     setError(null);
     try {
+      const filters = { bu: applied.bu, workcenter: applied.workcenter, shift: applied.shift };
       const [logsRes, summaryRes] = await Promise.all([
-        DowntimeService.getLogs(preset, dateFrom, dateTo),
-        DowntimeService.getSummary(preset, dateFrom, dateTo),
+        DowntimeService.getLogs(applied.start, applied.end, filters),
+        DowntimeService.getSummary(applied.start, applied.end, filters),
       ]);
       setData(logsRes);
       setSummary(summaryRes.rows);
@@ -379,10 +350,8 @@ export default function DowntimePage() {
       setLoading(false);
       setSummaryLoading(false);
     }
-  }, [preset, dateFrom, dateTo, isCustomIncomplete, l]);
+  }, [applied.start, applied.end, applied.bu, applied.workcenter, applied.shift, l]);
 
-  // El trend siempre corre "hasta el último día consultado" en la tabla —
-  // usa data.date_to como ancla en vez de un rango fijo a hoy.
   const loadTrend = useCallback(async () => {
     setTrendLoading(true);
     setTrendError(null);
@@ -399,11 +368,6 @@ export default function DowntimePage() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadTrend(); }, [loadTrend]);
 
-  const inp: React.CSSProperties = {
-    padding: "0.3rem 0.5rem", borderRadius: "var(--radius-md)",
-    border: "1px solid var(--color-border)", background: "var(--color-surface)",
-    color: "var(--color-text-primary)", fontSize: "0.78rem",
-  };
   const btn: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: "0.375rem",
     padding: "0.3rem 0.625rem", borderRadius: "var(--radius-md)",
@@ -421,10 +385,9 @@ export default function DowntimePage() {
     borderBottom: "1px solid var(--color-border)", whiteSpace: "nowrap",
   };
 
-  const avgHoursPerIncident = data && data.count > 0 ? data.total_hours / data.count : 0;
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: "0.6rem" }}>
@@ -438,24 +401,9 @@ export default function DowntimePage() {
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
-          <select value={preset} style={inp} onChange={(e) => setPreset(e.target.value as DowntimePreset)}>
-            {PRESETS.map((p) => (
-              <option key={p} value={p}>{presetLabel(p, l)}</option>
-            ))}
-          </select>
-          {preset === "custom" && (
-            <>
-              <span style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)" }}>{l ? "Desde:" : "From:"}</span>
-              <input type="date" value={dateFrom} max={dateTo || todayStr()} style={inp} onChange={(e) => setDateFrom(e.target.value)} />
-              <span style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)" }}>{l ? "Hasta:" : "To:"}</span>
-              <input type="date" value={dateTo} max={todayStr()} style={inp} onChange={(e) => setDateTo(e.target.value)} />
-            </>
-          )}
-          <button style={btn} onClick={load} disabled={loading || isCustomIncomplete}>
-            {loading ? (l ? "Cargando..." : "Loading...") : (l ? "Cargar" : "Load")}
-          </button>
+          <FilterBar draft={draft} setDraft={setDraft} onApply={apply} loading={loading} />
           <button
-            style={{ ...inp, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: "0.4rem" }}
+            style={{ ...btn, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: "0.4rem" }}
             onClick={() => navigate("/quality/downtime/settings")}
             title={l ? "Asignación de inspectores" : "Inspector assignment"}
           >
@@ -470,7 +418,6 @@ export default function DowntimePage() {
         </div>
       )}
 
-      {/* KPIs del rango seleccionado */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.75rem", alignItems: "stretch" }}>
         <KPICard
           label={l ? "Incidencias" : "Incidents"}
@@ -482,20 +429,15 @@ export default function DowntimePage() {
           value={loading ? "…" : `${Math.round((data?.total_hours ?? 0) * 60)} min = ${(data?.total_hours ?? 0).toFixed(2)}h`}
           topColor="#ef4444"
         />
-      
         {byCustomer?.map((row) => (
           <CustomerKPICard key={row.customer} row={row} l={l} />
         ))}
-        
       </div>
 
-      {/* Columna izquierda: Tabla + Resumen | Columna derecha: Tendencia + Pareto WC */}
       <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "0.5rem", alignItems: "start" }}>
 
-        {/* ── Columna izquierda ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
 
-          {/* Tabla */}
           <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "0.75rem", height: TOP_CARD_HEIGHT, display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "0.5rem" }}>
               {l ? "Registros" : "Logs"}
@@ -546,7 +488,6 @@ export default function DowntimePage() {
             )}
           </div>
 
-          {/* Resumen por workcenter — minutos + inspector asignado ese día */}
           <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "0.75rem", height: BOTTOM_CARD_HEIGHT, display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "0.5rem" }}>
               {l ? "Resumen por Workcenter" : "Workcenter Summary"}
@@ -593,10 +534,8 @@ export default function DowntimePage() {
 
         </div>
 
-        {/* ── Columna derecha ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
 
-          {/* Tendencia — hasta el último día consultado en la tabla */}
           <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "0.875rem", height: TOP_CARD_HEIGHT, display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.5rem" }}>
               <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-text-primary)" }}>
@@ -650,7 +589,6 @@ export default function DowntimePage() {
             )}
           </div>
 
-          {/* Pareto por Workcenter — minutos acumulados en el rango consultado */}
           <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "0.875rem", height: BOTTOM_CARD_HEIGHT, display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "0.5rem" }}>
               {l ? "Pareto — Tiempo por Workcenter" : "Pareto — Time by Workcenter"}

@@ -1,118 +1,69 @@
 # apps/quality/services/downtime_service.py
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 from django.core.cache import cache
 from apps.quality.services import downtime_repository
 from apps.quality.services import downtime_assignment_resolver
 from apps.quality.services import downtime_workcenter_service
+from apps.ssi_common.filters.base import FilterContext
+from apps.ssi_common.filters.shift_calendar import ShiftCalendarResolver
 from apps.ssi_common.bu_classification import (
     CUSTOMER_DISPLAY_ORDER,
+    CUSTOMER_VOLVO,
+    CUSTOMER_CUMMINS,
+    CUSTOMER_JOHN_DEERE,
+    CUSTOMER_TULC,
     resolve_customer_from_workcenter,
 )
+
 logger = logging.getLogger(__name__)
 
 CACHE_TTL_SECONDS = 10 * 60  # 10 minutos, convención del proyecto
 TREND_CACHE_TTL_SECONDS = 10 * 60
 
-# Filtro fijo: este módulo vive dentro de Quality y solo debe mostrar
-# downtime cuyo Reason en Plex sea 'Quality'. Si en el futuro Maintenance
-# necesita ver el resto de razones, eso debe ser un endpoint/vista aparte,
-# no un parámetro configurable aquí.
 FIXED_REASON = "Quality"
-# Solo Down — Setup queda excluido aunque el proxy traiga ambos (5445/5449).
 FIXED_STATUS = "Down"
 UNCLASSIFIED_CUSTOMER = "Sin clasificar"
+
+# El filtro estándar (FilterChoicesView) usa códigos de BusinessUnit, pero
+# este módulo clasifica por CLIENTE (resolve_customer_from_workcenter), no
+# por BU -- son dos sistemas distintos en el proyecto. Este mapeo traduce
+# uno al otro. A diferencia de Work Requests, JOHN_DEERE SÍ se clasifica
+# correctamente aquí, porque resolve_customer_from_workcenter ya lo sabe
+# resolver (grupo "Speed" -> cliente John Deere).
+BU_CODE_TO_CUSTOMER = {
+    "VOLVO": CUSTOMER_VOLVO,
+    "CUMMINS": CUSTOMER_CUMMINS,
+    "TULC": CUSTOMER_TULC,
+    "JOHN_DEERE": CUSTOMER_JOHN_DEERE,
+}
+
 
 class DowntimeServiceError(Exception):
     pass
 
 
-def resolve_date_range(
-    preset: str,
-    date_from: Optional[date] = None,
-    date_to: Optional[date] = None,
-    today: Optional[date] = None,
-) -> tuple[date, date]:
+def _cached_raw_logs(date_from: date, date_to: date) -> list[dict]:
     """
-    Asume semana Lunes-a-hoy y mes Día1-a-hoy — AJUSTAR si tu criterio de
-    "semana"/"mes" es distinto. 'today' se puede inyectar para tests.
+    ÚNICA parte cacheada: logs crudos de Plex, ya normalizados, filtrados
+    a Status=Down y Reason=Quality -- pero SIN agrupar por fecha/workcenter
+    y SIN filtrar por bu/workcenter/shift. Esos filtros dependen de la
+    selección del usuario y se aplican después, en memoria, para no
+    fragmentar el cache en una entrada por cada combinación de filtros
+    (misma regla que Work Requests).
     """
-    today = today or date.today()
-
-    if preset == "today":
-        return today, today
-    elif preset == "yesterday":
-        yesterday = today - timedelta(days=1)
-        return yesterday, yesterday
-    elif preset == "this_week":
-        monday = today - timedelta(days=today.weekday())
-        return monday, today
-    elif preset == "this_month":
-        return today.replace(day=1), today
-    elif preset == "custom":
-        if not date_from or not date_to:
-            raise DowntimeServiceError(
-                "date_from y date_to son obligatorios cuando preset=custom."
-            )
-        if date_from > date_to:
-            raise DowntimeServiceError("date_from no puede ser posterior a date_to.")
-        return date_from, date_to
-    else:
-        raise DowntimeServiceError(f"Preset no soportado: {preset}")
-
-
-def get_logs(
-    preset: str,
-    date_from: Optional[date] = None,
-    date_to: Optional[date] = None,
-) -> dict:
-    resolved_from, resolved_to = resolve_date_range(preset, date_from, date_to)
-
-    cache_key = f"downtime:logs:v2:{resolved_from.isoformat()}:{resolved_to.isoformat()}"
+    cache_key = f"downtime:raw:v1:{date_from.isoformat()}:{date_to.isoformat()}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
     try:
-        raw_logs = downtime_repository.fetch_logs(resolved_from, resolved_to, reason=FIXED_REASON)
+        raw_logs = downtime_repository.fetch_logs(date_from, date_to, reason=FIXED_REASON)
     except downtime_repository.DowntimeRepositoryError as exc:
         raise DowntimeServiceError(str(exc)) from exc
 
-    normalized = [_normalize_log(row) for row in raw_logs if row.get("Status") == FIXED_STATUS]
-    total_hours = sum(float(r["log_hours"] or 0) for r in normalized)
-
-    result = {
-        "date_from": resolved_from.isoformat(),
-        "date_to": resolved_to.isoformat(),
-        "count": len(normalized),
-        "total_hours": round(total_hours, 2),
-        "results": normalized,
-    }
-    cache.set(cache_key, result, CACHE_TTL_SECONDS)
-    return result
-
-
-def _cached_plex_aggregation(resolved_from: date, resolved_to: date) -> list[dict]:
-    """
-    ÚNICA parte cacheada: la agregación de Plex por (fecha, workcenter).
-    Una sola llamada ODBC por rango, bucketing en Python (ERP Protection Rule).
-
-    El inspector NO entra aquí a propósito — ver get_summary().
-    """
-    cache_key = f"downtime:agg:v3:{resolved_from.isoformat()}:{resolved_to.isoformat()}"
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
-
-    try:
-        raw_logs = downtime_repository.fetch_logs(
-            resolved_from, resolved_to, reason=FIXED_REASON,
-        )
-    except downtime_repository.DowntimeRepositoryError as exc:
-        raise DowntimeServiceError(str(exc)) from exc
-
-    grouped: dict[tuple[str, str], dict] = {}
+    normalized = []
     for row in raw_logs:
         if row.get("Status") != FIXED_STATUS:
             continue
@@ -120,9 +71,45 @@ def _cached_plex_aggregation(resolved_from: date, resolved_to: date) -> list[dic
         workcenter = row.get("Workcenter")
         if not log_date_raw or not workcenter:
             continue
-        key = (str(log_date_raw)[:10], workcenter)
+        normalized.append(_normalize_log(row))
+
+    cache.set(cache_key, normalized, CACHE_TTL_SECONDS)
+    return normalized
+
+
+def _matches_filters(row: dict, filter_ctx: FilterContext, group_map: dict) -> bool:
+    if filter_ctx.workcenter and row["workcenter"] not in filter_ctx.workcenter:
+        return False
+
+    if filter_ctx.bu:
+        customer = resolve_customer_from_workcenter(
+            group_map.get(row["workcenter"]), row["workcenter"],
+        )
+        wanted_customers = {
+            BU_CODE_TO_CUSTOMER[code] for code in filter_ctx.bu if code in BU_CODE_TO_CUSTOMER
+        }
+        if wanted_customers and customer not in wanted_customers:
+            return False
+
+    if filter_ctx.shift:
+        try:
+            log_dt = datetime.fromisoformat(str(row["log_date"])[:19])
+        except (ValueError, TypeError):
+            return False
+        if not ShiftCalendarResolver.matches(log_dt, filter_ctx.shift):
+            return False
+
+    return True
+
+
+def _aggregate(rows: list[dict]) -> list[dict]:
+    grouped: dict[tuple[str, str], dict] = {}
+    for row in rows:
+        day_key = str(row["log_date"])[:10]
+        workcenter = row["workcenter"]
+        key = (day_key, workcenter)
         bucket = grouped.setdefault(key, {"total_hours": 0.0, "incident_count": 0})
-        bucket["total_hours"] += float(row.get("Log_Hours") or 0)
+        bucket["total_hours"] += float(row.get("log_hours") or 0)
         bucket["incident_count"] += 1
 
     aggregation = [
@@ -135,23 +122,10 @@ def _cached_plex_aggregation(resolved_from: date, resolved_to: date) -> list[dic
         for (day_key, workcenter), agg in grouped.items()
     ]
     aggregation.sort(key=lambda r: (r["date"], r["workcenter"]))
-
-    cache.set(cache_key, aggregation, CACHE_TTL_SECONDS)
     return aggregation
 
-def _bucket_by_customer(aggregation: list[dict]) -> list[dict]:
-    """
-    Minutos y incidencias por cliente. Cruza la agregacion de Plex (que solo
-    trae el nombre del workcenter) contra el catalogo local de Postgres para
-    obtener el Workcenter_Group, y de ahi al cliente.
 
-    CERO llamadas extra a Plex: el catalogo ya vive en Postgres via
-    sync_workcenters. Por eso esto corre FUERA del cache de agregacion --
-    la clasificacion puede cambiar con un sync o un deploy y debe reflejarse
-    de inmediato, igual que la resolucion de inspectores.
-    """
-    group_map = downtime_workcenter_service.get_workcenter_group_map()
-
+def _bucket_by_customer(aggregation: list[dict], group_map: dict) -> list[dict]:
     buckets: dict[str, dict] = {}
     unknown_workcenters: set[str] = set()
 
@@ -172,8 +146,6 @@ def _bucket_by_customer(aggregation: list[dict]) -> list[dict]:
         bucket["workcenters"].add(workcenter)
 
     if unknown_workcenters:
-        # WARNING y no DEBUG a proposito: cada nombre en esta lista son
-        # minutos de downtime que no se le estan cargando a ningun cliente.
         logger.warning(
             "downtime by_customer: %s workcenters sin cliente resuelto: %s",
             len(unknown_workcenters), sorted(unknown_workcenters),
@@ -199,28 +171,41 @@ def _bucket_by_customer(aggregation: list[dict]) -> list[dict]:
         })
     return rows
 
-def get_summary(
-    preset: str,
-    date_from: Optional[date] = None,
-    date_to: Optional[date] = None,
-) -> dict:
+
+def get_logs(filter_ctx: FilterContext) -> dict:
+    raw_logs = _cached_raw_logs(filter_ctx.start_date, filter_ctx.end_date)
+    group_map = downtime_workcenter_service.get_workcenter_group_map()
+
+    filtered = [r for r in raw_logs if _matches_filters(r, filter_ctx, group_map)]
+    total_hours = sum(float(r["log_hours"] or 0) for r in filtered)
+
+    return {
+        "date_from": filter_ctx.start_date.isoformat(),
+        "date_to": filter_ctx.end_date.isoformat(),
+        "count": len(filtered),
+        "total_hours": round(total_hours, 2),
+        "results": filtered,
+    }
+
+
+def get_summary(filter_ctx: FilterContext) -> dict:
     """
     Minutos + incidencias por (fecha, workcenter), con el inspector efectivo
     de ese día resuelto por jerarquía scope + herencia.
 
-    CACHE PARTIDO — deliberado:
-      · agregación de Plex  → Redis 10 min  (ODBC caro, protege el ERP)
-      · inspector           → Postgres live (barato, 2 queries)
-
-    Antes ambas cosas vivían en el mismo objeto cacheado, así que un cambio
-    de inspector tardaba hasta 10 minutos en verse en el reporte. Ahora se
-    ve al instante sin agregarle ni una llamada a Plex.
+    Inspector se resuelve fuera del cache de logs (Postgres, barato) --
+    un cambio de inspector se ve al instante, sin esperar el TTL del cache
+    de Plex. bu/workcenter/shift se aplican en memoria sobre los logs
+    crudos ya cacheados, antes de agregar.
     """
-    resolved_from, resolved_to = resolve_date_range(preset, date_from, date_to)
+    raw_logs = _cached_raw_logs(filter_ctx.start_date, filter_ctx.end_date)
+    group_map = downtime_workcenter_service.get_workcenter_group_map()
 
-    aggregation = _cached_plex_aggregation(resolved_from, resolved_to)
+    filtered = [r for r in raw_logs if _matches_filters(r, filter_ctx, group_map)]
+    aggregation = _aggregate(filtered)
+
     resolution = downtime_assignment_resolver.resolve_range_by_iso(
-        resolved_from, resolved_to,
+        filter_ctx.start_date, filter_ctx.end_date,
     )
 
     rows = []
@@ -233,10 +218,10 @@ def get_summary(
         })
 
     return {
-        "date_from": resolved_from.isoformat(),
-        "date_to": resolved_to.isoformat(),
+        "date_from": filter_ctx.start_date.isoformat(),
+        "date_to": filter_ctx.end_date.isoformat(),
         "rows": rows,
-        "by_customer": _bucket_by_customer(aggregation),
+        "by_customer": _bucket_by_customer(aggregation, group_map),
     }
 
 
@@ -245,13 +230,8 @@ def get_trend(
     end_date: Optional[date] = None,
     buckets: int = 6,
 ) -> dict:
-    """
-    Serie de `buckets` puntos (día/semana/mes), cada uno = SUMA de horas
-    dentro de ese bucket. El último bucket siempre incluye `end_date`
-    (por default hoy) — así el trend se alinea con "hasta el último día
-    consultado" en la tabla, en vez de ser siempre un rango fijo a hoy.
-    Una sola llamada al proxy por rango total, agregación en Python.
-    """
+    """Sin cambios -- fuera de alcance de esta estandarización (ver PM Program:
+    mismo criterio, granularity/end_date es un paradigma distinto a rango)."""
     if granularity not in ("daily", "week", "month"):
         raise DowntimeServiceError(f"Granularidad no soportada: {granularity}")
 
@@ -283,7 +263,7 @@ def get_trend(
         for i in range(buckets):
             m_start = _shift_months(first_month_start, i)
             m_end = _month_end(m_start)
-            bucket_bounds.append((m_start, m_end, m_start.isoformat()[:7]))  # YYYY-MM
+            bucket_bounds.append((m_start, m_end, m_start.isoformat()[:7]))
 
     cache_key = f"downtime:trend:v3:{granularity}:{date_from.isoformat()}:{date_to.isoformat()}"
     cached = cache.get(cache_key)
@@ -329,14 +309,12 @@ def get_trend(
 
 
 def _shift_months(d: date, delta: int) -> date:
-    """d debe tener day=1. Regresa el day=1 del mes desplazado `delta` meses."""
     total = d.year * 12 + (d.month - 1) + delta
     year, month = divmod(total, 12)
     return date(year, month + 1, 1)
 
 
 def _month_end(month_start: date) -> date:
-    """month_start debe tener day=1. Regresa el último día de ese mes."""
     next_month = _shift_months(month_start, 1)
     return next_month - timedelta(days=1)
 

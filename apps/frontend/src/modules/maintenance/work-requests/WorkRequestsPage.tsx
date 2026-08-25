@@ -1,23 +1,16 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useWorkRequestsData } from "./useWorkRequestsData";
-import { DateRange, GroupedItem } from "./types";
+import { GroupedItem } from "./types";
+import { useStandardFilters } from "../../../components/common/useStandardFilters";
+import FilterBar from "../../../components/common/FilterBar";
 import WRKpiSection        from "./WRKpiSection";
 import EquipmentBubbleGrid from "./EquipmentBubbleGrid";
 import FailureBreakdown    from "./FailureBreakdown";
 import TechnicianChart     from "./TechnicianChart";
 import WRTable             from "./WRTable";
 
-function getDefaultRange(): DateRange {
-  const now   = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  return {
-    start: start.toISOString().split("T")[0],
-    end:   now.toISOString().split("T")[0],
-  };
-}
-
-// ─── Donut helper ─────────────────────────────────────────────────────────────
+// ─── Donut helper ──────────────────────────────────────────────────────────
 function DonutChart({ items, getLabel, getColor, lang }: {
   items:    { label: string; value: number }[];
   getLabel: (label: string) => string;
@@ -76,7 +69,7 @@ function DonutChart({ items, getLabel, getColor, lang }: {
   );
 }
 
-// ─── Maintenance Hours by Type — pastel ───────────────────────────────────────
+// ─── Maintenance Hours by Type — pastel ─────────────────────────────────────
 function HoursByType({ byType, lang }: { byType: GroupedItem[]; lang: string }) {
   const l = lang === "es";
   const TYPE_COLOR: Record<string, string> = {
@@ -106,7 +99,7 @@ function HoursByType({ byType, lang }: { byType: GroupedItem[]; lang: string }) 
   );
 }
 
-// ─── Open WR Age Distribution — pastel ───────────────────────────────────────
+// ─── Open WR Age Distribution — pastel ──────────────────────────────────────
 function WRAgeChart({ rows, lang }: {
   rows: { request_date: string; completed_date: string | null; status: string }[];
   lang: string;
@@ -146,7 +139,7 @@ function WRAgeChart({ rows, lang }: {
   );
 }
 
-// ─── Top Failure + Top Equipment — barras verticales ─────────────────────────
+// ─── Top Failure + Top Equipment — barras verticales ────────────────────────
 function TopChartsSection({ byFailure, byEquipment, rows, lang }: {
   byFailure:   GroupedItem[];
   byEquipment: GroupedItem[];
@@ -237,7 +230,7 @@ function TopChartsSection({ byFailure, byEquipment, rows, lang }: {
   );
 }
 
-// ─── Trend diaria ─────────────────────────────────────────────────────────────
+// ─── Trend diaria ────────────────────────────────────────────────────────────
 function TrendMini({ byDay, lang }: { byDay: { date: string; count: number; hours: number }[]; lang: string }) {
   const [hovered, setHovered] = useState<number | null>(null);
   if (byDay.length === 0) return null;
@@ -352,18 +345,18 @@ function TrendMini({ byDay, lang }: { byDay: { date: string; count: number; hour
   );
 }
 
-// ─── Estilos compartidos ──────────────────────────────────────────────────────
+// ─── Estilos compartidos ─────────────────────────────────────────────────────
 const card: React.CSSProperties         = { background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1.25rem" };
 const sectionTitle: React.CSSProperties = { fontSize: "0.875rem", fontWeight: 700, color: "var(--color-text-primary)" };
-const dateInput: React.CSSProperties    = { padding: "0.375rem 0.625rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "var(--color-text-primary)", fontSize: "0.875rem" };
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page ────────────────────────────────────────────────────────────────────
 export default function WorkRequestsPage() {
   const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("es") ? "es" : "en";
-  const [range, setRange] = useState<DateRange>(getDefaultRange());
-  const { data, loading, error } = useWorkRequestsData(range);
   const l = lang === "es";
+
+  const { draft, setDraft, applied, apply } = useStandardFilters("month_to_date");
+  const { data, loading, error } = useWorkRequestsData(applied);
 
   const byAction: GroupedItem[] = data
     ? Object.entries(
@@ -379,18 +372,14 @@ export default function WorkRequestsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>
             {l ? "Mantenimiento — Work Requests" : "Work Requests"}
           </h1>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-          <label style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)" }}>{l ? "Desde:" : "From:"}</label>
-          <input type="date" value={range.start} onChange={(e) => setRange((r) => ({ ...r, start: e.target.value }))} style={dateInput} />
-          <label style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)" }}>{l ? "Hasta:" : "To:"}</label>
-          <input type="date" value={range.end} onChange={(e) => setRange((r) => ({ ...r, end: e.target.value }))} style={dateInput} />
-        </div>
+        <FilterBar draft={draft} setDraft={setDraft} onApply={apply} loading={loading} showShift={false} />
       </div>
 
       {error && (

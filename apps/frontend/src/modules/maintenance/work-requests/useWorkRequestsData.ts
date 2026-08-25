@@ -1,25 +1,29 @@
 import { useState, useEffect, useCallback } from "react";
 import { WorkRequestsService } from "./work-requests.service";
-import { WRDashboard, DateRange } from "./types";
+import { WRDashboard } from "./types";
+import { StandardFilters } from "../../../components/common/StandardFilters.types";
 
-export function useWorkRequestsData(range: DateRange) {
+export function useWorkRequestsData(filters: StandardFilters) {
   const [data,    setData]    = useState<WRDashboard | null>(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!range.start || !range.end) return;
+    if (!filters.start || !filters.end) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await WorkRequestsService.getDashboard(range.start, range.end);
+      const result = await WorkRequestsService.getDashboard(filters.start, filters.end, {
+        bu: filters.bu,
+        workcenter: filters.workcenter,
+      });
       setData(result);
     } catch {
       setError("Error cargando Work Requests");
     } finally {
       setLoading(false);
     }
-  }, [range.start, range.end]);
+  }, [filters.start, filters.end, filters.bu, filters.workcenter]);
 
   useEffect(() => { load(); }, [load]);
 

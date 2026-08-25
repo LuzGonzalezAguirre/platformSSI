@@ -5,12 +5,13 @@ from rest_framework.permissions import IsAuthenticated
 
 from apps.quality.serializers import (
     DowntimeLogSerializer,
-    DowntimeLogsQuerySerializer,
     DowntimeTrendPointSerializer,
     DowntimeTrendQuerySerializer,
     DowntimeSummaryRowSerializer,
     DowntimeCustomerRowSerializer,
 )
+from apps.quality.filters import DowntimeFilterSerializer
+from apps.ssi_common.filters.rbac import get_allowed_bu_for_user
 from apps.quality.services import downtime_service
 
 
@@ -18,16 +19,13 @@ class DowntimeSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        query_serializer = DowntimeLogsQuerySerializer(data=request.query_params)
-        query_serializer.is_valid(raise_exception=True)
-        params = query_serializer.validated_data
+        filter_serializer = DowntimeFilterSerializer(data=request.query_params)
+        filter_serializer.is_valid(raise_exception=True)
+        filter_ctx = filter_serializer.to_filter_context()
+        filter_ctx = filter_ctx.restricted_to_bu(get_allowed_bu_for_user(request.user))
 
         try:
-            result = downtime_service.get_summary(
-                preset=params["preset"],
-                date_from=params.get("date_from"),
-                date_to=params.get("date_to"),
-            )
+            result = downtime_service.get_summary(filter_ctx)
         except downtime_service.DowntimeServiceError as exc:
             return Response({"error": str(exc)}, status=400)
 
@@ -47,16 +45,13 @@ class DowntimeLogsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        query_serializer = DowntimeLogsQuerySerializer(data=request.query_params)
-        query_serializer.is_valid(raise_exception=True)
-        params = query_serializer.validated_data
+        filter_serializer = DowntimeFilterSerializer(data=request.query_params)
+        filter_serializer.is_valid(raise_exception=True)
+        filter_ctx = filter_serializer.to_filter_context()
+        filter_ctx = filter_ctx.restricted_to_bu(get_allowed_bu_for_user(request.user))
 
         try:
-            result = downtime_service.get_logs(
-                preset=params["preset"],
-                date_from=params.get("date_from"),
-                date_to=params.get("date_to"),
-            )
+            result = downtime_service.get_logs(filter_ctx)
         except downtime_service.DowntimeServiceError as exc:
             return Response({"error": str(exc)}, status=400)
 

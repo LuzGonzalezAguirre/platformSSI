@@ -3,8 +3,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.maintenance.services.maintenance_service import MaintenanceService
- 
- 
+from apps.maintenance.filters import MaintenanceFilterSerializer
+from apps.ssi_common.filters.rbac import get_allowed_bu_for_user
+
+
 def _parse_dates(request) -> tuple[str, str]:
     start = request.query_params.get("start_date")
     end   = request.query_params.get("end_date")
@@ -13,23 +15,24 @@ def _parse_dates(request) -> tuple[str, str]:
     datetime.strptime(start, "%Y-%m-%d")
     datetime.strptime(end,   "%Y-%m-%d")
     return start, end
- 
- 
+
+
 class MaintenanceKPIView(APIView):
     permission_classes = [IsAuthenticated]
- 
+
     def get(self, request):
-        try:
-            start, end = _parse_dates(request)
-        except ValueError as e:
-            return Response({"detail": str(e)}, status=400)
-        data = MaintenanceService.get_kpis(start, end)
+        filter_serializer = MaintenanceFilterSerializer(data=request.query_params)
+        filter_serializer.is_valid(raise_exception=True)
+        filter_ctx = filter_serializer.to_filter_context()
+        filter_ctx = filter_ctx.restricted_to_bu(get_allowed_bu_for_user(request.user))
+
+        data = MaintenanceService.get_kpis(filter_ctx)
         return Response(data)
- 
- 
+
+
 class MaintenanceReasonsView(APIView):
     permission_classes = [IsAuthenticated]
- 
+
     def get(self, request):
         try:
             start, end = _parse_dates(request)
@@ -37,11 +40,11 @@ class MaintenanceReasonsView(APIView):
             return Response({"detail": str(e)}, status=400)
         data = MaintenanceService.get_downtime_reasons(start, end)
         return Response(data)
- 
- 
+
+
 class MaintenanceDetailView(APIView):
     permission_classes = [IsAuthenticated]
- 
+
     def get(self, request):
         try:
             start, end = _parse_dates(request)
@@ -50,23 +53,23 @@ class MaintenanceDetailView(APIView):
         reason = request.query_params.get("reason", "")
         data = MaintenanceService.get_downtime_detail(start, end, reason)
         return Response(data)
- 
- 
+
+
 class OEETrendView(APIView):
     permission_classes = [IsAuthenticated]
- 
+
     def get(self, request):
         try:
             start, end = _parse_dates(request)
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
- 
+
         data = MaintenanceService.get_oee_trend_live(start, end)
         return Response({"data": data})
- 
+
 class DowntimeByMonthView(APIView):
     permission_classes = [IsAuthenticated]
- 
+
     def get(self, request):
         try:
             start, end = _parse_dates(request)
@@ -77,20 +80,20 @@ class DowntimeByMonthView(APIView):
     
 class OEELiveView(APIView):
     permission_classes = [IsAuthenticated]
- 
+
     def get(self, request):
         try:
             start, end = _parse_dates(request)
         except ValueError as e:
             return Response({"detail": str(e)}, status=400)
- 
+
         from datetime import datetime
         from apps.production.models import OEERecord
         from apps.production.serializers.targets import OEERecordSerializer
- 
+
         start_date = datetime.strptime(start, "%Y-%m-%d").date()
         end_date   = datetime.strptime(end,   "%Y-%m-%d").date()
- 
+
         # El override manual solo aplica a consultas de UN SOLO DIA.
         # Para rangos multi-dia, siempre se calcula desde Plex --
         # mezclar un registro manual de un dia con el calculo agregado
@@ -101,10 +104,10 @@ class OEELiveView(APIView):
                 data = OEERecordSerializer(manual).data
                 data["source"] = "manual"
                 return Response(data)
- 
+
         data = MaintenanceService.get_oee_live(start, end)
         if data is None:
             return Response({})
- 
+
         data["source"] = "plex"
         return Response(data)

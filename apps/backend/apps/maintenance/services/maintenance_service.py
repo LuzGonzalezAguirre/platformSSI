@@ -1,6 +1,7 @@
 import os
 import requests
 from django.core.cache import cache
+from apps.ssi_common.filters.base import FilterContext
 
 PROXY_URL    = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
 PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
@@ -22,13 +23,23 @@ def _post(endpoint: str, payload: dict, timeout: int = 45) -> dict:
 class MaintenanceService:
 
     @staticmethod
-    def get_kpis(start_date: str, end_date: str) -> dict:
-        key    = f"maint:kpis:{start_date}:{end_date}"
-        cached = cache.get(key)
+    def get_kpis(filter_ctx: FilterContext) -> dict:
+        cache_key = filter_ctx.cache_key("maint:kpis:v2")
+        cached = cache.get(cache_key)
         if cached:
             return cached
-        result = _post("/maintenance-kpis", {"start_date": start_date, "end_date": end_date})
-        cache.set(key, result, CACHE_TTL)
+
+        payload = {
+            "start_date": filter_ctx.start_date.isoformat(),
+            "end_date": filter_ctx.end_date.isoformat(),
+        }
+        # TODO(bu-shift-proxy): bu/shift ya están validados y forman parte
+        # de la cache key, pero aún no se envían al proxy. Pendiente:
+        # agregar el WHERE en /maintenance-kpis (plex-proxy/main.py) para
+        # que el filtro realmente afecte el resultado. Hasta entonces,
+        # bu/shift se aceptan pero no tienen efecto en los datos.
+        result = _post("/maintenance-kpis", payload)
+        cache.set(cache_key, result, CACHE_TTL)
         return result
 
     @staticmethod
@@ -43,7 +54,6 @@ class MaintenanceService:
 
     @staticmethod
     def get_downtime_detail(start_date: str, end_date: str, reason: str) -> dict:
-        # Detail no se cachea agresivamente — es drill-down bajo demanda
         key    = f"maint:detail:{start_date}:{end_date}:{reason}"
         cached = cache.get(key)
         if cached:
@@ -53,7 +63,7 @@ class MaintenanceService:
             "end_date":   end_date,
             "reason":     reason,
         })
-        cache.set(key, result, 300)  # 5 min para detail
+        cache.set(key, result, 300)
         return result
     
     @staticmethod

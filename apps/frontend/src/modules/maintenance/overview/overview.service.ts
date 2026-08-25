@@ -1,13 +1,31 @@
 import apiClient from "../../../services/api.client";
 import { MaintenanceKPIs, DowntimeReason, DowntimeDetail, OEEData, OEETrendPoint, DowntimeByMonth } from "./types";
 
-const BASE      = "/maintenance/overview";
-const OEE_BASE  = "/production/ops";
+const BASE     = "/maintenance/overview";
+const OEE_BASE = "/production/ops";
+
+interface StandardFilterParams {
+  bu?: string[];
+  workcenter?: string[];
+  shift?: string[];
+}
 
 export const MaintenanceService = {
-  getKPIs: (start: string, end: string): Promise<{ data: MaintenanceKPIs | null }> =>
+  getKPIs: (
+    start: string,
+    end: string,
+    filters?: StandardFilterParams
+  ): Promise<{ data: MaintenanceKPIs | null }> =>
     apiClient
-      .get(`${BASE}/kpis/`, { params: { start_date: start, end_date: end } })
+      .get(`${BASE}/kpis/`, {
+        params: {
+          start_date: start,
+          end_date: end,
+          bu: filters?.bu,
+          workcenter: filters?.workcenter,
+          shift: filters?.shift,
+        },
+      })
       .then((r: any) => r.data),
 
   getReasons: (
@@ -34,7 +52,7 @@ export const MaintenanceService = {
       .then((r: any) => (Object.keys(r.data).length === 0 ? null : r.data))
       .catch(() => null),
 
-   getOEETrend: (start: string, end: string): Promise<{ data: OEETrendPoint[] }> =>
+  getOEETrend: (start: string, end: string): Promise<{ data: OEETrendPoint[] }> =>
     apiClient.get(`${BASE}/oee-trend/`, { params: { start_date: start, end_date: end } }).then((r: any) => r.data),
 
   getDowntimeByMonth: (start: string, end: string): Promise<{ data: DowntimeByMonth[] }> =>

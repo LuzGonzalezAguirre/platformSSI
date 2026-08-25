@@ -2,9 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-
 API_V1 = "api/v1/"
-
 urlpatterns = [
     path("admin/", admin.site.urls),
     path(f"{API_V1}auth/", include("apps.identity.urls")),
@@ -17,5 +15,5 @@ urlpatterns = [
     path(f"{API_V1}maintenance/", include("apps.maintenance.urls")),
     path(f"{API_V1}quality/", include("apps.quality.urls")),
     path(f"{API_V1}audit/", include("apps.audit.urls")),
+    path(f"{API_V1}common/", include("apps.ssi_common.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-

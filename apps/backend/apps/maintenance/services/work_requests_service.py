@@ -2,6 +2,12 @@ import os
 import requests
 from datetime import date as date_type
 from django.core.cache import cache
+from apps.ssi_common.filters.base import FilterContext
+from apps.ssi_common.bu_classification import (
+    resolve_bu_from_workcenter,
+    resolve_customer_from_workcenter,
+    CUSTOMER_JOHN_DEERE,
+)
 
 PROXY_URL    = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
 PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
@@ -24,24 +30,53 @@ def _top(items: list, key: str, n: int = 10) -> list:
     return sorted(items, key=lambda x: x[key], reverse=True)[:n]
 
 
+def _matches_bu(row: dict, bu_code: str) -> bool:
+    """
+    JOHN_DEERE no es una BU real en bu_classification.py (es el cliente
+    del grupo 'Speed'), así que se resuelve vía resolve_customer_from_workcenter.
+    El resto de las BUs (VOLVO, CUMMINS, TULC) usan el criterio real de BU.
+    """
+    if bu_code == "JOHN_DEERE":
+        return resolve_customer_from_workcenter(
+            row.get("workcenter_group"), row.get("workcenter")
+        ) == CUSTOMER_JOHN_DEERE
+    return resolve_bu_from_workcenter(row.get("workcenter_group"), row.get("workcenter")) == bu_code
+
+
+def _apply_filters(rows: list, filter_ctx: FilterContext) -> list:
+    if filter_ctx.workcenter:
+        rows = [r for r in rows if r.get("workcenter") in filter_ctx.workcenter]
+
+    if filter_ctx.bu:
+        rows = [r for r in rows if any(_matches_bu(r, bu_code) for bu_code in filter_ctx.bu)]
+
+    return rows
+
+
 class WorkRequestsService:
 
     @staticmethod
-    def get_dashboard(start_date: str, end_date: str) -> dict:
-        cache_key = f"maint:wr_dashboard:{start_date}:{end_date}"
-        cached    = cache.get(cache_key)
+    def get_dashboard(filter_ctx: FilterContext) -> dict:
+        cache_key = filter_ctx.cache_key("maint:wr_dashboard:v2")
+        cached = cache.get(cache_key)
         if cached:
             return cached
 
-        raw  = _post("/work-requests", {"start_date": start_date, "end_date": end_date})
+        raw = _post("/work-requests", {
+            "start_date": filter_ctx.start_date.isoformat(),
+            "end_date": filter_ctx.end_date.isoformat(),
+        })
         rows = raw.get("data", [])
+        rows = _apply_filters(rows, filter_ctx)
 
         if not rows:
-            return {
+            result = {
                 "rows": [], "kpis": {}, "by_status": [], "by_type": [],
                 "by_equipment": [], "by_technician": [], "by_failure": [],
                 "by_day": [], "by_department": [], "equipment_grid": [],
             }
+            cache.set(cache_key, result, CACHE_TTL)
+            return result
 
         # ── KPIs ──────────────────────────────────────────────────────────────
         total_wr          = len(rows)
