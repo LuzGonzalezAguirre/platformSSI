@@ -17,3 +17,4 @@ requests>=2.31.0
 weasyprint>=62.0
 pymssql==2.3.13
 reportlab>=4.0.0
+openpyxl
