@@ -11,13 +11,12 @@ from apps.ssi_common.bu_classification import (
     VOLVO_HM_WORKCENTERS,
     PRODUCTION_WORKCENTER_TO_BU,
 )
+from apps.quality.cogp.services.speed_customer_classification import resolve_speed_scrap_bu
 
 logger = logging.getLogger(__name__)
 
 
 def _date_windows(start_date: date, end_date: date, chunk_days: int) -> list[tuple[date, date]]:
-    """Parte [start_date, end_date] en ventanas cerradas de a lo sumo
-    chunk_days, sin traslape y cubriendo el rango completo."""
     windows: list[tuple[date, date]] = []
     cursor = start_date
     while cursor <= end_date:
@@ -27,30 +26,47 @@ def _date_windows(start_date: date, end_date: date, chunk_days: int) -> list[tup
     return windows
 
 
+def _resolve_bu_for_live_scrap(
+    workcenter_group: str | None,
+    workcenter: str | None,
+    part_no: str | None,
+    part_to_bu: dict[str, str],
+) -> str | None:
+    if workcenter_group == "Speed":
+        return resolve_speed_scrap_bu(workcenter, part_no, part_to_bu)
+    return resolve_bu_from_workcenter(workcenter_group, workcenter)
+
+
+def _resolve_bu_for_live_production(
+    workcenter: str | None,
+    workcenter_group: str | None,
+    part_no: str | None,
+    part_to_bu: dict[str, str],
+) -> str:
+    if workcenter_group == "Speed":
+        base_part_no = str(part_no or "").strip().split(".")[0]
+        return part_to_bu.get(base_part_no, BusinessUnit.SPEED)
+    return resolve_bu_for_production(workcenter)
+
+
 class CogpLiveTrendService:
     """
     Calcula tendencia semanal de COGP en vivo, directo desde Plex (via
     proxy), sin persistir scrap/produccion en Postgres.
 
-    Clasificacion por fuente distinta segun el dato:
-    - SCRAP: por Workcenter_Group + Workcenter (resolve_bu_from_workcenter).
-    - PRODUCCION: por Workcenter terminal, fijo (resolve_bu_for_production).
-
-    Ambas funciones viven ahora en apps.ssi_common.bu_classification --
-    se reexportan arriba para no romper importadores existentes
-    (ver cogp_pareto_service.py).
-
-    ERP Protection: el proxy topa cogp/scrap-range y cogp/production-range
-    en 180 dias por llamada (mismo limite documentado en ScrapRateService).
-    Se usan ventanas de CHUNK_DAYS=168 para quedar holgadamente debajo. Un
-    rango de un año son 3 ventanas; nunca se le pide a Plex el rango
-    completo en una sola query, sin importar que "en vivo" quiera decir
-    sin cache -- sigue siendo una sola pasada por ventana, no un loop por
-    dia ni por workcenter.
+    Filtro opcional de workcenter (workcenter_filter): si se pasa, solo se
+    cuentan eventos cuyo Workcenter este en ese set -- aplicado ANTES de
+    la clasificacion por BU, asi que reduce lo que entra a cada tarjeta
+    (incluyendo Global), no selecciona una BU especifica.
     """
 
     CHUNK_DAYS = 168
     MAX_FETCH_CHUNKS = 6
+
+    GLOBAL_BUS = {
+        BusinessUnit.VOLVO, BusinessUnit.CUMMINS, BusinessUnit.TULC,
+        BusinessUnit.JOHN_DEERE, BusinessUnit.EATON,
+    }
 
     def __init__(
         self,
@@ -60,7 +76,12 @@ class CogpLiveTrendService:
         self.client = client or QualityPlexClient()
         self.repository = repository or CogpRepository()
 
-    def get_weekly_trend(self, start_date: date, end_date: date) -> dict:
+    def get_weekly_trend(
+        self,
+        start_date: date,
+        end_date: date,
+        workcenter_filter: tuple[str, ...] = (),
+    ) -> dict:
         if end_date < start_date:
             raise ValueError("end_date debe ser mayor o igual a start_date.")
 
@@ -73,7 +94,10 @@ class CogpLiveTrendService:
                 f"{self.CHUNK_DAYS} dias). Reduce el periodo solicitado."
             )
 
+        wc_filter_set = set(workcenter_filter) if workcenter_filter else None
+
         cost_model_key = self.client.get_cogp_cost_model()["cost_model_key"]
+        part_to_bu = self.repository.get_all_part_to_bu_map()
 
         scrap_rows: list[dict] = []
         production_rows: list[dict] = []
@@ -102,12 +126,17 @@ class CogpLiveTrendService:
             return weekly[key]
 
         for row in scrap_rows:
+            wc_name = row.get("Workcenter")
+            if wc_filter_set is not None and wc_name not in wc_filter_set:
+                continue
+
             report_date = (
                 datetime.fromisoformat(row["Report_Date"]).date()
                 if isinstance(row["Report_Date"], str) else row["Report_Date"]
             )
-            bu = resolve_bu_from_workcenter(
-                row.get("Workcenter_Group"), row.get("Workcenter")
+            bu = _resolve_bu_for_live_scrap(
+                row.get("Workcenter_Group"), wc_name,
+                row.get("Part_No"), part_to_bu,
             )
             if bu is None:
                 continue
@@ -115,22 +144,30 @@ class CogpLiveTrendService:
             entry["scrap_cost"] += Decimal(str(row.get("Extended_Cost") or 0))
 
         for row in production_rows:
+            wc_name = row.get("Workcenter")
+            if wc_filter_set is not None and wc_name not in wc_filter_set:
+                continue
+
             report_date = (
                 datetime.fromisoformat(row["Report_Date"]).date()
                 if isinstance(row["Report_Date"], str) else row["Report_Date"]
             )
-            bu = resolve_bu_for_production(row.get("Workcenter"))
+            bu = _resolve_bu_for_live_production(
+                wc_name, row.get("Workcenter_Group"),
+                row.get("Part_No"), part_to_bu,
+            )
             entry = get_bucket(bu, report_date)
             entry["extended_cost"] += Decimal(str(row.get("Extended_Cost") or 0))
             if bu == BusinessUnit.SPEED and entry["extended_cost"] > 0:
                 logger.warning(
-                    "Produccion SPEED (workcenter no clasificado: %s) en semana %s-%s: %s",
-                    row.get("Workcenter"), entry["iso_year"], entry["iso_week"], entry["extended_cost"],
+                    "Produccion SPEED (workcenter no clasificado: %s, Part_No=%s) en semana %s-%s: %s",
+                    wc_name, row.get("Part_No"),
+                    entry["iso_year"], entry["iso_week"], entry["extended_cost"],
                 )
 
-        GLOBAL_BUS = {BusinessUnit.VOLVO, BusinessUnit.CUMMINS, BusinessUnit.TULC}
         by_bu: dict[str, list[dict]] = {
             BusinessUnit.VOLVO: [], BusinessUnit.CUMMINS: [], BusinessUnit.TULC: [],
+            BusinessUnit.JOHN_DEERE: [], BusinessUnit.EATON: [],
         }
         global_weeks: dict[tuple, dict] = {}
 
@@ -144,7 +181,7 @@ class CogpLiveTrendService:
             if entry["business_unit"] in by_bu:
                 by_bu[entry["business_unit"]].append(point)
 
-            if entry["business_unit"] in GLOBAL_BUS:
+            if entry["business_unit"] in self.GLOBAL_BUS:
                 gkey = (entry["iso_year"], entry["iso_week"])
                 if gkey not in global_weeks:
                     global_weeks[gkey] = {
@@ -167,5 +204,7 @@ class CogpLiveTrendService:
             "volvo": by_bu[BusinessUnit.VOLVO],
             "cummins": by_bu[BusinessUnit.CUMMINS],
             "tulc": by_bu[BusinessUnit.TULC],
+            "john_deere": by_bu[BusinessUnit.JOHN_DEERE],
+            "eaton": by_bu[BusinessUnit.EATON],
             "global": global_list,
         }

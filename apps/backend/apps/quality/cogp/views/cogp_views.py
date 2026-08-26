@@ -11,6 +11,8 @@ from apps.quality.models import CustomerPartMapping
 from apps.quality.cogp.services.cogp_pareto_service import CogpParetoService
 
 from apps.quality.cogp.services.scrap_rate_service import ScrapRateService
+from apps.ssi_common.filters.base import BaseRangeFilterSerializer
+
 
 ALLOWED_ROLES = {"quality_engineer", "plant_manager", "admin"}
 
@@ -25,31 +27,20 @@ class CogpParetoView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        period = request.query_params.get("period", "week")
-        if period not in ("day", "week", "month"):
-            return Response(
-                {"detail": "period debe ser day, week o month."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        date_str = request.query_params.get("date")
-        if not date_str:
-            return Response(
-                {"detail": "date es requerido (YYYY-MM-DD)."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            reference_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        except ValueError:
-            return Response(
-                {"detail": "Formato de fecha invalido, usar YYYY-MM-DD."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        serializer = BaseRangeFilterSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        ctx = serializer.to_filter_context()
 
         service = CogpParetoService()
-        result = service.get_pareto(period, reference_date)
+        try:
+            result = service.get_pareto(
+                ctx.start_date, ctx.end_date, workcenter_filter=ctx.workcenter
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(result)
+
 class CogpSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -97,37 +88,26 @@ class CogpWeeklyTrendView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user_roles = set(
-            request.user.roles.values_list("slug", flat=True)
-        )
+        user_roles = set(request.user.roles.values_list("slug", flat=True))
         if not user_roles & ALLOWED_ROLES:
             return Response(
                 {"detail": "No tienes permiso para ver este reporte."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        start_date_str = request.query_params.get("start_date")
-        end_date_str = request.query_params.get("end_date")
-
-        if not start_date_str or not end_date_str:
-            return Response(
-                {"detail": "start_date y end_date son requeridos (YYYY-MM-DD)."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-            end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
-        except ValueError:
-            return Response(
-                {"detail": "Formato de fecha invalido, usar YYYY-MM-DD."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        serializer = BaseRangeFilterSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        ctx = serializer.to_filter_context()
 
         service = CogpLiveTrendService()
-        result = service.get_weekly_trend(start_date, end_date)
-        return Response(result)
+        try:
+            result = service.get_weekly_trend(
+                ctx.start_date, ctx.end_date, workcenter_filter=ctx.workcenter
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        return Response(result)
 class CogpMappingCatalogView(APIView):
     permission_classes = [IsAuthenticated]
 

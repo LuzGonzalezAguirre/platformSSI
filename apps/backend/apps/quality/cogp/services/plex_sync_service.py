@@ -2,8 +2,10 @@ import logging
 from datetime import date
 
 from apps.quality.services.plex_client_quality import QualityPlexClient
+from apps.quality.repositories.qwall_repository import QWallRepository
 from apps.quality.cogp.repositories.cogp_repository import CogpRepository
 from apps.quality.models import BusinessUnit, ClassificationSource
+from apps.quality.cogp.services.speed_customer_classification import resolve_speed_scrap_bu
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,18 @@ NAME_KEYWORD_TO_BU = [
     ("TULC", BusinessUnit.TULC),
 ]
 
+# Mapeo bu_name (CCS, ssi_BusinessUnits) -> BusinessUnit (interno). Solo se
+# incluyen los que ya tienen contraparte formal en este proyecto -- Kautex
+# y CPS existen en CCS pero no tienen BusinessUnit propio todavia, caen en
+# SPEED/UNMAPPED igual que hoy hasta que se confirme con negocio.
+CCS_BU_NAME_TO_BUSINESS_UNIT = {
+    "Volvo": BusinessUnit.VOLVO,
+    "John Deere": BusinessUnit.JOHN_DEERE,
+    "Cummins": BusinessUnit.CUMMINS,
+    "Harley-Davidson": BusinessUnit.HARLEY_DAVIDSON,
+    "Eaton": BusinessUnit.EATON,
+}
+
 
 def resolve_bu_from_name(part_name: str) -> str | None:
     name_upper = (part_name or "").upper()
@@ -50,6 +64,29 @@ def resolve_bu_from_name(part_name: str) -> str | None:
         if keyword in name_upper:
             return bu
     return None
+
+
+def build_ccs_part_to_bu_map() -> dict[str, str]:
+    """
+    Mapa Part_No (SIN revision) -> BusinessUnit, desde CCS. Se usa como
+    tercer nivel de fallback cuando Plex no tiene el cliente real (ventas
+    intercompania -- confirmado con partes John Deere via SSI-Plainfield,
+    Customer_No=332205, sesion 2026-08-25). ssiPN en CCS SI incluye
+    revision (ej. '43413.6'), igual que Part_No de Plex -- se normaliza
+    tomando solo el numero antes del punto en ambos lados para el match.
+    """
+    rows = QWallRepository.get_part_numbers()
+    result: dict[str, str] = {}
+    for row in rows:
+        bu_name = row.get("bu_name")
+        business_unit = CCS_BU_NAME_TO_BUSINESS_UNIT.get(bu_name)
+        if business_unit is None:
+            continue
+        base_part_no = str(row.get("ssiPN") or "").strip().split(".")[0]
+        if base_part_no:
+            result[base_part_no] = business_unit
+    return result
+
 
 # Customer_No detectados en el catalogo que NO estan confirmados como
 # parte de ninguna BU en scope de este proyecto -- se dejan fuera
@@ -85,11 +122,15 @@ class PlexSyncService:
         """
         Trae el catalogo completo Part_No -> Customer y lo clasifica por
         business_unit. Orden de resolucion: (1) Customer_No directo,
-        (2) fallback por palabra clave en Part_Name, (3) SPEED sin
-        clasificar. classification_source registra cual regla aplico,
-        para poder auditar en la tabla de mapping del frontend.
+        (2) fallback por palabra clave en Part_Name, (3) fallback via CCS
+        (ssi_PartNumbers) para partes cuyo Customer_No en Plex es una venta
+        intercompania y no el cliente final (ej. John Deere via
+        SSI-Plainfield, confirmado sesion 2026-08-25), (4) SPEED sin
+        clasificar. classification_source registra cual regla aplico, para
+        poder auditar en la tabla de mapping del frontend.
         """
         raw_rows = self.client.get_cogp_customer_part_mapping()
+        ccs_map = build_ccs_part_to_bu_map()
         upsert_rows = []
 
         for row in raw_rows:
@@ -105,6 +146,17 @@ class PlexSyncService:
                         "Part_No=%s clasificado por nombre (%s) -> %s "
                         "(Customer_No era %s)",
                         row["Part_No"], row.get("Part_Name"), business_unit, customer_no,
+                    )
+
+            if business_unit is None:
+                base_part_no = str(row["Part_No"]).strip().split(".")[0]
+                business_unit = ccs_map.get(base_part_no)
+                if business_unit is not None:
+                    source = ClassificationSource.CCS_OVERRIDE
+                    logger.info(
+                        "Part_No=%s clasificado via CCS -> %s "
+                        "(Customer_No en Plex era %s / %s)",
+                        row["Part_No"], business_unit, customer_no, row.get("Customer_Name"),
                     )
 
             if business_unit is None:
@@ -124,14 +176,25 @@ class PlexSyncService:
         count = self.repository.bulk_upsert_customer_part_mapping(upsert_rows)
         logger.info("CustomerPartMapping sync: %s partes procesadas", count)
         return count
+
     
+
     def sync_scrap_for_date(self, report_date: date, part_to_bu: dict[str, str]) -> int:
         raw_rows = self.client.get_cogp_scrap_by_date(report_date.isoformat())
         upsert_rows = []
 
         for row in raw_rows:
             part_no = row["Part_No"]
-            business_unit = part_to_bu.get(part_no, BusinessUnit.SPEED)
+            workcenter = row.get("Workcenter") or ""
+            workcenter_group = row.get("Workcenter_Group") or ""
+
+            if workcenter_group == "Speed":
+                business_unit = (
+                    resolve_speed_scrap_bu(workcenter, part_no, part_to_bu)
+                    or BusinessUnit.SPEED
+                )
+            else:
+                business_unit = part_to_bu.get(part_no, BusinessUnit.SPEED)
 
             upsert_rows.append({
                 "report_date": report_date,
@@ -142,8 +205,8 @@ class PlexSyncService:
                 "quantity": row["Quantity"],
                 "weight": row.get("Weight"),
                 "scrap_reason": row.get("Scrap_Reason") or "",
-                "workcenter": row.get("Workcenter") or "",
-                "workcenter_group": row.get("Workcenter_Group") or "",
+                "workcenter": workcenter,
+                "workcenter_group": workcenter_group,
                 "department": row.get("Department") or "",
                 "unit_cost": row.get("Unit_Cost"),
                 "extended_cost": row.get("Extended_Cost"),

@@ -26,7 +26,21 @@ SYNC_GROUP_ALLOWLIST = frozenset(GROUP_DISPLAY_ORDER)
 # árbol. Si planta confirma que esas Arburg sí están corriendo, el problema
 # es el catálogo de Plex, no este flag.
 REQUIRE_PLEX_ACTIVE = True
+# Grupos relevantes para COGP (Scrap Cost sobre Producción, Pareto). Es un
+# subconjunto de SYNC_GROUP_ALLOWLIST -- el catalogo ya trae estos datos
+# sincronizados para Downtime, se reutiliza aqui en vez de un sync propio.
+# "Molding" (Active=0 en Plex, ver nota arriba) y "Speed - WSS/JET/BA"
+# (sin cliente confirmado con negocio, ver bu_classification.py) quedan
+# fuera a proposito.
+COGP_GROUPS = frozenset({"Heater Module", "TULC", "Speed"})
 
+
+def list_cogp_workcenters():
+    return (
+        DowntimeWorkcenter.objects
+        .filter(active=True, workcenter_group__in=COGP_GROUPS)
+        .order_by("workcenter_group", "name")
+    )
 
 def _is_active(raw_value) -> bool:
     """El proxy puede regresar 1/0, True/False o '1'/'0' según el driver."""

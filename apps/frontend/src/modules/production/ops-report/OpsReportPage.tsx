@@ -4,7 +4,7 @@ import { ShieldCheck, Clock, Download, FileText } from "lucide-react";
 import { OpsReportService } from "./ops-report.service";
 import { MaintenanceService } from "../../maintenance/overview/overview.service";
 import { OEEData } from "../../maintenance/overview/types";
-import { DailySummary, ClientMetrics, ViewMode } from "./types";
+import { DailySummary, ClientMetrics, ViewMode, BusinessUnitOption } from "./types";
 import { SafetyService } from "../safety/safety.service";
 import { SafetySettings } from "../safety/types";
 import { AssistanceService } from "../assistance/assistance.service";
@@ -16,39 +16,23 @@ function todayStr() {
   return new Date().toISOString().split("T")[0];
 }
 
-// El backend de OEELiveView agrega "source" a la respuesta pero el tipo
-// compartido OEEData (maintenance/overview/types.ts) todavía no lo declara.
-// Se extiende localmente para no tocar un tipo de otro módulo sin acuerdo.
 type OEELiveData = OEEData & { source?: "manual" | "plex" };
 
-// Ventana de agregación por viewMode, consistente con el "hasta la fecha
-// seleccionada" (WTD/MTD) que ya usan ProductionTable/ProductionCharts.
-// Vive en frontend porque es solo selección de rango a consultar, no
-// cálculo de negocio (el OEE en sí se calcula 100% en backend/Plex).
 function getPeriodRange(mode: ViewMode, selectedDate: string): { start: string; end: string } {
   if (mode === "daily") return { start: selectedDate, end: selectedDate };
-
   const d = new Date(selectedDate + "T12:00:00");
-
   if (mode === "weekly") {
-    const day = d.getDay(); // 0=Dom..6=Sab
+    const day = d.getDay();
     const diffToMonday = day === 0 ? -6 : 1 - day;
     const monday = new Date(d);
     monday.setDate(d.getDate() + diffToMonday);
     return { start: monday.toISOString().split("T")[0], end: selectedDate };
   }
-
-  // monthly
   const firstOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
   return { start: firstOfMonth.toISOString().split("T")[0], end: selectedDate };
 }
 
-// ── Donut Chart ───────────────────────────────────────────────────────────────
-interface DonutProps {
-  value: number | null;
-  color: string;
-  size?: number;
-}
+interface DonutProps { value: number | null; color: string; size?: number; }
 
 function DonutChart({ value, color, size = 160 }: DonutProps) {
   const radius = 54;
@@ -72,14 +56,8 @@ function DonutChart({ value, color, size = 160 }: DonutProps) {
           />
         )}
       </svg>
-      <div style={{
-        position: "absolute", inset: 0,
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        <span style={{
-          fontSize: "1.25rem", fontWeight: 800,
-          color: hasData ? "var(--color-text-primary)" : "var(--color-text-tertiary)",
-        }}>
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ fontSize: "1.25rem", fontWeight: 800, color: hasData ? "var(--color-text-primary)" : "var(--color-text-tertiary)" }}>
           {hasData ? `${value.toFixed(1)}%` : "—"}
         </span>
       </div>
@@ -87,7 +65,6 @@ function DonutChart({ value, color, size = 160 }: DonutProps) {
   );
 }
 
-// ── KPI Progress Bar ──────────────────────────────────────────────────────────
 function KPIBar({
   label, value, target, unit = "%", lowerBetter = false, subLabel,
 }: {
@@ -105,9 +82,7 @@ function KPIBar({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-text-secondary)" }}>
-          {label}
-        </span>
+        <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-text-secondary)" }}>{label}</span>
         <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--color-text-primary)" }}>
           {value.toFixed(lowerBetter ? 2 : 1)}{unit}
         </span>
@@ -126,31 +101,18 @@ function KPIBar({
   );
 }
 
-// ── Client Block ──────────────────────────────────────────────────────────────
 function ClientBlock({ data, lang }: { data: ClientMetrics; lang: "es" | "en" }) {
-  const wipPct = data.wip_goal > 0
-    ? Math.min((data.wip_actual / data.wip_goal) * 100, 100)
-    : 0;
-  const wipColor = data.wip_actual <= data.wip_goal * 0.8
-    ? "#10b981"
-    : data.wip_actual <= data.wip_goal
-    ? "#f59e0b"
-    : "#ef4444";
-
+  const wipPct = data.wip_goal > 0 ? Math.min((data.wip_actual / data.wip_goal) * 100, 100) : 0;
+  const wipColor = data.wip_actual <= data.wip_goal * 0.8 ? "#10b981" : data.wip_actual <= data.wip_goal ? "#f59e0b" : "#ef4444";
   const s = clientStyles;
 
   return (
     <div style={s.block}>
       <div style={s.kpiGrid}>
-        {/* Production % */}
         <div style={s.kpiCard}>
           <div style={s.kpiLabel}>{lang === "es" ? "Producción" : "Production"}</div>
           <div style={s.kpiMain}>
-            <span style={{
-              ...s.kpiValue,
-              color: data.production_pct >= 100 ? "#10b981"
-                : data.production_pct >= 90 ? "#f59e0b" : "#ef4444",
-            }}>
+            <span style={{ ...s.kpiValue, color: data.production_pct >= 100 ? "#10b981" : data.production_pct >= 90 ? "#f59e0b" : "#ef4444" }}>
               {data.production_pct.toFixed(1)}%
             </span>
           </div>
@@ -158,12 +120,7 @@ function ClientBlock({ data, lang }: { data: ClientMetrics; lang: "es" | "en" })
             {data.quantity.toLocaleString()} / {data.target.toLocaleString()} {lang === "es" ? "pzas" : "pcs"}
           </div>
           <div style={s.barTrack}>
-            <div style={{
-              ...s.barFill,
-              width: `${Math.min(data.production_pct, 100)}%`,
-              background: data.production_pct >= 100 ? "#10b981"
-                : data.production_pct >= 90 ? "#f59e0b" : "#ef4444",
-            }} />
+            <div style={{ ...s.barFill, width: `${Math.min(data.production_pct, 100)}%`, background: data.production_pct >= 100 ? "#10b981" : data.production_pct >= 90 ? "#f59e0b" : "#ef4444" }} />
             <div style={{ ...s.barTarget, left: "100%" }} />
           </div>
           <div style={s.barLabels}>
@@ -174,13 +131,10 @@ function ClientBlock({ data, lang }: { data: ClientMetrics; lang: "es" | "en" })
           </div>
         </div>
 
-        {/* WIP */}
         <div style={s.kpiCard}>
           <div style={s.kpiLabel}>WIP (Line)</div>
           <div style={s.kpiMain}>
-            <span style={{ ...s.kpiValue, color: wipColor }}>
-              {data.wip_actual.toLocaleString()}
-            </span>
+            <span style={{ ...s.kpiValue, color: wipColor }}>{data.wip_actual.toLocaleString()}</span>
           </div>
           <div style={s.kpiSub}>Goal: {data.wip_goal.toLocaleString()} {lang === "es" ? "pzas" : "pcs"}</div>
           <div style={s.barTrack}>
@@ -195,67 +149,41 @@ function ClientBlock({ data, lang }: { data: ClientMetrics; lang: "es" | "en" })
           </div>
         </div>
 
-        {/* Yield */}
         <div style={s.kpiCard}>
           <div style={s.kpiLabel}>Yield</div>
           <div style={s.kpiMain}>
-            <span style={{
-              ...s.kpiValue,
-              color: data.yield_pct >= 98 ? "#10b981"
-                : data.yield_pct >= 95 ? "#f59e0b" : "#ef4444",
-            }}>
+            <span style={{ ...s.kpiValue, color: data.yield_pct >= 98 ? "#10b981" : data.yield_pct >= 95 ? "#f59e0b" : "#ef4444" }}>
               {data.yield_pct.toFixed(1)}%
             </span>
           </div>
           <div style={s.kpiSub}>Target ≥ 98%</div>
           <div style={s.barTrack}>
-            <div style={{
-              ...s.barFill,
-              width: `${Math.min(data.yield_pct, 100)}%`,
-              background: data.yield_pct >= 98 ? "#10b981"
-                : data.yield_pct >= 95 ? "#f59e0b" : "#ef4444",
-            }} />
+            <div style={{ ...s.barFill, width: `${Math.min(data.yield_pct, 100)}%`, background: data.yield_pct >= 98 ? "#10b981" : data.yield_pct >= 95 ? "#f59e0b" : "#ef4444" }} />
             <div style={{ ...s.barTarget, left: "98%" }} />
           </div>
           <div style={s.barLabels}>
             <span>Target: 98%</span>
-            <span style={{
-              color: data.yield_pct >= 98 ? "#10b981" : "#ef4444",
-              fontWeight: 600,
-            }}>
+            <span style={{ color: data.yield_pct >= 98 ? "#10b981" : "#ef4444", fontWeight: 600 }}>
               {(data.yield_pct - 98).toFixed(1)} pp
             </span>
           </div>
         </div>
 
-        {/* Scrap %COGP */}
         <div style={s.kpiCard}>
           <div style={s.kpiLabel}>Scrap %COGP</div>
           <div style={s.kpiMain}>
-            <span style={{
-              ...s.kpiValue,
-              color: data.scrap_cogp_pct <= 2 ? "#10b981"
-                : data.scrap_cogp_pct <= 3 ? "#f59e0b" : "#ef4444",
-            }}>
+            <span style={{ ...s.kpiValue, color: data.scrap_cogp_pct <= 2 ? "#10b981" : data.scrap_cogp_pct <= 3 ? "#f59e0b" : "#ef4444" }}>
               {data.scrap_cogp_pct.toFixed(2)}%
             </span>
           </div>
           <div style={s.kpiSub}>{data.scrap_qty} {lang === "es" ? "pzas scrap" : "scrap pcs"}</div>
           <div style={s.barTrack}>
-            <div style={{
-              ...s.barFill,
-              width: `${Math.min((data.scrap_cogp_pct / 4) * 100, 100)}%`,
-              background: data.scrap_cogp_pct <= 2 ? "#10b981"
-                : data.scrap_cogp_pct <= 3 ? "#f59e0b" : "#ef4444",
-            }} />
+            <div style={{ ...s.barFill, width: `${Math.min((data.scrap_cogp_pct / 4) * 100, 100)}%`, background: data.scrap_cogp_pct <= 2 ? "#10b981" : data.scrap_cogp_pct <= 3 ? "#f59e0b" : "#ef4444" }} />
             <div style={{ ...s.barTarget, left: "50%" }} />
           </div>
           <div style={s.barLabels}>
             <span>Target: &lt; 2%</span>
-            <span style={{
-              color: data.scrap_cogp_pct <= 2 ? "#10b981" : "#ef4444",
-              fontWeight: 600,
-            }}>
+            <span style={{ color: data.scrap_cogp_pct <= 2 ? "#10b981" : "#ef4444", fontWeight: 600 }}>
               {data.scrap_cogp_pct <= 2 ? "✓" : `+${(data.scrap_cogp_pct - 2).toFixed(2)} pp`}
             </span>
           </div>
@@ -279,22 +207,31 @@ const clientStyles: Record<string, React.CSSProperties> = {
   barLabels:{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "var(--color-text-tertiary)" },
 };
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function OpsReportPage() {
   const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("es") ? "es" : "en";
 
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [viewMode, setViewMode]         = useState<ViewMode>("daily");
-  const [activeClient, setActiveClient] = useState<"volvo" | "cummins" | "tulc">("volvo");
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnitOption[]>([]);
+  const [activeClient, setActiveClient] = useState<string>("volvo");
   const [summary, setSummary]           = useState<DailySummary | null>(null);
   const [safety, setSafety]             = useState<SafetySettings | null>(null);
   const [productivity, setProductivity] = useState<DailyProductivity | null>(null);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
 
-  // OEE — ahora 100% derivado de /maintenance/overview/oee-live/
   const [oeeData, setOeeData] = useState<OEELiveData | null>(null);
+
+  // Catalogo de BUs activas, una sola vez -- fuente de verdad para tarjetas
+  // y tabs. Si el negocio da de alta una BU nueva en Targets Config,
+  // aparece aqui solo, sin tocar codigo (ver decision del backend, mismo
+  // criterio de loop dinamico).
+  useEffect(() => {
+    OpsReportService.getBusinessUnits()
+      .then((bus) => setBusinessUnits(bus.filter((b) => b.is_active)))
+      .catch(() => setBusinessUnits([]));
+  }, []);
 
   const loadOEE = useCallback(async (date: string, mode: ViewMode) => {
     const { start, end } = getPeriodRange(mode, date);
@@ -317,17 +254,14 @@ export default function OpsReportPage() {
       setSummary(sum);
       setSafety(saf);
 
-      // Horas pagadas desde asistencia
-     try {
-  const prod = await AssistanceService.getDailyProductivity(selectedDate);
-  setProductivity(prod);
-} catch {
-  setProductivity(null);
-}
+      try {
+        const prod = await AssistanceService.getDailyProductivity(selectedDate);
+        setProductivity(prod);
+      } catch {
+        setProductivity(null);
+      }
 
-      // OEE live (Plex / override manual legado) — sigue el rango del viewMode
       await loadOEE(selectedDate, viewMode);
-
     } catch (e: any) {
       setError(e?.response?.data?.detail || (lang === "es" ? "Error cargando datos" : "Error loading data"));
     } finally {
@@ -337,7 +271,6 @@ export default function OpsReportPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Earned hours: priorizar entrada manual, fallback a Plex
   const paidHours       = productivity?.paid_hours       ? parseFloat(productivity.paid_hours)       : 0;
   const earnedHours     = productivity?.earned_hours     ? parseFloat(productivity.earned_hours)     : 0;
   const productivityPct = productivity?.productivity_pct ? parseFloat(productivity.productivity_pct) : 0;
@@ -346,7 +279,6 @@ export default function OpsReportPage() {
 
   const generalYield = summary?.total.yield_pct ?? 0;
 
-  // OEE: desde oee-live (Plex agregado o override manual legado); null si no hay dato
   const oeePct         = oeeData ? parseFloat(oeeData.oee_pct)          : null;
   const availPct       = oeeData ? parseFloat(oeeData.availability_pct) : null;
   const performancePct = oeeData ? parseFloat(oeeData.performance_pct)  : null;
@@ -355,17 +287,10 @@ export default function OpsReportPage() {
 
   const { start: periodStart, end: periodEnd } = getPeriodRange(viewMode, selectedDate);
 
-  const CLIENTS = [
-    { key: "volvo"   as const, label: "VOLVO"   },
-    { key: "cummins" as const, label: "CUMMINS" },
-    { key: "tulc"    as const, label: "TULC"    },
-  ];
-
   const s = styles;
 
   return (
     <div style={s.page}>
-      {/* HEADER */}
       <div style={s.pageHeader}>
         <div>
           <h1 style={s.title}>{lang === "es" ? "Reporte Diario Ops" : "Ops Daily Report"}</h1>
@@ -384,10 +309,8 @@ export default function OpsReportPage() {
                 style={{ ...s.viewModeBtn, ...(viewMode === m ? s.viewModeBtnActive : {}) }}
                 onClick={() => setViewMode(m)}
               >
-                {m === "daily"
-                  ? (lang === "es" ? "Diario" : "Daily")
-                  : m === "weekly"
-                  ? (lang === "es" ? "Semanal" : "Weekly")
+                {m === "daily" ? (lang === "es" ? "Diario" : "Daily")
+                  : m === "weekly" ? (lang === "es" ? "Semanal" : "Weekly")
                   : (lang === "es" ? "Mensual" : "Monthly")}
               </button>
             ))}
@@ -403,7 +326,6 @@ export default function OpsReportPage() {
         </div>
       ) : (
         <>
-          {/* SAFETY BANNER */}
           <div style={s.safetyBanner}>
             <div style={s.safetyLeft}>
               <div style={s.safetyDateBox}>
@@ -437,22 +359,18 @@ export default function OpsReportPage() {
             </div>
           </div>
 
-          {/* PRODUCTIVITY BARS */}
           <div style={s.productivityCard}>
             <div style={s.prodBarSection}>
               <KPIBar
-  label={lang === "es" ? "Productividad" : "Productivity"}
-  value={productivityPct} target={85}
-  subLabel={attendanceSaved
-    ? `${earnedHours.toFixed(1)} / ${paidHours.toFixed(1)} hrs`
-    : (lang === "es" ? "sin asistencia" : "no attendance")}
-/>
+                label={lang === "es" ? "Productividad" : "Productivity"}
+                value={productivityPct} target={85}
+                subLabel={attendanceSaved
+                  ? `${earnedHours.toFixed(1)} / ${paidHours.toFixed(1)} hrs`
+                  : (lang === "es" ? "sin asistencia" : "no attendance")}
+              />
             </div>
             <div style={s.prodBarSection}>
-              <KPIBar
-                label={lang === "es" ? "Yield General" : "General Yield"}
-                value={generalYield} target={98}
-              />
+              <KPIBar label={lang === "es" ? "Yield General" : "General Yield"} value={generalYield} target={98} />
             </div>
             <div style={s.prodBarSection}>
               <KPIBar label="OEE" value={oeePct ?? 0} target={65} />
@@ -461,25 +379,20 @@ export default function OpsReportPage() {
               <Clock size={16} color="var(--color-text-secondary)" />
               <div>
                 <div style={s.earnedHoursValue}>
-  {attendanceSaved
-    ? `${earnedHours.toFixed(1)} / ${paidHours.toFixed(1)}`
-    : "—"}
-</div>
-<div style={s.earnedHoursLabel}>
-  {attendanceSaved
-    ? (lang === "es" ? "Horas ganadas / pagadas" : "Earned / Paid Hours")
-    : (lang === "es" ? "Sin asistencia capturada" : "Attendance not captured")}
-  {hasManualEarned && attendanceSaved && (
-    <span style={{ marginLeft: "0.375rem", color: "#3b82f6", fontSize: "0.7rem" }}>
-      (manual)
-    </span>
-  )}
-</div>
+                  {attendanceSaved ? `${earnedHours.toFixed(1)} / ${paidHours.toFixed(1)}` : "—"}
+                </div>
+                <div style={s.earnedHoursLabel}>
+                  {attendanceSaved
+                    ? (lang === "es" ? "Horas ganadas / pagadas" : "Earned / Paid Hours")
+                    : (lang === "es" ? "Sin asistencia capturada" : "Attendance not captured")}
+                  {hasManualEarned && attendanceSaved && (
+                    <span style={{ marginLeft: "0.375rem", color: "#3b82f6", fontSize: "0.7rem" }}>(manual)</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* DONUT CHARTS — Availability / Performance / Quality (fuente: Mantenimiento / Plex) */}
           <div style={s.donutSectionHeader}>
             <span style={s.donutRangeLabel}>
               {periodStart === periodEnd ? periodStart : `${periodStart} → ${periodEnd}`}
@@ -515,15 +428,15 @@ export default function OpsReportPage() {
             ))}
           </div>
 
-          {/* CLIENT KPI CARDS */}
-          {summary && (
+          {summary && businessUnits.length > 0 && (
             <div style={s.clientGrid}>
-              {CLIENTS.map((c) => {
-                const data = summary[c.key];
+              {businessUnits.map((bu) => {
+                const data = summary[bu.code] as ClientMetrics | undefined;
+                if (!data) return null;
                 return (
-                  <div key={c.key} style={s.clientCard}>
+                  <div key={bu.code} style={s.clientCard}>
                     <div style={s.clientCardHeader}>
-                      <span style={s.clientBadge}>{c.label}</span>
+                      <span style={s.clientBadge}>{bu.name.toUpperCase()}</span>
                     </div>
                     <div style={s.clientKPIs}>
                       <div style={s.clientKPIItem}>
@@ -532,19 +445,13 @@ export default function OpsReportPage() {
                       </div>
                       <div style={s.clientKPIItem}>
                         <span style={s.clientKPILabel}>Yield</span>
-                        <span style={{
-                          ...s.clientKPIValue,
-                          color: data.yield_pct >= 98 ? "#10b981" : data.yield_pct >= 95 ? "#f59e0b" : "#ef4444",
-                        }}>
+                        <span style={{ ...s.clientKPIValue, color: data.yield_pct >= 98 ? "#10b981" : data.yield_pct >= 95 ? "#f59e0b" : "#ef4444" }}>
                           {data.yield_pct.toFixed(1)}%
                         </span>
                       </div>
                       <div style={s.clientKPIItem}>
                         <span style={s.clientKPILabel}>Scrap %COGP</span>
-                        <span style={{
-                          ...s.clientKPIValue,
-                          color: data.scrap_cogp_pct <= 2 ? "#10b981" : data.scrap_cogp_pct <= 3 ? "#f59e0b" : "#ef4444",
-                        }}>
+                        <span style={{ ...s.clientKPIValue, color: data.scrap_cogp_pct <= 2 ? "#10b981" : data.scrap_cogp_pct <= 3 ? "#f59e0b" : "#ef4444" }}>
                           {data.scrap_cogp_pct.toFixed(2)}%
                         </span>
                       </div>
@@ -559,22 +466,23 @@ export default function OpsReportPage() {
             </div>
           )}
 
-          {/* CLIENT TABS + KPI BARS + TABLA + GRAFICAS */}
-          {summary && (
+          {summary && businessUnits.length > 0 && (
             <div style={s.clientSection}>
               <div style={s.clientTabBar}>
-                {CLIENTS.map((c) => (
+                {businessUnits.map((bu) => (
                   <button
-                    key={c.key}
-                    style={{ ...s.clientTab, ...(activeClient === c.key ? s.clientTabActive : {}) }}
-                    onClick={() => setActiveClient(c.key)}
+                    key={bu.code}
+                    style={{ ...s.clientTab, ...(activeClient === bu.code ? s.clientTabActive : {}) }}
+                    onClick={() => setActiveClient(bu.code)}
                   >
-                    {c.label}
+                    {bu.name.toUpperCase()}
                   </button>
                 ))}
               </div>
               <div style={s.clientTabContent}>
-                <ClientBlock data={summary[activeClient]} lang={lang} />
+                {summary[activeClient] && (
+                  <ClientBlock data={summary[activeClient] as ClientMetrics} lang={lang} />
+                )}
               </div>
               <div style={{ padding: "0 1.25rem 1rem" }}>
                 <ProductionTable date={selectedDate} bu={activeClient} mode={viewMode} lang={lang} />
@@ -675,7 +583,7 @@ const styles: Record<string, React.CSSProperties> = {
   donutCardTitle:   { fontSize: "1rem", fontWeight: 700, color: "var(--color-text-primary)", alignSelf: "flex-start" },
   donutLegend:      { display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "var(--color-text-secondary)" },
   donutDot:         { width: "10px", height: "10px", borderRadius: "50%", display: "inline-block" },
-  clientGrid: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" },
+  clientGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" },
   clientCard: { padding: "1rem", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)" },
   clientBadge:      { fontSize: "1rem", fontWeight: 800, color: "var(--color-text-primary)", letterSpacing: "0.05em" },
   clientKPIs:       { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem" },

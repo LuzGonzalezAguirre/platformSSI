@@ -120,6 +120,29 @@ class QWallRepository:
         return rows
 
     @staticmethod
+    def get_part_numbers() -> list[dict]:
+        """
+        Catalogo completo Part_No -> BU/cliente desde CCS (ssi_PartNumbers).
+        Usado como fallback de clasificacion en COGP cuando Plex no expone
+        el cliente real (ej. ventas intercompania -- ver John Deere,
+        Customer_No=332205/SSI-Plainfield, sesion 2026-08-25).
+        """
+        cache_key = "qwall:part_numbers"
+        cached    = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        resp = requests.get(
+            f"{PROXY_URL}/part-numbers",
+            headers=HEADERS,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        rows = resp.json().get("data", [])
+        cache.set(cache_key, rows, CACHE_TTL)
+        return rows
+
+    @staticmethod
     def get_inspection_point_fails(start_date: date, end_date: date, bu_id: int | None = None) -> list[dict]:
         cache_key = f"qwall:point_fails:{bu_id or 'all'}:{start_date}:{end_date}"
         cached    = cache.get(cache_key)
@@ -135,6 +158,29 @@ class QWallRepository:
             },
             headers=HEADERS,
             timeout=30,
+        )
+        resp.raise_for_status()
+        rows = resp.json().get("data", [])
+        cache.set(cache_key, rows, CACHE_TTL)
+        return rows
+
+    @staticmethod
+    def get_part_numbers() -> list[dict]:
+        """
+        Catalogo completo Part_No -> BU/cliente desde CCS (ssi_PartNumbers).
+        Usado como fallback de clasificacion en COGP cuando Plex no expone
+        el cliente real (ej. ventas intercompania -- ver John Deere,
+        Customer_No=332205/SSI-Plainfield, sesion 2026-08-25).
+        """
+        cache_key = "qwall:part_numbers"
+        cached    = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        resp = requests.get(
+            f"{PROXY_URL}/part-numbers",
+            headers=HEADERS,
+            timeout=15,
         )
         resp.raise_for_status()
         rows = resp.json().get("data", [])

@@ -13,7 +13,10 @@ from rest_framework.permissions import IsAuthenticated
 
 from apps.ssi_common.filters.choices import BU_CHOICES
 from apps.ssi_common.filters.shift_calendar import ALL_SHIFTS
-from apps.quality.services.downtime_workcenter_service import list_active_workcenters
+from apps.quality.services.downtime_workcenter_service import (
+    list_active_workcenters,
+    list_cogp_workcenters,
+)
 
 # BUs activas hoy en planta para el selector de filtros. BusinessUnit
 # (customer_part_mapping.py) sigue teniendo las 7 -- Harley-Davidson,
@@ -21,19 +24,24 @@ from apps.quality.services.downtime_workcenter_service import list_active_workce
 # solo no se muestran como opción de filtro mientras no estén activas
 # operativamente. Ajustar esta lista, no BusinessUnit, si el negocio
 # reactiva alguna.
-ACTIVE_FILTER_BU_CODES = {"VOLVO", "CUMMINS", "TULC", "JOHN_DEERE"}
+ACTIVE_FILTER_BU_CODES = {"VOLVO", "CUMMINS", "TULC", "JOHN_DEERE", "EATON"}
 
 
 class FilterChoicesView(APIView):
     permission_classes = [IsAuthenticated]
-
-    CACHE_KEY = "common:filter_choices:v2"  # v2: bu ahora filtrado a activas
     CACHE_TTL = 1800
 
     def get(self, request):
-        cached = cache.get(self.CACHE_KEY)
+        scope = request.query_params.get("scope", "default")
+        cache_key = f"common:filter_choices:v2:{scope}"
+
+        cached = cache.get(cache_key)
         if cached:
             return Response(cached)
+
+        workcenters = (
+            list_cogp_workcenters() if scope == "cogp" else list_active_workcenters()
+        )
 
         data = {
             "bu": [
@@ -44,8 +52,8 @@ class FilterChoicesView(APIView):
             "shift": [{"value": s, "label": s} for s in ALL_SHIFTS],
             "workcenter": [
                 {"value": wc.name, "label": wc.name}
-                for wc in list_active_workcenters()
+                for wc in workcenters
             ],
         }
-        cache.set(self.CACHE_KEY, data, self.CACHE_TTL)
+        cache.set(cache_key, data, self.CACHE_TTL)
         return Response(data)

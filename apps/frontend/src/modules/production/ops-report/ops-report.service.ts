@@ -1,5 +1,5 @@
 import apiClient from "../../../services/api.client";
-import { DailySummary,OEERecord, OEEWritePayload } from "./types";
+import { DailySummary,OEERecord,BusinessUnitOption, OEEWritePayload } from "./types";
 import { WeeklyTable, ViewMode } from "./types";
 
 
@@ -10,6 +10,9 @@ export const OpsReportService = {
     apiClient
       .get(`${BASE}/ops/daily-summary/`, { params: { date } })
       .then((r: any) => r.data),
+  
+  getBusinessUnits: (): Promise<BusinessUnitOption[]> =>
+    apiClient.get("/production/business-units/").then((r: any) => r.data),
 
   getWeeklyTable: (date: string, bu: string, mode: ViewMode): Promise<WeeklyTable> =>
     apiClient

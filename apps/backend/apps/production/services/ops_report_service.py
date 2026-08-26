@@ -104,80 +104,54 @@ class OpsReportService:
 
     @staticmethod
     def get_daily_summary(report_date: date) -> dict:
-        prod   = OpsReportService.get_daily_production(report_date)
-        scrap  = OpsReportService.get_scrap_cogp(report_date)
-        yield_ = OpsReportService.get_yield_by_client(report_date)
-        hours  = OpsReportService.get_earned_labor_hours(report_date)
-    
+        from apps.production.repositories.targets_repository import TargetsRepository
+
+        prod     = OpsReportService.get_daily_production(report_date)
+        scrap    = OpsReportService.get_scrap_cogp(report_date)
+        yield_   = OpsReportService.get_yield_by_client(report_date)
+        hours    = OpsReportService.get_earned_labor_hours(report_date)
+        cogp_day = OpsReportService.get_cogp_daily(report_date)
+
         def cogp_pct(scrap_cost: float, cogp_cost: float) -> float:
             return round((scrap_cost / cogp_cost * 100), 2) if cogp_cost > 0 else 0.0
 
         def production_pct(produced: int, target: int) -> float:
             return round((produced / target * 100), 1) if target > 0 else 0.0
 
-        volvo_target   = _get_day_target(report_date, "volvo")
-        cummins_target = _get_day_target(report_date, "cummins")
-        tulc_target    = _get_day_target(report_date, "tulc")
+        bu_codes = [bu.code for bu in TargetsRepository.get_business_units(active_only=True)]
 
-        volvo_wip   = _get_wip(report_date, "volvo")
-        cummins_wip = _get_wip(report_date, "cummins")
-        tulc_wip    = _get_wip(report_date, "tulc")
-
-        cogp_day = OpsReportService.get_cogp_daily(report_date)
-
-        volvo_cogp   = cogp_day["volvo"]["extended_cost"]
-        cummins_cogp = cogp_day["cummins"]["extended_cost"]
-        tulc_cogp    = cogp_day["tulc"]["extended_cost"]
-    
-        volvo_qty   = prod["volvo"]["quantity"]
-        cummins_qty = prod["cummins"]["quantity"]
-        tulc_qty    = prod.get("tulc", {}).get("quantity", 0)
-    
-        return {
+        result: dict = {
             "date":               str(report_date),
             "earned_labor_hours": hours.get("earned_labor_hours", 0.0),
-            "volvo": {
-                "quantity":       volvo_qty,
-                "target":         volvo_target,
-                "production_pct": production_pct(volvo_qty, volvo_target),
-                "cogp_cost":      volvo_cogp,
-                "scrap_qty":      scrap["volvo"]["scrap_qty"],
-                "scrap_cost":     scrap["volvo"]["scrap_cost"],
-                "scrap_cogp_pct": cogp_pct(scrap["volvo"]["scrap_cost"], volvo_cogp),
-                "yield_pct":      yield_["volvo"]["yield_pct"],
-                "wip_actual":     volvo_wip["actual"],
-                "wip_goal":       volvo_wip["goal"],
-            },
-            "cummins": {
-                "quantity":       cummins_qty,
-                "target":         cummins_target,
-                "production_pct": production_pct(cummins_qty, cummins_target),
-                "cogp_cost":      cummins_cogp,
-                "scrap_qty":      scrap["cummins"]["scrap_qty"],
-                "scrap_cost":     scrap["cummins"]["scrap_cost"],
-                "scrap_cogp_pct": cogp_pct(scrap["cummins"]["scrap_cost"], cummins_cogp),
-                "yield_pct":      yield_["cummins"]["yield_pct"],
-                "wip_actual":     cummins_wip["actual"],
-                "wip_goal":       cummins_wip["goal"],
-            },
-            "tulc": {
-                "quantity":       tulc_qty,
-                "target":         tulc_target,
-                "production_pct": production_pct(tulc_qty, tulc_target),
-                "cogp_cost":      tulc_cogp,
-                "scrap_qty":      scrap.get("tulc", {}).get("scrap_qty",  0),
-                "scrap_cost":     scrap.get("tulc", {}).get("scrap_cost", 0.0),
-                "scrap_cogp_pct": cogp_pct(scrap.get("tulc", {}).get("scrap_cost", 0.0), tulc_cogp),
-                "yield_pct":      yield_.get("tulc", {}).get("yield_pct", 100.0),
-                "wip_actual":     tulc_wip["actual"],
-               "wip_goal":       tulc_wip["goal"],
-            },
-            "total": {
-                "yield_pct":  yield_["total"]["yield_pct"],
-                "production": yield_["total"]["production"],
-                "scrap":      yield_["total"]["scrap"],
-            },
         }
+
+        for bu_code in bu_codes:
+            target      = _get_day_target(report_date, bu_code)
+            wip         = _get_wip(report_date, bu_code)
+            cogp_cost   = cogp_day.get(bu_code, {}).get("extended_cost", 0.0)
+            qty         = prod.get(bu_code, {}).get("quantity", 0)
+            scrap_data  = scrap.get(bu_code, {"scrap_qty": 0, "scrap_cost": 0.0})
+
+            result[bu_code] = {
+                "quantity":       qty,
+                "target":         target,
+                "production_pct": production_pct(qty, target),
+                "cogp_cost":      cogp_cost,
+                "scrap_qty":      scrap_data["scrap_qty"],
+                "scrap_cost":     scrap_data["scrap_cost"],
+                "scrap_cogp_pct": cogp_pct(scrap_data["scrap_cost"], cogp_cost),
+                "yield_pct":      yield_.get(bu_code, {}).get("yield_pct", 100.0),
+                "wip_actual":     wip["actual"],
+                "wip_goal":       wip["goal"],
+            }
+
+        result["total"] = {
+            "yield_pct":  yield_["total"]["yield_pct"],
+            "production": yield_["total"]["production"],
+            "scrap":      yield_["total"]["scrap"],
+        }
+        return result
+
     @staticmethod
     def get_weekly_table(
         report_date: date,

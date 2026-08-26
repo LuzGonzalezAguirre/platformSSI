@@ -205,8 +205,10 @@
   "periods": {
     "day": "Día",
     "week": "Semana",
-    "month": "Mes"
-  }
+    "month": "Mes",
+    "useMainRange": "Usar mismo rango" 
+  },
+  "useMainRange": "Use main date range" 
 },
   "common": {
     "loading": "Cargando...",
@@ -678,7 +680,10 @@
   "subtitle": "Tendencia semanal por unidad de negocio — meta: menor a 2%",
   "latestWeek": "última semana",
   "noData": "Sin datos",
+  "useMainRange": "Usar mismo rango" ,
   "loadError": "Error cargando datos de COGP.",
+    "tooltipScrap": "Costo de scrap",
+  "tooltipProduction": "Costo de producción",
   "week": "S",
   "target": "meta",
   "presets": {
@@ -690,6 +695,8 @@
     "volvo": "Volvo",
     "cummins": "Cummins",
     "tulc": "TULC",
+    "johnDeere": "John Deere",
+    "eaton": "Eaton",
     "global": "Global"
   }
 }

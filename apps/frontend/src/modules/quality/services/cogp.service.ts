@@ -14,6 +14,8 @@ export interface CogpWeeklyTrendResponse {
   volvo: CogpWeekPoint[];
   cummins: CogpWeekPoint[];
   tulc: CogpWeekPoint[];
+  john_deere: CogpWeekPoint[];
+  eaton: CogpWeekPoint[];
   global: CogpWeekPoint[];
 }
 
@@ -46,12 +48,13 @@ export interface CogpParetoBucket {
 }
 
 export interface CogpParetoResponse {
-  period: "day" | "week" | "month";
   start_date: string;
   end_date: string;
   volvo: CogpParetoBucket;
   cummins: CogpParetoBucket;
   tulc: CogpParetoBucket;
+  john_deere: CogpParetoBucket;
+  eaton: CogpParetoBucket;
   global: CogpParetoBucket;
 }
 
@@ -114,9 +117,16 @@ export interface ScrapRateResponse {
 }
 
 export const CogpService = {
-  getWeeklyTrend: (startDate: string, endDate: string): Promise<CogpWeeklyTrendResponse> =>
+  getWeeklyTrend: (
+    startDate: string, endDate: string, workcenter: string[] = []
+  ): Promise<CogpWeeklyTrendResponse> =>
     apiClient
-      .get(`${BASE}/weekly-trend/`, { params: { start_date: startDate, end_date: endDate } })
+      .get(`${BASE}/weekly-trend/`, {
+        params: {
+          start_date: startDate, end_date: endDate,
+          ...(workcenter.length > 0 ? { workcenter } : {}),
+        },
+      })
       .then((r: any) => r.data),
 
   getMappingCatalog: (params: { business_unit?: string; search?: string }): Promise<CogpMappingResponse> =>
@@ -124,9 +134,16 @@ export const CogpService = {
       .get(`${BASE}/mapping/`, { params })
       .then((r: any) => r.data),
 
-  getPareto: (period: CogpPeriod, date: string): Promise<CogpParetoResponse> =>
+     getPareto: (
+    startDate: string, endDate: string, workcenter: string[] = []
+  ): Promise<CogpParetoResponse> =>
     apiClient
-      .get(`${BASE}/pareto/`, { params: { period, date } })
+      .get(`${BASE}/pareto/`, {
+        params: {
+          start_date: startDate, end_date: endDate,
+          ...(workcenter.length > 0 ? { workcenter } : {}),
+        },
+      })
       .then((r: any) => r.data),
 
   /**

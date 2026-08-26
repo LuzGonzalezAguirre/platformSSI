@@ -14,6 +14,7 @@ class BusinessUnit(models.TextChoices):
 class ClassificationSource(models.TextChoices):
     CUSTOMER_NO = "CUSTOMER_NO", "Customer_No directo"
     NAME_FALLBACK = "NAME_FALLBACK", "Nombre (fallback)"
+    CCS_OVERRIDE = "CCS_OVERRIDE", "CCS (fallback)"
     UNMAPPED = "UNMAPPED", "Sin clasificar"
 
 

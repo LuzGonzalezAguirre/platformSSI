@@ -3,9 +3,7 @@
 Fuente unica de verdad para la clasificacion de Business Unit por workcenter.
 
 Antes vivia duplicada en apps/quality/cogp/services/cogp_live_trend_service.py.
-Cualquier modulo que necesite clasificar por BU importa de aqui -- si esta
-regla vuelve a existir en dos lugares, vuelven las discrepancias entre
-modulos (ver bug de Scrap Rate 35-47%, sesion 2026-07-29).
+Cualquier modulo que necesite clasificar por BU importa de aqui 
 
 Existen TRES criterios y no son intercambiables:
 
@@ -38,6 +36,7 @@ PRODUCTION_WORKCENTER_TO_BU = {
     "TULC Ensamble Final":      BusinessUnit.TULC,
     "HM Empaque":               BusinessUnit.CUMMINS,
     "HM Ensamble Final 3":      BusinessUnit.CUMMINS,
+    "Velocidad Prueba Final":   BusinessUnit.JOHN_DEERE,
 }
 
 TERMINAL_WORKCENTERS = frozenset(PRODUCTION_WORKCENTER_TO_BU)

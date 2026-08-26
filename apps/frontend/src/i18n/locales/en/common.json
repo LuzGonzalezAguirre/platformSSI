@@ -123,10 +123,12 @@
   "subtitle": "Top scrap reasons by workcenter for the selected period",
   "totalScrap": "Total Scrap",
   "scrapRate": "Scrap Rate",
+  "useMainRange": "Use main date range",
   "periods": {
     "day": "Day",
     "week": "Week",
     "month": "Month"
+    
   }
 },
   "cogpMapping": {
@@ -613,6 +615,8 @@
 },
 "cogpDashboard": {
   "title": "COGP — Scrap Cost over Production",
+  "tooltipScrap": "Scrap cost",
+  "tooltipProduction": "Production cost",
   "subtitle": "Weekly trend by business unit — target: below 2%",
   "latestWeek": "latest week",
   "noData": "No data",
@@ -624,10 +628,13 @@
     "quarter": "Quarter",
     "year": "Year"
   },
+  "useMainRange": "Use main date range" ,
   "businessUnits": {
     "volvo": "Volvo",
     "cummins": "Cummins",
     "tulc": "TULC",
+    "johnDeere": "John Deere",
+    "eaton": "Eaton",
     "global": "Global"
   }
 },

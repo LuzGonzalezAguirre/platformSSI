@@ -12,13 +12,21 @@ interface Props {
   setDraft: (f: StandardFilters) => void;
   onApply: () => void;
   loading?: boolean;
-  extra?: React.ReactNode; // slot para filtros propios del módulo (ej. status en quality)
+  extra?: React.ReactNode;
+  showBU?: boolean;
+  showWorkcenter?: boolean;
+  showShift?: boolean;
+  filterScope?: "default" | "cogp";
 }
 
-export default function FilterBar({ draft, setDraft, onApply, loading, extra }: Props) {
+export default function FilterBar({
+  draft, setDraft, onApply, loading, extra,
+  showBU = true, showWorkcenter = true, showShift = true,
+  filterScope = "default",
+}: Props) {
   const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("es") ? "es" : "en";
-  const { choices } = useFilterChoices();
+  const { choices } = useFilterChoices(filterScope);
 
   return (
     <div style={s.bar}>
@@ -27,13 +35,19 @@ export default function FilterBar({ draft, setDraft, onApply, loading, extra }: 
         onChange={(range) => setDraft({ ...draft, ...range })}
         defaultPreset="today"
       />
-      <BUSelect value={draft.bu} onChange={(bu) => setDraft({ ...draft, bu })} options={choices.bu} />
-      <WorkcenterSelect
-        value={draft.workcenter}
-        onChange={(workcenter) => setDraft({ ...draft, workcenter })}
-        options={choices.workcenter}
-      />
-      <ShiftSelect value={draft.shift} onChange={(shift) => setDraft({ ...draft, shift })} />
+      {showBU && (
+        <BUSelect value={draft.bu} onChange={(bu) => setDraft({ ...draft, bu })} options={choices.bu} />
+      )}
+      {showWorkcenter && (
+        <WorkcenterSelect
+          value={draft.workcenter}
+          onChange={(workcenter) => setDraft({ ...draft, workcenter })}
+          options={choices.workcenter}
+        />
+      )}
+      {showShift && (
+        <ShiftSelect value={draft.shift} onChange={(shift) => setDraft({ ...draft, shift })} />
+      )}
       {extra}
       <button
         type="button"

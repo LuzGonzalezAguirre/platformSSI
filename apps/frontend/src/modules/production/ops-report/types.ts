@@ -20,12 +20,14 @@ export interface TotalMetrics {
 export interface DailySummary {
   date: string;
   earned_labor_hours: number;
-  volvo:   ClientMetrics;
-  cummins: ClientMetrics;
-  tulc:    ClientMetrics;
-  total: {
-    yield_pct: number;
-  };
+  total: { yield_pct: number };
+  [bu_code: string]: ClientMetrics | string | number | { yield_pct: number } | undefined;
+}
+
+export interface BusinessUnitOption {
+  code: string;
+  name: string;
+  is_active: boolean;
 }
 
 export type ViewMode = "daily" | "weekly" | "monthly";

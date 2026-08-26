@@ -1,4 +1,3 @@
-# apps/quality/cogp/services/cogp_daily_bu_service.py
 """
 Agregacion DIARIA de COGP por Business Unit desde los endpoints de rango del
 proxy (cogp/scrap-range, cogp/production-range), clasificada en Django con
@@ -22,6 +21,8 @@ from django.core.cache import cache
 
 from apps.quality.models import BusinessUnit
 from apps.quality.services.plex_client_quality import QualityPlexClient
+from apps.quality.cogp.repositories.cogp_repository import CogpRepository
+from apps.quality.cogp.services.speed_customer_classification import resolve_speed_scrap_bu
 from apps.warehouse.services.plex_client import PlexProxyError
 from apps.ssi_common.bu_classification import (
     resolve_bu_from_workcenter,
@@ -37,9 +38,46 @@ BU_KEYS: dict[str, str] = {
     BusinessUnit.VOLVO: "volvo",
     BusinessUnit.CUMMINS: "cummins",
     BusinessUnit.TULC: "tulc",
+    BusinessUnit.JOHN_DEERE: "john_deere",
+    BusinessUnit.EATON: "eaton",
 }
 
 TRACKED_KEYS = tuple(BU_KEYS.values())
+
+
+def _resolve_bu_for_daily_scrap(
+    workcenter_group: str | None,
+    workcenter: str | None,
+    part_no: str | None,
+    part_to_bu: dict[str, str],
+) -> str | None:
+    """
+    Extension de resolve_bu_from_workcenter para el grupo Speed -- mismo
+    criterio que CogpLiveTrendService: por Workcenter (no Part_No), porque
+    partes de empaque compartido entre John Deere/Eaton hacen que Part_No
+    no sea confiable para SCRAP (ver speed_customer_classification.py).
+    """
+    if workcenter_group == "Speed":
+        return resolve_speed_scrap_bu(workcenter, part_no, part_to_bu)
+    return resolve_bu_from_workcenter(workcenter_group, workcenter)
+
+
+def _resolve_bu_for_daily_production(
+    workcenter: str | None,
+    workcenter_group: str | None,
+    part_no: str | None,
+    part_to_bu: dict[str, str],
+) -> str:
+    """
+    Extension de resolve_bu_for_production para Speed -- por Part_No via
+    CustomerPartMapping, mismo criterio que CogpLiveTrendService (los
+    workcenters terminales de Speed ya son exclusivos por cliente, asi
+    que aqui Part_No es confiable).
+    """
+    if workcenter_group == "Speed":
+        base_part_no = str(part_no or "").strip().split(".")[0]
+        return part_to_bu.get(base_part_no, BusinessUnit.SPEED)
+    return resolve_bu_for_production(workcenter)
 
 
 def empty_day() -> dict:
@@ -89,8 +127,12 @@ class CogpDailyBuService:
     Buckets diarios {fecha_iso: {bu_key: {scrap_cost, scrap_qty, extended_cost}}}.
 
     Clasificacion por fuente, igual que CogpLiveTrendService:
-      - SCRAP:      Workcenter_Group + Workcenter (resolve_bu_from_workcenter)
-      - PRODUCCION: Workcenter terminal fijo      (resolve_bu_for_production)
+      - SCRAP:      Workcenter_Group + Workcenter (resolve_bu_from_workcenter),
+                     con extension a Part_No dentro de Speed via
+                     _resolve_bu_for_daily_scrap.
+      - PRODUCCION: Workcenter terminal fijo (resolve_bu_for_production),
+                     con extension a Part_No dentro de Speed via
+                     _resolve_bu_for_daily_production.
 
     Los costos se devuelven como float para que el payload sea JSON-safe y
     consistente con lo que el Ops Report ya publica. La aritmetica interna es
@@ -98,8 +140,8 @@ class CogpDailyBuService:
     """
 
     # Subir al cambiar la forma del bucket o al invalidar datos malos.
-    # v1 = primera version (clasificacion en Django, mapa de agosto 2026).
-    CACHE_VERSION = "v1"
+    # v2 = agrega John Deere/Eaton (2026-08-26).
+    CACHE_VERSION = "v2"
 
     TTL_CLOSED_DAY = 604800   # 7 dias -- un dia cerrado casi no cambia
     TTL_OPEN_DAY = 600        # 10 min -- hoy y ayer siguen recibiendo capturas
@@ -109,8 +151,13 @@ class CogpDailyBuService:
     CHUNK_DAYS = 168
     MAX_FETCH_CHUNKS = 6
 
-    def __init__(self, client: QualityPlexClient | None = None):
+    def __init__(
+        self,
+        client: QualityPlexClient | None = None,
+        repository: CogpRepository | None = None,
+    ):
         self.client = client or QualityPlexClient()
+        self.repository = repository or CogpRepository()
 
     # ── cache ────────────────────────────────────────────────────────
 
@@ -182,6 +229,7 @@ class CogpDailyBuService:
     def _fetch_and_bucket(self, start: date, end: date) -> dict[str, dict]:
         days: dict[str, dict] = {}
         cost_model_key = self.client.get_cogp_cost_model()["cost_model_key"]
+        part_to_bu = self.repository.get_all_part_to_bu_map()
 
         total_scrap_rows = 0
         total_production_rows = 0
@@ -193,8 +241,8 @@ class CogpDailyBuService:
             production_rows = self.client.get_cogp_production_range(
                 window_start.isoformat(), window_end.isoformat(), cost_model_key
             )
-            self._bucket_scrap(scrap_rows, days, start, end)
-            self._bucket_production(production_rows, days, start, end)
+            self._bucket_scrap(scrap_rows, days, start, end, part_to_bu)
+            self._bucket_production(production_rows, days, start, end, part_to_bu)
             total_scrap_rows += len(scrap_rows)
             total_production_rows += len(production_rows)
 
@@ -230,14 +278,18 @@ class CogpDailyBuService:
             days[key] = empty_day()
         return days[key]
 
-    def _bucket_scrap(self, rows: list[dict], days: dict, start: date, end: date) -> None:
+    def _bucket_scrap(
+        self, rows: list[dict], days: dict, start: date, end: date,
+        part_to_bu: dict[str, str],
+    ) -> None:
         for row in rows:
             report_date = _normalize_report_date(row.get("Report_Date"))
             if report_date is None or not (start <= report_date <= end):
                 continue
 
-            bu = resolve_bu_from_workcenter(
-                row.get("Workcenter_Group"), row.get("Workcenter")
+            bu = _resolve_bu_for_daily_scrap(
+                row.get("Workcenter_Group"), row.get("Workcenter"),
+                row.get("Part_No"), part_to_bu,
             )
             bu_key = BU_KEYS.get(bu)
             if bu_key is None:
@@ -250,7 +302,10 @@ class CogpDailyBuService:
             )
             target["scrap_qty"] += _to_int_qty(row.get("Quantity"))
 
-    def _bucket_production(self, rows: list[dict], days: dict, start: date, end: date) -> None:
+    def _bucket_production(
+        self, rows: list[dict], days: dict, start: date, end: date,
+        part_to_bu: dict[str, str],
+    ) -> None:
         unclassified: set[str] = set()
 
         for row in rows:
@@ -259,7 +314,11 @@ class CogpDailyBuService:
                 continue
 
             workcenter = row.get("Workcenter")
-            bu_key = BU_KEYS.get(resolve_bu_for_production(workcenter))
+            bu = _resolve_bu_for_daily_production(
+                workcenter, row.get("Workcenter_Group"),
+                row.get("Part_No"), part_to_bu,
+            )
+            bu_key = BU_KEYS.get(bu)
             if bu_key is None:
                 unclassified.add(str(workcenter))
                 continue

@@ -1,17 +1,38 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { CogpWeekPoint } from "../services/cogp.service";
 
 interface CogpTrendChartProps {
   points: CogpWeekPoint[];
   color?: string;
+  height?: number;
 }
 
 const THRESHOLD = 2;
 
-export default function CogpTrendChart({ points, color = "#3b82f6" }: CogpTrendChartProps) {
+function useContainerWidth<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [width, setWidth] = useState(480);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    const observer = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setWidth(w);
+    });
+    observer.observe(el);
+    setWidth(el.getBoundingClientRect().width || 480);
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, width };
+}
+
+export default function CogpTrendChart({ points, color = "#3b82f6", height }: CogpTrendChartProps) {
   const { t } = useTranslation();
   const [tooltip, setTooltip] = useState<{ idx: number } | null>(null);
+  const { ref: containerRef, width: measuredWidth } = useContainerWidth<HTMLDivElement>();
 
   if (points.length === 0) {
     return (
@@ -24,7 +45,10 @@ export default function CogpTrendChart({ points, color = "#3b82f6" }: CogpTrendC
   const values = points.map(p => (p.cogp_pct !== null ? parseFloat(p.cogp_pct) : 0));
   const maxVal = Math.max(...values, THRESHOLD * 1.5, 1);
 
-  const W = 480; const H = 180;
+  // viewBox W = ancho real medido del contenedor -> escala X e Y por igual,
+  // sin deformar circulos/texto. H sigue el prop (fullscreen la agranda).
+  const W = measuredWidth;
+  const H = height ?? 180;
   const padL = 30; const padR = 16; const padT = 16; const padB = 26;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
@@ -38,8 +62,13 @@ export default function CogpTrendChart({ points, color = "#3b82f6" }: CogpTrendC
   const weekLabel = t("cogpDashboard.week");
 
   return (
-    <div style={{ position: "relative" }}>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: "visible" }}>
+    <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
+      <svg
+        width={W}
+        height={H}
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ overflow: "visible", display: "block" }}
+      >
         {[0, 0.25, 0.5, 0.75, 1].map(pct => {
           const y = padT + chartH * (1 - pct);
           return (
@@ -92,30 +121,42 @@ export default function CogpTrendChart({ points, color = "#3b82f6" }: CogpTrendC
       </svg>
 
       {tooltip && (
-        <div style={{
-          position: "absolute",
-          left: `${(toX(tooltip.idx) / W) * 100}%`,
-          top: "0.25rem",
-          transform: "translate(-50%, 0)",
-          background: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-          borderRadius: "8px", padding: "0.4rem 0.6rem",
-          fontSize: "0.72rem", color: "var(--color-text-primary)",
-          pointerEvents: "none", zIndex: 20,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          whiteSpace: "nowrap",
-        }}>
-          <div style={{ fontWeight: 700 }}>
-            {weekLabel}{points[tooltip.idx].iso_week} · {points[tooltip.idx].iso_year}
-          </div>
-          <div>
-            COGP:{" "}
-            <strong style={{ color: values[tooltip.idx] <= THRESHOLD ? "#10b981" : "#ef4444" }}>
-              {values[tooltip.idx].toFixed(2)}%
-            </strong>
-          </div>
-        </div>
-      )}
+  <div style={{
+    position: "absolute",
+    left: `${(toX(tooltip.idx) / W) * 100}%`,
+    top: "0.25rem",
+    transform: "translate(-50%, 0)",
+    background: "var(--color-surface)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "8px", padding: "0.4rem 0.6rem",
+    fontSize: "0.72rem", color: "var(--color-text-primary)",
+    pointerEvents: "none", zIndex: 20,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+    whiteSpace: "nowrap",
+  }}>
+    <div style={{ fontWeight: 700, marginBottom: "0.2rem" }}>
+      {weekLabel}{points[tooltip.idx].iso_week} · {points[tooltip.idx].iso_year}
+    </div>
+    <div>
+      COGP:{" "}
+      <strong style={{ color: values[tooltip.idx] <= THRESHOLD ? "#10b981" : "#ef4444" }}>
+        {values[tooltip.idx].toFixed(2)}%
+      </strong>
+    </div>
+    <div style={{ color: "var(--color-text-secondary)", marginTop: "0.15rem" }}>
+      {t("cogpDashboard.tooltipScrap")}:{" "}
+      <strong style={{ color: "var(--color-text-primary)" }}>
+        ${parseFloat(points[tooltip.idx].scrap_cost).toFixed(2)}
+      </strong>
+    </div>
+    <div style={{ color: "var(--color-text-secondary)" }}>
+      {t("cogpDashboard.tooltipProduction")}:{" "}
+      <strong style={{ color: "var(--color-text-primary)" }}>
+        ${parseFloat(points[tooltip.idx].extended_cost).toFixed(2)}
+      </strong>
+    </div>
+  </div>
+)}
     </div>
   );
 }
