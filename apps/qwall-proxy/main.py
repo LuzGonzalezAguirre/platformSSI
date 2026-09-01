@@ -40,7 +40,7 @@ def health():
 class DateRange(BaseModel):
     start_date: str
     end_date:   str
-    bu_id:      int | None = None
+    bu_ids:     list[int] | None = None
 
 
 class RejectionReportBody(BaseModel):
@@ -53,7 +53,11 @@ class RejectionReportBody(BaseModel):
 
 @app.post("/inspections", dependencies=[Depends(verify)])
 def get_inspections(body: DateRange):
-    bu_filter = f"AND pn.bu_id = {int(body.bu_id)}" if body.bu_id else ""
+    if body.bu_ids:
+        placeholders = ", ".join(str(int(b)) for b in body.bu_ids)
+        bu_filter = f"AND pn.bu_id IN ({placeholders})"
+    else:
+        bu_filter = ""
 
     query = f"""
     SELECT
@@ -256,8 +260,12 @@ def get_part_numbers():
 
 
 @app.get("/piece-flags/count", dependencies=[Depends(verify)])
-def piece_flags_count(start_date: str, end_date: str, bu_id: int | None = None):
-    bu_filter = f"AND pn.bu_id = {int(bu_id)}" if bu_id else ""
+def piece_flags_count(start_date: str, end_date: str, bu_ids: list[int] | None = Query(None)):
+    if bu_ids:
+        placeholders = ", ".join(str(int(b)) for b in bu_ids)
+        bu_filter = f"AND pn.bu_id IN ({placeholders})"
+    else:
+        bu_filter = ""
     sql = f"""
         SELECT COUNT(*) AS flag_count
         FROM ssi_PieceFlagRecords pfr

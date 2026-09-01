@@ -121,12 +121,7 @@ class QWallRepository:
 
     @staticmethod
     def get_part_numbers() -> list[dict]:
-        """
-        Catalogo completo Part_No -> BU/cliente desde CCS (ssi_PartNumbers).
-        Usado como fallback de clasificacion en COGP cuando Plex no expone
-        el cliente real (ej. ventas intercompania -- ver John Deere,
-        Customer_No=332205/SSI-Plainfield, sesion 2026-08-25).
-        """
+        
         cache_key = "qwall:part_numbers"
         cached    = cache.get(cache_key)
         if cached is not None:
@@ -166,12 +161,7 @@ class QWallRepository:
 
     @staticmethod
     def get_part_numbers() -> list[dict]:
-        """
-        Catalogo completo Part_No -> BU/cliente desde CCS (ssi_PartNumbers).
-        Usado como fallback de clasificacion en COGP cuando Plex no expone
-        el cliente real (ej. ventas intercompania -- ver John Deere,
-        Customer_No=332205/SSI-Plainfield, sesion 2026-08-25).
-        """
+      
         cache_key = "qwall:part_numbers"
         cached    = cache.get(cache_key)
         if cached is not None:
