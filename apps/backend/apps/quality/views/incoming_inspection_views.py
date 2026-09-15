@@ -2,6 +2,7 @@
 import hashlib
 import json
 
+from celery.result import AsyncResult
 from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -19,6 +20,12 @@ from apps.quality.services import incoming_inspection_rejection_comment_service 
 from apps.quality.services import incoming_inspection_user_lookup_service as user_lookup_service
 from apps.quality.services import incoming_inspection_dashboard_service as dashboard_service
 from apps.quality.services import incoming_inspection_pending_service as pending_service
+from apps.quality.tasks import (
+    INCOMING_REFRESH_LOCK_KEY,
+    INCOMING_REFRESH_TASK_KEY_PREFIX,
+    INCOMING_REFRESH_TTL,
+    refresh_incoming_inspection,
+)
 
 ALLOWED_SORT_FIELDS = {"change_date", "-change_date", "part_no", "-part_no", "operation_no", "-operation_no"}
 
@@ -54,6 +61,10 @@ def _cache_key(namespace: str, filters: dict) -> str:
     return f"incoming_inspection:{namespace}:{CACHE_VERSION}:{digest}"
 
 
+def _use_cache(request) -> bool:
+    return request.query_params.get("_fresh") != "1"
+
+
 def _parse_filters(request) -> dict:
     params = request.query_params
     filters = {}
@@ -81,12 +92,14 @@ class IncomingInspectionDashboardView(APIView):
         filters = _parse_filters(request)
         cache_key = _cache_key("dashboard", filters)
 
-        cached = cache.get(cache_key)
-        if cached is not None:
-            return Response(cached)
+        if _use_cache(request):
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return Response(cached)
 
         data = dashboard_service.get_dashboard(filters)
-        cache.set(cache_key, data, DASHBOARD_CACHE_TTL)
+        if _use_cache(request):
+            cache.set(cache_key, data, DASHBOARD_CACHE_TTL)
         return Response(data)
 
 
@@ -97,12 +110,14 @@ class IncomingInspectionPendingView(APIView):
         filters = _parse_filters(request)
         cache_key = _cache_key("pending", filters)
 
-        cached = cache.get(cache_key)
-        if cached is not None:
-            return Response(cached)
+        if _use_cache(request):
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return Response(cached)
 
         data = pending_service.get_pending_backlog(filters)
-        cache.set(cache_key, data, PENDING_CACHE_TTL)
+        if _use_cache(request):
+            cache.set(cache_key, data, PENDING_CACHE_TTL)
         return Response(data)
 
 
@@ -113,9 +128,10 @@ class IncomingInspectionKPIsView(APIView):
         filters = _parse_filters(request)
         cache_key = _cache_key("kpis", filters)
 
-        cached = cache.get(cache_key)
-        if cached is not None:
-            return Response(cached)
+        if _use_cache(request):
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return Response(cached)
 
         data = {
             "operation_counts": kpi_service.get_operation_counts(filters),
@@ -123,8 +139,47 @@ class IncomingInspectionKPIsView(APIView):
             "acceptance_rate": kpi_service.get_acceptance_rate(filters),
             "sla_compliance": kpi_service.get_sla_compliance(filters),
         }
-        cache.set(cache_key, data, KPI_CACHE_TTL)
+        if _use_cache(request):
+            cache.set(cache_key, data, KPI_CACHE_TTL)
         return Response(data)
+
+
+class IncomingInspectionRefreshView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        active_task_id = cache.get(INCOMING_REFRESH_LOCK_KEY)
+        if active_task_id:
+            state = AsyncResult(active_task_id).state
+            if state in {"PENDING", "RECEIVED", "STARTED", "RETRY"}:
+                return Response({"task_id": active_task_id, "status": "refreshing"}, status=202)
+
+        task = refresh_incoming_inspection.delay()
+        cache.set(INCOMING_REFRESH_LOCK_KEY, task.id, INCOMING_REFRESH_TTL)
+        cache.set(
+            f"{INCOMING_REFRESH_TASK_KEY_PREFIX}{task.id}",
+            True,
+            INCOMING_REFRESH_TTL,
+        )
+        return Response({"task_id": task.id, "status": "refreshing"}, status=202)
+
+
+class IncomingInspectionRefreshStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, task_id):
+        if not cache.get(f"{INCOMING_REFRESH_TASK_KEY_PREFIX}{task_id}"):
+            return Response({"detail": "Actualizacion no encontrada o expirada."}, status=404)
+
+        task = AsyncResult(task_id)
+        if task.state == "SUCCESS":
+            return Response({"task_id": task_id, "status": "ready", "result": task.result})
+        if task.state == "FAILURE":
+            return Response(
+                {"task_id": task_id, "status": "error", "detail": "No fue posible actualizar los datos desde Plex."},
+                status=502,
+            )
+        return Response({"task_id": task_id, "status": "refreshing"}, status=202)
 
 
 class IncomingInspectionDetailView(APIView):
