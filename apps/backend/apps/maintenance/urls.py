@@ -5,6 +5,7 @@ from apps.maintenance.views.overview_views import (
 )
 from apps.maintenance.views.dashboard_targets_views import DashboardTargetsView
 from apps.maintenance.views.work_requests_views import WorkRequestsDashboardView
+from apps.maintenance.views.down_equipment_views import DownEquipmentDashboardView
 from apps.maintenance.views.ca_views import (
     CorrectiveActionListCreateView,
     CorrectiveActionDetailView,
@@ -25,6 +26,7 @@ urlpatterns = [
     path("overview/oee-live/",                    OEELiveView.as_view()),
     path("overview/targets/",                     DashboardTargetsView.as_view()),
     path("work-requests/dashboard/",              WorkRequestsDashboardView.as_view()),
+    path("down-equipment/dashboard/",              DownEquipmentDashboardView.as_view()),
     path("corrective-actions/",                   CorrectiveActionListCreateView.as_view()),
     path("corrective-actions/<int:pk>/",          CorrectiveActionDetailView.as_view()),
     path("corrective-actions/<int:pk>/comments/", CorrectiveActionCommentView.as_view()),
