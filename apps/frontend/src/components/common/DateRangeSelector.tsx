@@ -11,7 +11,7 @@ interface Props {
   defaultPreset?: DatePreset;
   /**
    * Grupos de presets adicionales, concatenados despues de los grupos
-   * incorporados (Dias/Semanas/Meses). Pensado para pantallas de
+   * incorporados (Dias/Semanas/Meses/Histórico). Pensado para pantallas de
    * tendencia larga (ej. Scrap Rate: YTD, ultimas 26/52 semanas) que no
    * encajan en el vocabulario general de dias/semanas/meses cortos.
    * Sin esta prop el componente se comporta exactamente igual que antes.
@@ -31,27 +31,36 @@ const GROUPS: PresetGroup[] = [
     title_es: "Semanas", title_en: "Weeks",
     options: [
       { preset: "current_week",  es: "Semana Actual",   en: "Current Week" },
-      { preset: "next_week",     es: "Próxima Semana",  en: "Next Week" },
       { preset: "previous_week", es: "Semana Anterior",  en: "Previous Week" },
       { preset: "last_7_days",   es: "Últimos 7 Días",   en: "Last 7 Days" },
+      { preset: "last_14_days",  es: "Últimos 14 Días",  en: "Last 14 Days" },
     ],
   },
   {
     title_es: "Meses", title_en: "Months",
     options: [
       { preset: "month_to_date",  es: "Mes Actual a la Fecha", en: "Month To Date" },
-      { preset: "current_month",  es: "Mes Actual",            en: "Current Month" },
       { preset: "previous_month", es: "Mes Anterior",          en: "Previous Month" },
-      { preset: "next_30_days",   es: "Próximos 30 Días",      en: "Next 30 Days" },
       { preset: "last_30_days",   es: "Últimos 30 Días",       en: "Last 30 Days" },
       { preset: "last_60_days",   es: "Últimos 60 Días",       en: "Last 60 Days" },
       { preset: "last_90_days",   es: "Últimos 90 Días",       en: "Last 90 Days" },
     ],
   },
+  {
+    title_es: "Histórico", title_en: "Historical",
+    options: [
+      { preset: "year_to_date",  es: "Año Actual a la Fecha", en: "Current Year to Date" },
+      { preset: "last_180_days", es: "Últimos 180 Días",  en: "Last 180 Days" },
+      { preset: "last_365_days", es: "Últimos 365 Días",  en: "Last 365 Days" },
+      { preset: "previous_year", es: "Año Anterior",      en: "Previous Year" },
+    ],
+  },
 ];
 
 function formatShort(dateStr: string): string {
-  return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", {
+    year: "numeric", month: "short", day: "numeric",
+  });
 }
 
 export default function DateRangeSelector({ value, onChange, defaultPreset = "custom", extraGroups }: Props) {
