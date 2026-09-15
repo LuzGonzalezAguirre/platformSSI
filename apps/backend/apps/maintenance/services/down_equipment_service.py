@@ -124,7 +124,7 @@ def _filter_bu(rows: list[dict], allowed_bu: tuple[str, ...], include_unclassifi
 def _build_trends(rows: list[dict]) -> dict:
     by_day = defaultdict(lambda: {"hours": 0.0, "events": 0})
     by_bu = defaultdict(lambda: {"hours": 0.0, "events": 0})
-    recurrent = defaultdict(lambda: {"description": "", "hours": 0.0, "events": 0})
+    recurrent = defaultdict(lambda: {"description": "", "hours": 0.0, "events": 0, "event_items": []})
 
     for row in rows:
         if row["date"]:
@@ -136,6 +136,12 @@ def _build_trends(rows: list[dict]) -> dict:
         item["description"] = row["equipment_description"]
         item["hours"] += row["hours"]
         item["events"] += 1
+        item["event_items"].append({
+            "date": row["date"],
+            "hours": round(row["hours"], 2),
+            "reason": row["reason"],
+            "bu": row["bu"],
+        })
 
     return {
         "by_day": [
@@ -157,6 +163,11 @@ def _build_trends(rows: list[dict]) -> dict:
                     "description": value["description"],
                     "hours": round(value["hours"], 2),
                     "events": value["events"],
+                    "event_items": sorted(
+                        value["event_items"],
+                        key=lambda event: event["date"],
+                        reverse=True,
+                    ),
                 }
                 for key, value in recurrent.items()
             ],
