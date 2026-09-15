@@ -3,17 +3,26 @@ import type {
   IncomingInspectionFilters, IncomingInspectionKPIs,
   IncomingContainerHistoryRow, PaginatedResponse, SLAConfig,
   RejectionComment, IncomingDashboard, PendingBacklog,
+  IncomingRefreshStart, IncomingRefreshStatus,
 } from "../types";
 
 const BASE = "/quality/incoming-inspection";
 
 function toParams(filters: IncomingInspectionFilters): Record<string, string | number> {
-  const params: Record<string, string | number> = {};
+  // Incoming es operativo: la UI solicita siempre la lectura actual de
+  // Postgres después del refresh de Plex, sin reutilizar el payload Redis.
+  const params: Record<string, string | number> = { _fresh: 1 };
   (Object.entries(filters) as [string, string | number | undefined][]).forEach(([k, v]) => {
     if (v !== undefined && v !== "") params[k] = v;
   });
   return params;
 }
+
+export const startLiveRefresh = () =>
+  apiClient.post<IncomingRefreshStart>(`${BASE}/refresh/`).then(r => r.data);
+
+export const fetchLiveRefreshStatus = (taskId: string) =>
+  apiClient.get<IncomingRefreshStatus>(`${BASE}/refresh/${encodeURIComponent(taskId)}/`).then(r => r.data);
 
 export const fetchDashboard = (filters: IncomingInspectionFilters) =>
   apiClient.get<IncomingDashboard>(`${BASE}/dashboard/`, { params: toParams(filters) }).then(r => r.data);
