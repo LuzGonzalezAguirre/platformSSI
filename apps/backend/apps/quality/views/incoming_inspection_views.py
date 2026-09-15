@@ -1,6 +1,7 @@
 # apps/quality/views/incoming_inspection_views.py
 import hashlib
 import json
+from uuid import uuid4
 
 from celery.result import AsyncResult
 from django.core.cache import cache
@@ -154,14 +155,31 @@ class IncomingInspectionRefreshView(APIView):
             if state in {"PENDING", "RECEIVED", "STARTED", "RETRY"}:
                 return Response({"task_id": active_task_id, "status": "refreshing"}, status=202)
 
-        task = refresh_incoming_inspection.delay()
-        cache.set(INCOMING_REFRESH_LOCK_KEY, task.id, INCOMING_REFRESH_TTL)
+        # Reservar el refresh antes de enviarlo a Celery. cache.add es
+        # atómico en Redis: si dos pestañas abren Incoming al mismo tiempo,
+        # sólo una crea la tarea y la otra reutiliza su task_id.
+        task_id = str(uuid4())
+        if not cache.add(INCOMING_REFRESH_LOCK_KEY, task_id, INCOMING_REFRESH_TTL):
+            active_task_id = cache.get(INCOMING_REFRESH_LOCK_KEY)
+            return Response(
+                {"task_id": active_task_id, "status": "refreshing"},
+                status=202,
+            )
+
         cache.set(
-            f"{INCOMING_REFRESH_TASK_KEY_PREFIX}{task.id}",
+            f"{INCOMING_REFRESH_TASK_KEY_PREFIX}{task_id}",
             True,
             INCOMING_REFRESH_TTL,
         )
-        return Response({"task_id": task.id, "status": "refreshing"}, status=202)
+        try:
+            refresh_incoming_inspection.apply_async(task_id=task_id)
+        except Exception:
+            cache.delete(f"{INCOMING_REFRESH_TASK_KEY_PREFIX}{task_id}")
+            if cache.get(INCOMING_REFRESH_LOCK_KEY) == task_id:
+                cache.delete(INCOMING_REFRESH_LOCK_KEY)
+            raise
+
+        return Response({"task_id": task_id, "status": "refreshing"}, status=202)
 
 
 class IncomingInspectionRefreshStatusView(APIView):
