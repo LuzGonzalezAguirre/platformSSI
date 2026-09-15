@@ -2,7 +2,7 @@ export type DatePreset =
   | "today" | "yesterday"
   | "current_week" | "next_week" | "previous_week" | "last_7_days"
   | "month_to_date" | "current_month" | "previous_month"
-  | "next_30_days" | "last_30_days" | "last_60_days" | "last_90_days"
+  | "next_30_days" | "last_30_days" | "last_60_days" | "last_90_days" | "last_365_days"
   | "year_to_date" | "last_26_weeks" | "last_52_weeks"
   | "custom";
 
@@ -85,6 +85,10 @@ export function resolvePreset(preset: Exclude<DatePreset, "custom">): DateRange 
 
     case "last_90_days":
       return { start: fmt(addDays(now, -90)), end: fmt(now) };
+
+    case "last_365_days":
+      // 364 dias hacia atras + hoy = 365 dias inclusivos.
+      return { start: fmt(addDays(now, -364)), end: fmt(now) };
 
     // ── rangos largos (tendencias semanales, ej. Scrap Rate) ──────────
     // Alineados a lunes ISO, igual que iso_week_spine() en el backend --
