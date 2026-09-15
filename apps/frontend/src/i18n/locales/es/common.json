@@ -56,7 +56,8 @@
     "qualityCogp": "COGP",
     "qualityCogpMapping": "Mapeo COGP",
     "qualityScrapRate": "Scrap Rate",
-    "maintenancePmp": "Programa PM"
+    "maintenancePmp": "Programa PM",
+      "maintenanceDownEquipment": "Equipos caídos"
 
   }
   },

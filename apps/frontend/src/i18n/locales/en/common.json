@@ -57,7 +57,8 @@
     "qualityCogp": "COGP",
     "qualityCogpMapping": "COGP Mapping",
     "qualityScrapRate": "Scrap Rate",
-    "maintenancePmp": "PM Program"
+    "maintenancePmp": "PM Program",
+      "maintenanceDownEquipment": "Down Equipment"
 
 
 
