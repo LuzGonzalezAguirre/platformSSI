@@ -276,8 +276,8 @@ class QWallReportView(APIView):
         if end_date < start_date:
             return Response({"error": "end_date no puede ser anterior a start_date."}, status=400)
 
-        if (end_date - start_date).days > 180:
-            return Response({"error": "Rango máximo permitido: 180 días."}, status=400)
+        if (end_date - start_date).days >= 366:
+            return Response({"error": "Rango máximo permitido: 366 días."}, status=400)
 
         # ═══════════════════════════════════════════════════════════════════════
         # IMPORTANTE: QWallService.get_report es ESTÁTICO
