@@ -135,7 +135,7 @@ def sync_incoming_history():
     run_started_at = timezone.now()
 
     try:
-        rows = plex_repo.fetch_history_since(watermark)
+        rows = plex_repo.fetch_history_since(watermark, run_started_at)
         created_count, existing_count = upsert_history_rows(rows)
     except Exception as exc:
         _mark_error("history", str(exc))
