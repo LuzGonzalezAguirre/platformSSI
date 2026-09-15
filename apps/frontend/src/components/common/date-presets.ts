@@ -1,9 +1,9 @@
 export type DatePreset =
   | "today" | "yesterday"
-  | "current_week" | "next_week" | "previous_week" | "last_7_days"
+  | "current_week" | "next_week" | "previous_week" | "last_7_days" | "last_14_days"
   | "month_to_date" | "current_month" | "previous_month"
-  | "next_30_days" | "last_30_days" | "last_60_days" | "last_90_days" | "last_365_days"
-  | "year_to_date" | "last_26_weeks" | "last_52_weeks"
+  | "next_30_days" | "last_30_days" | "last_60_days" | "last_90_days" | "last_180_days" | "last_365_days"
+  | "year_to_date" | "previous_year" | "last_26_weeks" | "last_52_weeks"
   | "custom";
 
 export interface DateRange {
@@ -55,7 +55,10 @@ export function resolvePreset(preset: Exclude<DatePreset, "custom">): DateRange 
     }
 
     case "last_7_days":
-      return { start: fmt(addDays(now, -7)), end: fmt(now) };
+      return { start: fmt(addDays(now, -6)), end: fmt(now) };
+
+    case "last_14_days":
+      return { start: fmt(addDays(now, -13)), end: fmt(now) };
 
     case "month_to_date": {
       const first = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -78,13 +81,16 @@ export function resolvePreset(preset: Exclude<DatePreset, "custom">): DateRange 
       return { start: fmt(now), end: fmt(addDays(now, 30)) };
 
     case "last_30_days":
-      return { start: fmt(addDays(now, -30)), end: fmt(now) };
+      return { start: fmt(addDays(now, -29)), end: fmt(now) };
 
     case "last_60_days":
-      return { start: fmt(addDays(now, -60)), end: fmt(now) };
+      return { start: fmt(addDays(now, -59)), end: fmt(now) };
 
     case "last_90_days":
-      return { start: fmt(addDays(now, -90)), end: fmt(now) };
+      return { start: fmt(addDays(now, -89)), end: fmt(now) };
+
+    case "last_180_days":
+      return { start: fmt(addDays(now, -179)), end: fmt(now) };
 
     case "last_365_days":
       // 364 dias hacia atras + hoy = 365 dias inclusivos.
@@ -99,6 +105,12 @@ export function resolvePreset(preset: Exclude<DatePreset, "custom">): DateRange 
     case "year_to_date": {
       const first = new Date(now.getFullYear(), 0, 1);
       return { start: fmt(first), end: fmt(now) };
+    }
+
+    case "previous_year": {
+      const first = new Date(now.getFullYear() - 1, 0, 1);
+      const last = new Date(now.getFullYear() - 1, 11, 31);
+      return { start: fmt(first), end: fmt(last) };
     }
 
     case "last_26_weeks":

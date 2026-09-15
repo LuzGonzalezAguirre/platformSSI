@@ -32,12 +32,15 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        since = datetime.strptime(options["since"], "%Y-%m-%d %H:%M:%S")
+        since = timezone.make_aware(
+            datetime.strptime(options["since"], "%Y-%m-%d %H:%M:%S"),
+            timezone.get_current_timezone(),
+        )
         run_started_at = timezone.now()
 
         self.stdout.write(f"Backfilling Incoming Inspection history desde {since}...")
 
-        rows = plex_repo.fetch_history_since(since)
+        rows = plex_repo.fetch_history_since(since, run_started_at)
         self.stdout.write(f"Plex devolvió {len(rows)} filas.")
 
         created, existing = upsert_history_rows(rows)

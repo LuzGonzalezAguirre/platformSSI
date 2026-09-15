@@ -5,12 +5,12 @@ from datetime import date, timedelta
 import requests
 from django.core.cache import cache
 from apps.ssi_common.filters.base import FilterContext
+from apps.ssi_common.plex_ranges import PLEX_CHUNK_DAYS, date_chunks
 
 PROXY_URL    = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
 PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
 HEADERS      = {"Authorization": f"Bearer {PROXY_SECRET}"}
 CACHE_TTL    = 600
-PLEX_CHUNK_DAYS = 168
 
 
 def _post(endpoint: str, payload: dict, timeout: int = 45) -> dict:
@@ -22,20 +22,6 @@ def _post(endpoint: str, payload: dict, timeout: int = 45) -> dict:
     )
     resp.raise_for_status()
     return resp.json()
-
-
-def _date_chunks(start_date: str, end_date: str, chunk_days: int = PLEX_CHUNK_DAYS):
-    """Yield inclusive date windows small enough for the Plex ODBC driver."""
-    start = date.fromisoformat(start_date)
-    end = date.fromisoformat(end_date)
-    if end < start:
-        raise ValueError("end_date anterior a start_date")
-
-    current = start
-    while current <= end:
-        chunk_end = min(current + timedelta(days=chunk_days - 1), end)
-        yield current.isoformat(), chunk_end.isoformat()
-        current = chunk_end + timedelta(days=1)
 
 
 def _round2(value: float) -> float:
@@ -80,13 +66,13 @@ class MaintenanceService:
         if cached:
             return cached
 
-        chunks = list(_date_chunks(
+        chunks = list(date_chunks(
             filter_ctx.start_date.isoformat(), filter_ctx.end_date.isoformat()
         ))
         if len(chunks) == 1:
             result = _post("/maintenance-kpis", {
-                "start_date": chunks[0][0],
-                "end_date": chunks[0][1],
+                "start_date": chunks[0][0].isoformat(),
+                "end_date": chunks[0][1].isoformat(),
             })
             cache.set(cache_key, result, CACHE_TTL)
             return result
@@ -98,8 +84,8 @@ class MaintenanceService:
         )
         for chunk_start, chunk_end in chunks:
             response = _post("/maintenance-kpis", {
-                "start_date": chunk_start,
-                "end_date": chunk_end,
+                "start_date": chunk_start.isoformat(),
+                "end_date": chunk_end.isoformat(),
             })
             data = response.get("data") or {}
             for field in fields:
@@ -125,11 +111,11 @@ class MaintenanceService:
         cached = cache.get(key)
         if cached:
             return cached
-        chunks = list(_date_chunks(start_date, end_date))
+        chunks = list(date_chunks(start_date, end_date))
         if len(chunks) == 1:
             result = _post("/maintenance-downtime-reasons", {
-                "start_date": chunks[0][0],
-                "end_date": chunks[0][1],
+                "start_date": chunks[0][0].isoformat(),
+                "end_date": chunks[0][1].isoformat(),
             })
             cache.set(key, result, CACHE_TTL)
             return result
@@ -137,8 +123,8 @@ class MaintenanceService:
         by_reason = defaultdict(lambda: {"total_events": 0, "total_hours": 0.0})
         for chunk_start, chunk_end in chunks:
             response = _post("/maintenance-downtime-reasons", {
-                "start_date": chunk_start,
-                "end_date": chunk_end,
+                "start_date": chunk_start.isoformat(),
+                "end_date": chunk_end.isoformat(),
             })
             for row in response.get("data", []):
                 item = by_reason[row["reason"]]
@@ -166,11 +152,16 @@ class MaintenanceService:
         cached = cache.get(key)
         if cached:
             return cached
-        result = _post("/maintenance-downtime-detail", {
-            "start_date": start_date,
-            "end_date":   end_date,
-            "reason":     reason,
-        })
+        rows = []
+        for chunk_start, chunk_end in date_chunks(start_date, end_date):
+            response = _post("/maintenance-downtime-detail", {
+                "start_date": chunk_start.isoformat(),
+                "end_date":   chunk_end.isoformat(),
+                "reason":     reason,
+            })
+            rows.extend(response.get("data", []))
+        rows.sort(key=lambda row: str(row.get("Log_Date") or row.get("log_date") or ""))
+        result = {"data": rows}
         cache.set(key, result, 300)
         return result
     
@@ -180,11 +171,11 @@ class MaintenanceService:
         cached = cache.get(key)
         if cached:
             return cached
-        chunks = list(_date_chunks(start_date, end_date))
+        chunks = list(date_chunks(start_date, end_date))
         if len(chunks) == 1:
             result = _post("/maintenance-downtime-by-month", {
-                "start_date": chunks[0][0],
-                "end_date": chunks[0][1],
+                "start_date": chunks[0][0].isoformat(),
+                "end_date": chunks[0][1].isoformat(),
             })
             cache.set(key, result, CACHE_TTL)
             return result
@@ -192,8 +183,8 @@ class MaintenanceService:
         data = []
         for chunk_start, chunk_end in chunks:
             response = _post("/maintenance-downtime-by-month", {
-                "start_date": chunk_start,
-                "end_date": chunk_end,
+                "start_date": chunk_start.isoformat(),
+                "end_date": chunk_end.isoformat(),
             })
             data.extend(response.get("data", []))
         data.sort(key=lambda row: (row.get("date", ""), row.get("reason", "")))
@@ -207,7 +198,7 @@ class MaintenanceService:
         cached = cache.get(key)
         if cached:
             return cached
-        chunks = list(_date_chunks(start_date, end_date))
+        chunks = list(date_chunks(start_date, end_date))
         totals = defaultdict(float)
         found = False
         required_raw = ("operating_hours", "plan_hours", "ideal_hours_total")
@@ -215,7 +206,7 @@ class MaintenanceService:
         for chunk_start, chunk_end in chunks:
             result = _post(
                 "/oee-live",
-                {"start_date": chunk_start, "end_date": chunk_end},
+                {"start_date": chunk_start.isoformat(), "end_date": chunk_end.isoformat()},
                 timeout=60,
             )
             raw = result.get("data")
