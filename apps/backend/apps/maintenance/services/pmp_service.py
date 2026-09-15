@@ -6,7 +6,11 @@ import requests
 from django.core.cache import cache
 from django.utils import timezone
 
-from apps.ssi_common.bu_classification import resolve_bu_from_workcenter
+from apps.ssi_common.bu_classification import (
+    CUSTOMER_JOHN_DEERE,
+    resolve_bu_from_workcenter,
+    resolve_customer_from_workcenter,
+)
 from apps.ssi_common.plex_ranges import date_chunks
 
 PROXY_URL    = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
@@ -14,7 +18,7 @@ PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
 HEADERS      = {"Authorization": f"Bearer {PROXY_SECRET}"}
 
 PM_TYPE_KEY   = int(os.getenv("PLEX_PM_TYPE_KEY", "1908"))
-CACHE_VERSION = "v2"
+CACHE_VERSION = "v3"
 CACHE_TTL     = 600
 
 UNCLASSIFIED = "unclassified"
@@ -45,6 +49,26 @@ def normalize_status(raw: str | None) -> str:
     if "hold" in s:
         return STATUS_HOLD
     return STATUS_OPEN
+
+
+def _resolve_maintenance_bu(workcenter_group: str, workcenter: str) -> str:
+    """
+    Clasificacion amplia para Maintenance.
+
+    TULC/Heater Module conservan la BU compartida. Speed se representa por
+    su cliente John Deere, igual que Work Requests, sin convertir Speed en
+    una BusinessUnit global. Los grupos Speed aún no confirmados siguen sin
+    clasificarse por diseño en bu_classification.py.
+    """
+    bu = resolve_bu_from_workcenter(workcenter_group, workcenter)
+    if bu:
+        return bu
+
+    customer = resolve_customer_from_workcenter(workcenter_group, workcenter)
+    if customer == CUSTOMER_JOHN_DEERE:
+        return CUSTOMER_JOHN_DEERE
+
+    return UNCLASSIFIED
 
 
 def _fetch_year_rows(year: int) -> list[dict]:
@@ -86,11 +110,10 @@ def _fetch_year_rows(year: int) -> list[dict]:
     rows = list(by_number.values())
 
     for row in rows:
-        bu = resolve_bu_from_workcenter(
+        row["bu"] = _resolve_maintenance_bu(
             row.get("workcenter_group") or "",
             row.get("workcenter") or "",
         )
-        row["bu"]          = bu or UNCLASSIFIED
         row["status_norm"] = normalize_status(row.get("status"))
 
     rows = [r for r in rows if (r.get("due_date") or "")[:10]]
