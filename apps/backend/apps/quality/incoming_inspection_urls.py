@@ -9,9 +9,13 @@ from apps.quality.views.incoming_inspection_views import (
     IncomingRejectedLotsView,
     IncomingRejectionCommentsView,
     IncomingUserLookupView,
+    IncomingInspectionRefreshView,
+    IncomingInspectionRefreshStatusView,
 )
 
 urlpatterns = [
+    path("refresh/", IncomingInspectionRefreshView.as_view()),
+    path("refresh/<str:task_id>/", IncomingInspectionRefreshStatusView.as_view()),
     path("dashboard/", IncomingInspectionDashboardView.as_view()),
     path("pending/", IncomingInspectionPendingView.as_view()),
     path("kpis/", IncomingInspectionKPIsView.as_view()),
