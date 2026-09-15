@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { RefreshCw, Play } from "lucide-react";
-import DateRangeSelector from "./DateRangeSelector";
+import DateRangeSelector, { PresetGroup } from "./DateRangeSelector";
 import BUSelect from "./BUSelect";
 import WorkcenterSelect from "./WorkcenterSelect";
 import ShiftSelect from "./ShiftSelect";
@@ -17,12 +17,14 @@ interface Props {
   showWorkcenter?: boolean;
   showShift?: boolean;
   filterScope?: "default" | "cogp";
+  dateExtraGroups?: PresetGroup[];
 }
 
 export default function FilterBar({
   draft, setDraft, onApply, loading, extra,
   showBU = true, showWorkcenter = true, showShift = true,
   filterScope = "default",
+  dateExtraGroups,
 }: Props) {
   const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("es") ? "es" : "en";
@@ -34,6 +36,7 @@ export default function FilterBar({
         value={{ start: draft.start, end: draft.end }}
         onChange={(range) => setDraft({ ...draft, ...range })}
         defaultPreset="today"
+        extraGroups={dateExtraGroups}
       />
       {showBU && (
         <BUSelect value={draft.bu} onChange={(bu) => setDraft({ ...draft, bu })} options={choices.bu} />
