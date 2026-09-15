@@ -58,7 +58,8 @@ def _normalize_current(raw_rows: list[dict]) -> tuple[list[dict], str]:
         (_parse_datetime(row.get("Plex_Now")) for row in raw_rows if row.get("Plex_Now")),
         None,
     )
-    fallback_now = timezone.now().replace(tzinfo=None)
+    response_now = timezone.now()
+    fallback_now = response_now.replace(tzinfo=None)
     now_value = plex_now or fallback_now
 
     rows = []
@@ -82,14 +83,17 @@ def _normalize_current(raw_rows: list[dict]) -> tuple[list[dict], str]:
             "status": str(row.get("Status") or "Down"),
             "reason": str(row.get("Reason") or "Sin razón"),
             "notes": str(row.get("Notes") or ""),
-            "started_at": started.isoformat() if started else str(row.get("Started_At") or ""),
+            # Se reconstruye con el reloj local de Django. Plex puede usar un
+            # huso distinto; la duracion se calcula con dos timestamps Plex y
+            # luego se proyecta a una fecha ISO con zona para el navegador.
+            "started_at": (response_now - timedelta(minutes=elapsed)).isoformat() if started else "",
             "elapsed_minutes": elapsed,
             "logged_hours": float(row.get("Logged_Hours") or 0),
             "severity": _severity(elapsed),
         })
 
     rows.sort(key=lambda item: item["elapsed_minutes"], reverse=True)
-    return rows, now_value.isoformat()
+    return rows, response_now.isoformat()
 
 
 def _normalize_history(raw_rows: list[dict]) -> list[dict]:
@@ -174,7 +178,7 @@ class DownEquipmentService:
             current_raw = _get("/maintenance-current-down")
             cache.set("maint:down-equipment:current:v1", current_raw, CURRENT_CACHE_TTL)
 
-        end_date = date.today()
+        end_date = timezone.localdate()
         start_date = end_date - timedelta(days=days - 1)
         history_key = f"maint:down-equipment:history:v1:{start_date}:{end_date}"
         history_raw = cache.get(history_key)
