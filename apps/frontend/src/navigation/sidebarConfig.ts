@@ -204,6 +204,13 @@ export const sidebarConfig: NavSection[] = [
         icon: "CalendarDays",
         allowedRoles: ALL_ROLES,
       },
+      {
+        id: "maintenance.down-equipment",
+        labelKey: "nav.items.maintenanceDownEquipment",
+        path: "/maintenance/down-equipment",
+        icon: "Siren",
+        allowedRoles: ALL_ROLES,
+      },
     ],
   },
   {
