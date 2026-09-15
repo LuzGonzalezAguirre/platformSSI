@@ -7,6 +7,7 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from apps.ssi_common.bu_classification import resolve_bu_from_workcenter
+from apps.ssi_common.plex_ranges import date_chunks
 
 PROXY_URL    = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
 PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
@@ -57,27 +58,32 @@ def _fetch_year_rows(year: int) -> list[dict]:
     if cached is not None:
         return cached
 
-    try:
-        resp = requests.post(
-            f"{PROXY_URL}/work-requests",
-            json={
-                "start_date":            f"{year}-01-01",
-                "end_date":              f"{year}-12-31",
-                "work_request_type_key": PM_TYPE_KEY,
-                "date_field":            "Due_Date",
-            },
-            headers=HEADERS,
-            timeout=120,
-        )
-        resp.raise_for_status()
-    except requests.Timeout as exc:
-        raise PmpServiceError("El proxy de Plex no respondió a tiempo.") from exc
-    except requests.HTTPError as exc:
-        raise PmpServiceError("El proxy de Plex regresó un error.") from exc
-    except requests.RequestException as exc:
-        raise PmpServiceError("No se pudo conectar al proxy de Plex.") from exc
+    by_number: dict = {}
+    for chunk_start, chunk_end in date_chunks(f"{year}-01-01", f"{year}-12-31"):
+        try:
+            resp = requests.post(
+                f"{PROXY_URL}/work-requests",
+                json={
+                    "start_date":            chunk_start.isoformat(),
+                    "end_date":              chunk_end.isoformat(),
+                    "work_request_type_key": PM_TYPE_KEY,
+                    "date_field":            "Due_Date",
+                },
+                headers=HEADERS,
+                timeout=120,
+            )
+            resp.raise_for_status()
+        except requests.Timeout as exc:
+            raise PmpServiceError("El proxy de Plex no respondió a tiempo.") from exc
+        except requests.HTTPError as exc:
+            raise PmpServiceError("El proxy de Plex regresó un error.") from exc
+        except requests.RequestException as exc:
+            raise PmpServiceError("No se pudo conectar al proxy de Plex.") from exc
 
-    rows = resp.json().get("data", [])
+        for row in resp.json().get("data", []):
+            by_number[row.get("work_request_no")] = row
+
+    rows = list(by_number.values())
 
     for row in rows:
         bu = resolve_bu_from_workcenter(
