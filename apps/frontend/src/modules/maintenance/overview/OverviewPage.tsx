@@ -14,6 +14,11 @@ import DashboardTargetsPanel from "./DashboardTargetsPanel";
 
 const TARGETS_EDIT_ROLES = ["admin", "plant_manager", "maintenance_engineer"];
 const CHARTS_BREAKPOINT  = 900;
+const OVERVIEW_DATE_GROUPS = [{
+  title_es: "Rangos largos",
+  title_en: "Long ranges",
+  options: [{ preset: "last_365_days" as const, es: "Últimos 365 Días", en: "Last 365 Days" }],
+}];
 
 export default function OverviewPage() {
   const { i18n } = useTranslation();
@@ -47,7 +52,13 @@ export default function OverviewPage() {
           <h1 style={s.title}>{lang === "es" ? "Mantenimiento — Overview" : "Maintenance Overview"}</h1>
         </div>
         <div style={s.controlsRow}>
-          <FilterBar draft={draft} setDraft={setDraft} onApply={apply} loading={loading} />
+          <FilterBar
+            draft={draft}
+            setDraft={setDraft}
+            onApply={apply}
+            loading={loading}
+            dateExtraGroups={OVERVIEW_DATE_GROUPS}
+          />
           {canEditTargets && (
             <button
               type="button"
