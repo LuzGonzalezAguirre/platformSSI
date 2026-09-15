@@ -8,7 +8,7 @@ from datetime import timedelta
 
 from celery import shared_task
 from django.core.cache import cache
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 
 from apps.quality.models import (
@@ -34,6 +34,7 @@ DEFAULT_HISTORY_LOOKBACK = timedelta(days=1)
 INCOMING_REFRESH_LOCK_KEY = "incoming_inspection:live_refresh:active_task"
 INCOMING_REFRESH_TASK_KEY_PREFIX = "incoming_inspection:live_refresh:task:"
 INCOMING_REFRESH_TTL = 10 * 60
+INCOMING_SNAPSHOT_ADVISORY_LOCK_ID = 73412601
 
 
 def _mark_error(sync_type: str, message: str):
@@ -118,6 +119,15 @@ def sync_incoming_snapshot():
         ]
 
         with transaction.atomic():
+            # Serializa cualquier reemplazo concurrente del snapshot,
+            # incluyendo el refresh al abrir la pantalla y Celery Beat.
+            # Sin este lock, dos DELETE + bulk_create simultáneos pueden
+            # chocar contra el UNIQUE(container_key).
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT pg_advisory_xact_lock(%s)",
+                    [INCOMING_SNAPSHOT_ADVISORY_LOCK_ID],
+                )
             IncomingContainerSnapshot.objects.all().delete()
             IncomingContainerSnapshot.objects.bulk_create(objects)
     except Exception as exc:
