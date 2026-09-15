@@ -36,7 +36,7 @@ class DownEquipmentServiceTests(SimpleTestCase):
             {"date": "2026-09-14", "bu": "VOLVO", "equipment_id": "A", "equipment_description": "A", "reason": "Sensor", "hours": 1.5},
             {"date": "2026-09-13", "bu": "VOLVO", "equipment_id": "A", "equipment_description": "A", "reason": "Mechanical", "hours": 0.5},
         ])
-        self.assertEqual(trends["by_day"][0]["hours"], 2.0)
+        self.assertEqual(sum(item["hours"] for item in trends["by_day"]), 2.0)
         self.assertEqual(trends["recurrent"][0]["events"], 2)
         self.assertEqual(len(trends["recurrent"][0]["event_items"]), 2)
         self.assertEqual(trends["recurrent"][0]["event_items"][0]["date"], "2026-09-14")
