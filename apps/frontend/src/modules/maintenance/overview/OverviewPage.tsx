@@ -6,29 +6,30 @@ import { useMaintenanceData } from "./useMaintenanceData";
 import { useDashboardTargets } from "./useDashboardTargets";
 import { useStandardFilters } from "../../../components/common/useStandardFilters";
 import FilterBar from "../../../components/common/FilterBar";
-import KPISection           from "./KPISection";
-import ProductionMetrics    from "./ProductionMetrics";
-import OEETrendChart        from "./OEETrendChart";
-import DowntimeStackedChart from "./DowntimeStackedChart";
+import KPISection from "./KPISection";
+import ProductionMetrics from "./ProductionMetrics";
+import OEETrendChart from "./OEETrendChart";
 import DashboardTargetsPanel from "./DashboardTargetsPanel";
+import { useWorkRequestsData } from "../work-requests/useWorkRequestsData";
+import TopEquipmentPareto from "../work-requests/TopEquipmentPareto";
 
 const TARGETS_EDIT_ROLES = ["admin", "plant_manager", "maintenance_engineer"];
-const CHARTS_BREAKPOINT  = 900;
+const CHARTS_BREAKPOINT = 900;
+
 export default function OverviewPage() {
   const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("es") ? "es" : "en";
   const { user } = useAuth();
   const canEditTargets = !!user?.roles?.some((r) => TARGETS_EDIT_ROLES.includes(r.slug));
 
-  // draft/applied ahora vive dentro de useStandardFilters (mismo patrón que
-  // antes: editar sin efecto, aplicar con el botón "Cargar" de FilterBar).
   const { draft, setDraft, applied, apply } = useStandardFilters("today");
-  const { kpis, oee, oeeTrend, downtimeMonth, loading, error } = useMaintenanceData(applied);
+  const { kpis, oee, oeeTrend, loading, error } = useMaintenanceData(applied);
+  const { data: workRequestData, loading: wrLoading, error: wrError } = useWorkRequestsData(applied);
   const { targets, getTarget, refetch: refetchTargets } = useDashboardTargets();
 
   const [targetsPanelOpen, setTargetsPanelOpen] = useState(false);
-
   const [narrowCharts, setNarrowCharts] = useState(window.innerWidth < CHARTS_BREAKPOINT);
+
   useEffect(() => {
     const onResize = () => setNarrowCharts(window.innerWidth < CHARTS_BREAKPOINT);
     window.addEventListener("resize", onResize);
@@ -46,12 +47,7 @@ export default function OverviewPage() {
           <h1 style={s.title}>{lang === "es" ? "Mantenimiento — Overview" : "Maintenance Overview"}</h1>
         </div>
         <div style={s.controlsRow}>
-          <FilterBar
-            draft={draft}
-            setDraft={setDraft}
-            onApply={apply}
-            loading={loading}
-          />
+          <FilterBar draft={draft} setDraft={setDraft} onApply={apply} loading={loading || wrLoading} />
           {canEditTargets && (
             <button
               type="button"
@@ -65,17 +61,25 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      {error && <div style={s.errorBanner}>{error}</div>}
+      {(error || wrError) && <div style={s.errorBanner}>{error || wrError}</div>}
 
       {loading ? (
         <div style={s.loading}>{lang === "es" ? "Cargando datos..." : "Loading data..."}</div>
       ) : (
         <>
-          <KPISection      kpis={kpis} oee={oee} lang={lang} getTarget={getTarget} />
+          <KPISection kpis={kpis} oee={oee} lang={lang} getTarget={getTarget} />
           <ProductionMetrics kpis={kpis} lang={lang} getTarget={getTarget} />
           <div style={{ display: "grid", gridTemplateColumns: narrowCharts ? "1fr" : "1fr 1fr", gap: "1rem" }}>
-            <OEETrendChart   data={oeeTrend} lang={lang} compact dayRange={applied} />
-            <DowntimeStackedChart data={downtimeMonth} lang={lang} compact dayRange={applied} />
+            <OEETrendChart data={oeeTrend} lang={lang} compact dayRange={applied} />
+            {wrLoading ? (
+              <div style={s.chartLoading}>{lang === "es" ? "Cargando Pareto de equipos..." : "Loading equipment Pareto..."}</div>
+            ) : (
+              <TopEquipmentPareto
+                byEquipment={workRequestData?.by_equipment ?? []}
+                rows={(workRequestData?.rows ?? []) as any}
+                lang={lang}
+              />
+            )}
           </div>
         </>
       )}
@@ -93,17 +97,18 @@ export default function OverviewPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page:          { display: "flex", flexDirection: "column", gap: "1rem" },
-  header:        {
+  page: { display: "flex", flexDirection: "column", gap: "1rem" },
+  header: {
     display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem",
     position: "sticky", top: 0, zIndex: 10,
     margin: "-1.5rem -2rem 0",
     padding: "1.5rem 2rem 1rem",
     background: "var(--color-bg)",
   },
-  settingsBtn:   { display: "flex", alignItems: "center", justifyContent: "center", padding: "0.375rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "var(--color-text-secondary)", cursor: "pointer" },
-  title:         { fontSize: "1.375rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 },
-  controlsRow:   { display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" },
-  errorBanner:   { padding: "0.75rem 1rem", background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: "var(--radius-md)", color: "#ef4444", fontSize: "0.875rem" },
-  loading:       { padding: "3rem", textAlign: "center", color: "var(--color-text-secondary)" },
+  settingsBtn: { display: "flex", alignItems: "center", justifyContent: "center", padding: "0.375rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "var(--color-text-secondary)", cursor: "pointer" },
+  title: { fontSize: "1.375rem", fontWeight: 700, color: "var(--color-text-primary)", margin: 0 },
+  controlsRow: { display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" },
+  errorBanner: { padding: "0.75rem 1rem", background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: "var(--radius-md)", color: "#ef4444", fontSize: "0.875rem" },
+  loading: { padding: "3rem", textAlign: "center", color: "var(--color-text-secondary)" },
+  chartLoading: { minHeight: 260, display: "grid", placeItems: "center", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", color: "var(--color-text-secondary)", fontSize: "0.8rem" },
 };
