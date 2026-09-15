@@ -1,4 +1,6 @@
-from apps.warehouse.services.plex_client import PlexClient
+import httpx
+
+from apps.warehouse.services.plex_client import PlexClient, PlexProxyError
 
 class QualityPlexClient(PlexClient):
     def get_scrap_detail(
@@ -8,15 +10,23 @@ class QualityPlexClient(PlexClient):
         use_shift: bool = True,
     ) -> dict:
         url      = f"{self.base_url}/scrap-detail"
-        import httpx
-        response = httpx.post(
-            url,
-            json={"start_date": start_date, "end_date": end_date, "use_shift": use_shift},
-            headers=self._headers(),
-            timeout=self.timeout,
-        )
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = httpx.post(
+                url,
+                json={"start_date": start_date, "end_date": end_date, "use_shift": use_shift},
+                headers=self._headers(),
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.TimeoutException as exc:
+            raise PlexProxyError(f"Timeout connecting to Plex proxy at {url}") from exc
+        except httpx.HTTPStatusError as exc:
+            raise PlexProxyError(
+                f"Plex proxy error {exc.response.status_code}: {exc.response.text}"
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise PlexProxyError(f"Unexpected error calling Plex proxy: {exc}") from exc
     def get_cogp_cost_model(self) -> dict:
         return self._get("cogp/cost-model")
 
