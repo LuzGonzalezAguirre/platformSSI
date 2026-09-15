@@ -37,6 +37,11 @@ from .problem_views import (
     ProblemAttachmentDeleteView,
     ProblemNoteListCreateView,
     ProblemNoteDetailView,
+    ProblemCategoryListCreateView,
+ProblemCategoryDetailView,
+ProblemTypeListCreateView,
+ProblemTypeDetailView,
+DefectTypeDetailView,
 )
 from .downtime_views import DowntimeLogsView, DowntimeTrendView
 
@@ -92,4 +97,9 @@ __all__ = [
     'DowntimeSummaryView',
     'DowntimeWorkcentersView',
     'DowntimeAssignmentsView',
+    'ProblemCategoryListCreateView',
+    'ProblemCategoryDetailView',
+    'ProblemTypeListCreateView',
+    'ProblemTypeDetailView',
+    'DefectTypeDetailView'
 ]

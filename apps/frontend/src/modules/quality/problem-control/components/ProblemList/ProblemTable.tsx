@@ -154,8 +154,17 @@ const ProblemRow: React.FC<ProblemRowProps> = ({ problem, index, onView, onEdit,
 
       {/* Status */}
       <td style={styles.td}>
-        <StatusBadge status={problem.status} display={problem.status_display} />
-      </td>
+  <div>
+    <StatusBadge
+      status={problem.status}
+      display={problem.status_display}
+    />
+
+    <div style={styles.latestD}>
+      {problem.latest_d}
+    </div>
+  </div>
+</td>
 
       {/* Description */}
       <td style={styles.td}>
@@ -393,4 +402,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '50%',
     animation: 'spin 0.7s linear infinite',
   },
+  latestD: {
+  marginTop: '4px',
+  fontSize: '11px',
+  fontWeight: 600,
+  color: 'var(--text-secondary)',
+},
 };

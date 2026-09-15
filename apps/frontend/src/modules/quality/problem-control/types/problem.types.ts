@@ -195,6 +195,7 @@ export interface ProblemListItem {
   problem_number: string | null;
   status: ProblemStatus;
   status_display: string;
+  latest_d: string;
   brief_description: string;
   category: ProblemCategory;
   category_display: string;

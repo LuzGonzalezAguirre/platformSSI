@@ -1,11 +1,12 @@
 // apps/frontend/src/modules/quality/problem-control/pages/ProblemWizardPage.tsx
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect,useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWizardStore } from '../store/wizardStore';
 import { WizardLayout } from '../components/ProblemWizard/WizardLayout';
 import { useProblemDetail } from '../hooks/useProblemDetail';
 import { useProblemCreate, useProblemUpdate, useProblemSubmit } from '../hooks/useProblemMutations';
 import type { Problem, ProblemCreateRequest } from '../types/problem.types';
+import { Settings } from 'lucide-react';
 
 export interface StepError {
   valid: boolean;
@@ -64,6 +65,9 @@ function getStepValidation(problem: Problem | undefined): Record<number, StepErr
 }
 
 export const ProblemWizardPage: React.FC = () => {
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditMode = !!id;

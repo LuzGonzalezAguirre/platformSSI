@@ -147,7 +147,10 @@ export interface QWallPartNumber {
   bu_id:               number;
   bu_name:             string;
 }
-
+export interface QWallBusinessUnit {
+  bu_id: number;
+  bu_name: string;
+}
 
 
 export const QWallService = {
@@ -284,9 +287,26 @@ downloadExcel: async (startDate: string, endDate: string, includeTest = false): 
   a.click();
   URL.revokeObjectURL(blobUrl);
 },
-// Agregar al objeto QWallService:
-getPartNumbers: async (): Promise<QWallPartNumber[]> => {
-  const { data } = await apiClient.get("/quality/qwall/part-numbers/");
-  return data;
+
+
+getBusinessUnits: async (): Promise<QWallBusinessUnit[]> => {
+  const { data } = await apiClient.get("/quality/qwall/settings/business-units/");
+
+  return data.data ?? data;
+},
+
+getPartNumbers: async (
+  buId?: number
+): Promise<QWallPartNumber[]> => {
+  const { data } = await apiClient.get(
+    "/quality/qwall/settings/part-numbers/",
+    {
+      params: buId
+        ? { bu_id: buId }
+        : {},
+    }
+  );
+
+  return data.data ?? data;
 },
 };

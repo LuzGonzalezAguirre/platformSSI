@@ -1,10 +1,15 @@
 // apps/frontend/src/modules/quality/problem-control/components/ProblemWizard/Step1_DefineProblem.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect,useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWizardStore } from '../../store/wizardStore';
 import { useSeverityLevels, useDefectTypes, useQualityUsers } from '../../hooks/useCatalogs';
 import type { ProblemCategory, ProblemType, SeverityContext, ShiftType } from '../../types/problem.types';
 import { StepMediaBar } from '../shared/StepMediaBar';
+import {
+  QWallService,
+  type QWallBusinessUnit,
+  type QWallPartNumber,
+} from '../../../services/qwall.service';
 
 export const Step1_DefineProblem: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +19,10 @@ export const Step1_DefineProblem: React.FC = () => {
   const { data: severityLevels } = useSeverityLevels();
   const { data: defectTypes } = useDefectTypes();
   const { data: qualityUsers } = useQualityUsers();
+
+  const [businessUnits, setBusinessUnits] = useState<QWallBusinessUnit[]>([]);
+const [partNumbers, setPartNumbers] = useState<QWallPartNumber[]>([]);
+const [selectedBuId, setSelectedBuId] = useState<number | null>(null);
 
   // Validate step whenever form data changes
   useEffect(() => {
@@ -27,6 +36,38 @@ export const Step1_DefineProblem: React.FC = () => {
     );
     setStepValidation(1, isValid);
   }, [formData, setStepValidation]);
+
+  useEffect(() => {
+  const loadBusinessUnits = async () => {
+    try {
+      const data = await QWallService.getBusinessUnits();
+      setBusinessUnits(data);
+    } catch (error) {
+      console.error('Error loading business units:', error);
+    }
+  };
+
+  loadBusinessUnits();
+}, []);
+
+useEffect(() => {
+  const loadPartNumbers = async () => {
+    if (!selectedBuId) {
+      setPartNumbers([]);
+      return;
+    }
+
+    try {
+      const data = await QWallService.getPartNumbers(selectedBuId);
+      setPartNumbers(data);
+    } catch (error) {
+      console.error('Error loading part numbers:', error);
+      setPartNumbers([]);
+    }
+  };
+
+  loadPartNumbers();
+}, [selectedBuId]);
 
   const handleChange = (field: string, value: any) => {
     updateFormData({ [field]: value });
@@ -77,9 +118,31 @@ export const Step1_DefineProblem: React.FC = () => {
     <div style={styles.container}>
       <h2 style={styles.sectionTitle}>D1 — Define the Problem</h2>
 
-      {/* Problem Description */}
-      <div style={styles.section}>
+      
         <h3 style={styles.subsectionTitle}>Problem Description</h3>
+        
+
+  <div style={styles.formGroup}>
+    <label style={styles.label}>
+      Problem Number
+    </label>
+
+    <input
+      type="text"
+      value={formData.problem_number || ''}
+      onChange={(e) =>
+        handleChange('problem_number', e.target.value.toUpperCase())
+      }
+      maxLength={50}
+      style={styles.input}
+    />
+
+    <span style={styles.helperText}>
+      Modify the number only if required.
+    </span>
+  </div>
+
+  
 
         <div style={styles.formGroup}>
           <label style={styles.label}>
@@ -143,11 +206,9 @@ export const Step1_DefineProblem: React.FC = () => {
           </div>
           
         </div>
-      </div>
-
+      
       {/* Severity */}
-      <div style={styles.section}>
-        <h3 style={styles.subsectionTitle}>Severity Assessment</h3>
+        <h2 style={styles.subsectionTitle}>Severity Assessment</h2>
 
         <div style={styles.formRow}>
           <div style={styles.formGroup}>
@@ -198,44 +259,108 @@ export const Step1_DefineProblem: React.FC = () => {
             {formData.severity_context === 'audit' && formData.severity_level_data.audit_note}
           </div>
         )}
-      </div>
-
-      {/* Customer Information */}
-      <div style={styles.section}>
+      
         <h3 style={styles.subsectionTitle}>Customer Information</h3>
 
-        <div style={styles.formRow}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Customer No</label>
-            <input
-              type="text"
-              value={formData.customer_no || ''}
-              onChange={(e) => handleChange('customer_no', e.target.value)}
-              placeholder="From Plex"
-              style={styles.input}
-            />
-          </div>
+        <div style={styles.formRow3}>
+         
 
           <div style={styles.formGroup}>
             <label style={styles.label}>Customer Name</label>
-            <input
-              type="text"
-              value={formData.customer_name || ''}
-              onChange={(e) => handleChange('customer_name', e.target.value)}
-              style={styles.input}
-            />
-          </div>
-        </div>
+            <select
+      value={selectedBuId ?? ''}
+      onChange={(e) => {
+        const value = e.target.value;
 
-        <div style={styles.formRow}>
+        if (!value) {
+          setSelectedBuId(null);
+          setPartNumbers([]);
+
+          handleChange('customer_name', '');
+          handleChange('customer_part_no', '');
+          handleChange('part_no', '');
+
+          return;
+        }
+
+        const buId = Number(value);
+
+        const selectedBu = businessUnits.find(
+          (bu) => bu.bu_id === buId
+        );
+
+        setSelectedBuId(buId);
+
+        handleChange(
+          'customer_name',
+          selectedBu?.bu_name ?? ''
+        );
+
+        // Al cambiar customer limpiamos los parts anteriores
+        handleChange('customer_part_no', '');
+        handleChange('part_no', '');
+      }}
+      style={styles.input}
+    >
+      <option value="">Select customer...</option>
+
+      {businessUnits.map((bu) => (
+        <option
+          key={bu.bu_id}
+          value={bu.bu_id}
+        >
+          {bu.bu_name}
+        </option>
+      ))}
+    </select>
+          </div>
+       
           <div style={styles.formGroup}>
             <label style={styles.label}>Customer Part No</label>
-            <input
-              type="text"
-              value={formData.customer_part_no || ''}
-              onChange={(e) => handleChange('customer_part_no', e.target.value)}
-              style={styles.input}
-            />
+            <select
+      value={formData.customer_part_no || ''}
+      onChange={(e) => {
+        const customerPartNo = e.target.value;
+
+        const selectedPart = partNumbers.find(
+          (pn) =>
+            pn.volvoProductNumber === customerPartNo
+        );
+
+        if (!selectedPart) {
+          handleChange('customer_part_no', '');
+          handleChange('part_no', '');
+          return;
+        }
+
+        handleChange(
+          'customer_part_no',
+          selectedPart.volvoProductNumber
+        );
+
+        handleChange(
+          'part_no',
+          selectedPart.ssiPN
+        );
+      }}
+      style={styles.input}
+      disabled={!selectedBuId}
+    >
+      <option value="">
+        {selectedBuId
+          ? 'Select customer part...'
+          : 'Select customer first...'}
+      </option>
+
+      {partNumbers.map((pn) => (
+        <option
+          key={pn.pn_id}
+          value={pn.volvoProductNumber}
+        >
+          {pn.volvoProductNumber}
+        </option>
+      ))}
+    </select>
           </div>
 
           <div style={styles.formGroup}>
@@ -248,101 +373,58 @@ export const Step1_DefineProblem: React.FC = () => {
             />
           </div>
         </div>
-      </div>
 
-      {/* Supplier Information */}
-      <div style={styles.section}>
-        <h3 style={styles.subsectionTitle}>Supplier Information</h3>
-
-        <div style={styles.formRow}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Supplier No</label>
-            <input
-              type="text"
-              value={formData.supplier_no || ''}
-              onChange={(e) => handleChange('supplier_no', e.target.value)}
-              placeholder="From Plex"
-              style={styles.input}
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Supplier Name</label>
-            <input
-              type="text"
-              value={formData.supplier_name || ''}
-              onChange={(e) => handleChange('supplier_name', e.target.value)}
-              style={styles.input}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Internal Part Information */}
-      <div style={styles.section}>
         <h3 style={styles.subsectionTitle}>Internal Part Information</h3>
 
-        <div style={styles.formRow}>
+        
+
+        <div style={styles.formRow5}>
           <div style={styles.formGroup}>
             <label style={styles.label}>Part No</label>
-            <input
-              type="text"
-              value={formData.part_no || ''}
-              onChange={(e) => handleChange('part_no', e.target.value)}
-              placeholder="From Plex"
-              style={styles.input}
-            />
-          </div>
+             <select
+      value={formData.part_no || ''}
+      onChange={(e) => {
+        const ssiPartNo = e.target.value;
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Part Name</label>
-            <input
-              type="text"
-              value={formData.part_name || ''}
-              onChange={(e) => handleChange('part_name', e.target.value)}
-              style={styles.input}
-            />
-          </div>
-        </div>
+        const selectedPart = partNumbers.find(
+          (pn) => pn.ssiPN === ssiPartNo
+        );
 
-        <div style={styles.formRow}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Department Code</label>
-            <input
-              type="text"
-              value={formData.department_code || ''}
-              onChange={(e) => handleChange('department_code', e.target.value)}
-              style={styles.input}
-            />
-          </div>
+        if (!selectedPart) {
+          handleChange('customer_part_no', '');
+          handleChange('part_no', '');
+          return;
+        }
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Workcenter Code</label>
-            <input
-              type="text"
-              value={formData.workcenter_code || ''}
-              onChange={(e) => handleChange('workcenter_code', e.target.value)}
-              style={styles.input}
-            />
-          </div>
-        </div>
+        handleChange(
+          'part_no',
+          selectedPart.ssiPN
+        );
 
-        <div style={styles.formRow}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Shift</label>
-            <select
-              value={formData.shift || ''}
-              onChange={(e) => handleChange('shift', e.target.value)}
-              style={styles.select}
-            >
-              {shiftOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+        handleChange(
+          'customer_part_no',
+          selectedPart.volvoProductNumber
+        );
+      }}
+      style={styles.input}
+      disabled={!selectedBuId}
+    >
+      <option value="">
+        {selectedBuId
+          ? 'Select SSI part...'
+          : 'Select customer first...'}
+      </option>
 
+      {partNumbers.map((pn) => (
+        <option
+          key={pn.pn_id}
+          value={pn.ssiPN}
+        >
+          {pn.ssiPN}
+        </option>
+      ))}
+    </select>
+          </div>
           <div style={styles.formGroup}>
             <label style={styles.label}>Defect Type</label>
             <select
@@ -363,9 +445,6 @@ export const Step1_DefineProblem: React.FC = () => {
               ))}
             </select>
           </div>
-        </div>
-
-        <div style={styles.formRow}>
           <div style={styles.formGroup}>
             <label style={styles.label}>Quantity Placed on Hold</label>
             <input
@@ -387,11 +466,22 @@ export const Step1_DefineProblem: React.FC = () => {
               style={styles.input}
             />
           </div>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Shift</label>
+            <select
+              value={formData.shift || ''}
+              onChange={(e) => handleChange('shift', e.target.value)}
+              style={styles.select}
+            >
+              {shiftOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
-
-      {/* Dates & Assignment */}
-      <div style={styles.section}>
+     
         <h3 style={styles.subsectionTitle}>Dates & Assignment</h3>
 
         <div style={styles.formRow}>
@@ -430,7 +520,7 @@ export const Step1_DefineProblem: React.FC = () => {
             </select>
           </div>
         </div>
-      </div>
+   
 
       {problemId && <StepMediaBar problemId={problemId} step="step1" />}
     </div>
@@ -462,6 +552,18 @@ const styles: { [key: string]: React.CSSProperties } = {
   formRow: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: '1rem',
+    marginBottom: '1rem',
+  },
+  formRow3: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '1rem',
+    marginBottom: '1rem',
+  },
+formRow5  : {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(5, 1fr)',
     gap: '1rem',
     marginBottom: '1rem',
   },
@@ -513,4 +615,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#92400e',
     marginTop: '1rem',
   },
+  helperText: {
+  marginTop: '0.35rem',
+  fontSize: '0.75rem',
+  color: 'var(--color-text-secondary)',
+},
 };

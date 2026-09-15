@@ -4,6 +4,8 @@ from apps.quality.models import (
     Problem,
     SeverityLevel,
     DefectType,
+    ProblemCategoryCatalog,
+    ProblemTypeCatalog,
     FiveWhyAnalysis,
     RootCause,
     ContainmentAction,
@@ -32,7 +34,27 @@ class SeverityLevelSerializer(serializers.ModelSerializer):
         model = SeverityLevel
         fields = '__all__'
 
+class ProblemCategoryCatalogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProblemCategoryCatalog
+        fields = [
+            'id',
+            'value',
+            'label',
+            'is_active',
+        ]
 
+
+class ProblemTypeCatalogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProblemTypeCatalog
+        fields = [
+            'id',
+            'value',
+            'label',
+            'is_active',
+        ]
+        
 class DefectTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DefectType
@@ -184,6 +206,7 @@ class ProblemNoteSerializer(serializers.ModelSerializer):
 # MAIN PROBLEM SERIALIZERS
 # ═════════════════════════════════════════════════════════════════════════
 
+
 class ProblemListSerializer(serializers.ModelSerializer):
     """
     Serializer ligero para lista de problems.
@@ -194,7 +217,8 @@ class ProblemListSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     is_overdue = serializers.SerializerMethodField()
-    
+    latest_d = serializers.SerializerMethodField()
+
     class Meta:
         model = Problem
         fields = [
@@ -202,6 +226,7 @@ class ProblemListSerializer(serializers.ModelSerializer):
             'problem_number',
             'status',
             'status_display',
+            'latest_d',
             'brief_description',
             'category',
             'category_display',
@@ -218,7 +243,7 @@ class ProblemListSerializer(serializers.ModelSerializer):
             'recurrence_count',
             'is_overdue',
         ]
-    
+
     def get_is_overdue(self, obj):
         """Indicador si algún step está overdue"""
         return (
@@ -229,6 +254,51 @@ class ProblemListSerializer(serializers.ModelSerializer):
             obj.is_d7_overdue() or
             obj.is_d8_overdue()
         )
+
+    def get_latest_d(self, obj):
+        """
+        Obtiene la última D que tiene información guardada.
+
+        El status del Problem es independiente del avance de las D.
+        Un Problem puede permanecer en Draft mientras se trabaja
+        y se guardan las diferentes etapas del 8D.
+        """
+
+        # D8 - Verification
+        if obj.verification_actions.exists():
+            return 'D8'
+
+        # D7 - Corrective Actions
+        if obj.corrective_actions.exists():
+            return 'D7'
+
+        # D6 - Root Cause
+        if obj.five_why_analyses.filter(
+            root_causes__isnull=False
+        ).exists():
+            return 'D6'
+
+        # D5 - Five Why
+        if obj.five_why_analyses.exists():
+            return 'D5'
+
+        # D4 - Containment
+        if obj.containment_actions.exists():
+            return 'D4'
+
+        # D3 - Initial Response
+        if (
+            obj.initial_response or
+            obj.tracking_lot_batch_no or
+            obj.tracking_build_ship_date or
+            obj.initial_response_date or
+            obj.d3_completed_at
+        ):
+            return 'D3'
+
+        # D1 - Define Problem
+        return 'D1'
+
 
 
 class ProblemDetailSerializer(serializers.ModelSerializer):
@@ -313,7 +383,6 @@ class ProblemDetailSerializer(serializers.ModelSerializer):
         model = Problem
         fields = '__all__'
         read_only_fields = [
-            'problem_number',
             'created_at',
             'updated_at',
             'created_by',

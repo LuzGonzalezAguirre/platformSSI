@@ -15,7 +15,9 @@ from apps.quality.serializers import (
 )
 from apps.quality.models import (
     ContainmentAction, FiveWhyAnalysis, RootCause,
-    CorrectiveAction, VerificationAction, PreventionAction,
+    CorrectiveAction, VerificationAction, PreventionAction,ProblemCategoryCatalog,
+    ProblemTypeCatalog,
+    DefectType,
 )
 from apps.quality.serializers.problem_serializer import (
     ContainmentActionSerializer,
@@ -24,6 +26,8 @@ from apps.quality.serializers.problem_serializer import (
     CorrectiveActionSerializer,
     VerificationActionSerializer,
     PreventionActionSerializer,
+    ProblemCategoryCatalogSerializer,
+    ProblemTypeCatalogSerializer,
 )
 
 
@@ -317,7 +321,190 @@ class ProblemOverrideApproveView(APIView):
 # ═════════════════════════════════════════════════════════════════════════
 # CATALOG VIEWS
 # ═════════════════════════════════════════════════════════════════════════
+class ProblemCategoryListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        include_inactive = (
+            request.query_params.get("include_inactive", "false").lower()
+            == "true"
+        )
+
+        qs = ProblemCategoryCatalog.objects.all()
+
+        if not include_inactive:
+            qs = qs.filter(is_active=True)
+
+        qs = qs.order_by("label")
+
+        serializer = ProblemCategoryCatalogSerializer(
+            qs,
+            many=True,
+        )
+
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = ProblemCategoryCatalogSerializer(
+            data=request.data
+        )
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save()
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ProblemCategoryDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_object(self, pk):
+        try:
+            return ProblemCategoryCatalog.objects.get(pk=pk)
+        except ProblemCategoryCatalog.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self._get_object(pk)
+
+        if not obj:
+            return Response(
+                {"detail": "Category not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ProblemCategoryCatalogSerializer(
+            obj,
+            data=request.data,
+            partial=True,
+        )
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save()
+
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self._get_object(pk)
+
+        if not obj:
+            return Response(
+                {"detail": "Category not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Soft delete para no afectar Problems históricos
+        obj.is_active = False
+        obj.save(update_fields=["is_active"])
+
+        return Response(
+            status=status.HTTP_204_NO_CONTENT
+        )
+class ProblemTypeListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        include_inactive = (
+            request.query_params.get("include_inactive", "false").lower()
+            == "true"
+        )
+
+        qs = ProblemTypeCatalog.objects.all()
+
+        if not include_inactive:
+            qs = qs.filter(is_active=True)
+
+        qs = qs.order_by("label")
+
+        serializer = ProblemTypeCatalogSerializer(
+            qs,
+            many=True,
+        )
+
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = ProblemTypeCatalogSerializer(
+            data=request.data
+        )
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save()
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ProblemTypeDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_object(self, pk):
+        try:
+            return ProblemTypeCatalog.objects.get(pk=pk)
+        except ProblemTypeCatalog.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self._get_object(pk)
+
+        if not obj:
+            return Response(
+                {"detail": "Problem type not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ProblemTypeCatalogSerializer(
+            obj,
+            data=request.data,
+            partial=True,
+        )
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save()
+
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self._get_object(pk)
+
+        if not obj:
+            return Response(
+                {"detail": "Problem type not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        obj.is_active = False
+        obj.save(update_fields=["is_active"])
+
+        return Response(
+            status=status.HTTP_204_NO_CONTENT
+        )
+       
 class SeverityLevelListView(APIView):
     """GET: Lista de severity levels (0-10)"""
     permission_classes = [IsAuthenticated]
@@ -332,16 +519,98 @@ class SeverityLevelListView(APIView):
 
 
 class DefectTypeListView(APIView):
-    """GET: Lista de defect types (activos)"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        include_inactive = (
+            request.query_params.get("include_inactive", "false").lower()
+            == "true"
+        )
+
+        qs = DefectType.objects.all()
+
+        if not include_inactive:
+            qs = qs.filter(is_active=True)
+
+        qs = qs.order_by("code")
+
+        serializer = DefectTypeSerializer(
+            qs,
+            many=True,
+        )
+
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = DefectTypeSerializer(
+            data=request.data
+        )
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save()
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class DefectTypeDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_object(self, pk):
         try:
-            defect_types = ProblemService.get_defect_types()
-            serializer = DefectTypeSerializer(defect_types, many=True)
-            return Response(serializer.data)
-        except Exception as e:
-            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return DefectType.objects.get(pk=pk)
+        except DefectType.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        obj = self._get_object(pk)
+
+        if not obj:
+            return Response(
+                {"detail": "Defect type not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = DefectTypeSerializer(
+            obj,
+            data=request.data,
+            partial=True,
+        )
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save()
+
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        obj = self._get_object(pk)
+
+        if not obj:
+            return Response(
+                {"detail": "Defect type not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Tiene FK PROTECT desde Problem,
+        # por eso es mejor desactivar y no borrar.
+        obj.is_active = False
+        obj.save(update_fields=["is_active"])
+
+        return Response(
+            status=status.HTTP_204_NO_CONTENT
+        )
 
 
 class QualityUsersListView(APIView):

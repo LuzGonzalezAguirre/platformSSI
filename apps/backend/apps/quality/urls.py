@@ -53,6 +53,11 @@ from apps.quality.views import (
     DowntimeWorkcentersView,
     DowntimeAssignmentsView,
     CatalogStructureView,
+    ProblemCategoryListCreateView,
+ProblemCategoryDetailView,
+ProblemTypeListCreateView,
+ProblemTypeDetailView,
+DefectTypeDetailView,
 )
 
 urlpatterns = [
@@ -174,4 +179,62 @@ urlpatterns = [
     path("downtime/summary/", DowntimeSummaryView.as_view(), name="downtime-summary"),
     path("downtime/workcenters/", DowntimeWorkcentersView.as_view(), name="downtime-workcenters"),
     path("downtime/assignments/", DowntimeAssignmentsView.as_view(), name="downtime-assignments"),
+
+    # ═════════════════════════════════════════════════════════════════════
+# PROBLEM CONTROL CATALOGS
+# ═════════════════════════════════════════════════════════════════════
+
+path(
+    "problem-categories/",
+    ProblemCategoryListCreateView.as_view(),
+    name="problem-category-list-create",
+),
+
+path(
+    "problem-categories/<int:pk>/",
+    ProblemCategoryDetailView.as_view(),
+    name="problem-category-detail",
+),
+
+path(
+    "problem-types/",
+    ProblemTypeListCreateView.as_view(),
+    name="problem-type-list-create",
+),
+
+path(
+    "problem-types/<int:pk>/",
+    ProblemTypeDetailView.as_view(),
+    name="problem-type-detail",
+),
+
+path(
+    "defect-types/",
+    DefectTypeListView.as_view(),
+    name="defect-types",
+),
+
+path(
+    "defect-types/<int:pk>/",
+    DefectTypeDetailView.as_view(),
+    name="defect-type-detail",
+),
+
+path(
+    "severity-levels/",
+    SeverityLevelListView.as_view(),
+    name="severity-levels",
+),
+
+path(
+    "quality-users/",
+    QualityUsersListView.as_view(),
+    name="quality-users",
+),
+
+path(
+    "quality-managers/",
+    QualityManagersListView.as_view(),
+    name="quality-managers",
+),
 ]

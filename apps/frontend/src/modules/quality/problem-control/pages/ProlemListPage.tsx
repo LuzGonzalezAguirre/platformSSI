@@ -5,11 +5,12 @@ import { ProblemFilters } from '../components/ProblemList/ProblemFilters';
 import { ProblemTable } from '../components/ProblemList/ProblemTable';
 import { useProblemList } from '../hooks/useProblemList';
 import type { ProblemFilters as Filters } from '../types/problem.types';
+import { ProblemSettingsModal } from '../components/ProblemSettings/ProblemSettingsModal';
 
 export const ProblemListPage: React.FC = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<Filters>({});
-
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { data: problemsData, isLoading, error } = useProblemList(filters);
   const problems = Array.isArray(problemsData) ? problemsData : [];
 
@@ -79,17 +80,80 @@ export const ProblemListPage: React.FC = () => {
             <p style={styles.subtitle}>8D Problem Solving & Customer Complaint Management</p>
           </div>
         </div>
-        <button
-          onClick={handleCreateNew}
-          style={styles.createButton}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-primary-dark)'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-primary)'; }}
+        
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
         >
-          <svg style={styles.buttonIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span>New Problem</span>
-        </button>
+          <button
+            type="button"
+            title="Problem Control Settings"
+            onClick={() => setSettingsOpen(true)}
+            style={styles.settingsButton}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                'var(--color-bg-tertiary)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                'var(--color-bg-secondary)';
+            }}
+          >
+            <svg
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"
+              />
+        
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06A1.65 1.65 0 0015 19.4a1.65 1.65 0 00-1 .6 1.65 1.65 0 00-.4 1.08V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-.4-1.08 1.65 1.65 0 00-1-.6 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-.6-1 1.65 1.65 0 00-1.08-.4H3a2 2 0 110-4h.09a1.65 1.65 0 001.08-.4 1.65 1.65 0 00.6-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-.6 1.65 1.65 0 00.4-1.08V3a2 2 0 114 0v.09a1.65 1.65 0 00.4 1.08 1.65 1.65 0 001 .6 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.14.37.35.7.6 1 .29.32.68.5 1.08.5H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.08.4c-.18.17-.33.37-.43.6z"
+              />
+            </svg>
+          </button>
+        
+          <button
+            onClick={handleCreateNew}
+            style={styles.createButton}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                'var(--color-primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                'var(--color-primary)';
+            }}
+          >
+            <svg
+              style={styles.buttonIcon}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+        
+            <span>New Problem</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -130,7 +194,14 @@ export const ProblemListPage: React.FC = () => {
 
       {/* Table */}
       <ProblemTable problems={problems} isLoading={isLoading} />
+
+      {settingsOpen && (
+      <ProblemSettingsModal
+        onClose={() => setSettingsOpen(false)}
+      />
+    )}
     </div>
+    
   );
 };
 
@@ -254,4 +325,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#991b1b',
     fontSize: '0.875rem',
   },
+  actions: {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.75rem',
+},
+
+settingsButton: {
+  width: '40px',
+  height: '40px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: '1px solid var(--color-border)',
+  borderRadius: '0.375rem',
+  backgroundColor: 'var(--color-bg-primary)',
+  color: 'var(--color-text-primary)',
+  cursor: 'pointer',
+},
 };

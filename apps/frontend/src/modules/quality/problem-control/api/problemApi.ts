@@ -26,6 +26,145 @@ export const problemApi = {
   // ═══════════════════════════════════════════════════════════════════════════
   // CATALOGS
   // ═══════════════════════════════════════════════════════════════════════════
+
+  getProblemCategories: async () => {
+  const response = await apiClient.get(
+    '/quality/problem-categories/'
+  );
+  return response.data;
+},
+
+getProblemTypes: async () => {
+  const response = await apiClient.get(
+    '/quality/problem-types/'
+  );
+  return response.data;
+},
+  // ─────────────────────────────────────────────────────────────────────────
+  // PROBLEM CONTROL SETTINGS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  getProblemCategoriesForSettings: async () => {
+    const response = await apiClient.get(
+      '/quality/problem-categories/',
+      { params: { include_inactive: true } }
+    );
+    return response.data;
+  },
+
+  createProblemCategory: async (data: {
+    value: string;
+    label: string;
+    is_active: boolean;
+  }) => {
+    const response = await apiClient.post(
+      '/quality/problem-categories/',
+      data
+    );
+    return response.data;
+  },
+
+  updateProblemCategory: async (
+    id: number,
+    data: {
+      label?: string;
+      is_active?: boolean;
+    }
+  ) => {
+    const response = await apiClient.put(
+      `/quality/problem-categories/${id}/`,
+      data
+    );
+    return response.data;
+  },
+
+  deactivateProblemCategory: async (id: number) => {
+    await apiClient.delete(
+      `/quality/problem-categories/${id}/`
+    );
+  },
+
+  getProblemTypesForSettings: async () => {
+    const response = await apiClient.get(
+      '/quality/problem-types/',
+      { params: { include_inactive: true } }
+    );
+    return response.data;
+  },
+
+  createProblemType: async (data: {
+    value: string;
+    label: string;
+    is_active: boolean;
+  }) => {
+    const response = await apiClient.post(
+      '/quality/problem-types/',
+      data
+    );
+    return response.data;
+  },
+
+  updateProblemType: async (
+    id: number,
+    data: {
+      label?: string;
+      is_active?: boolean;
+    }
+  ) => {
+    const response = await apiClient.put(
+      `/quality/problem-types/${id}/`,
+      data
+    );
+    return response.data;
+  },
+
+  deactivateProblemType: async (id: number) => {
+    await apiClient.delete(
+      `/quality/problem-types/${id}/`
+    );
+  },
+
+  getDefectTypesForSettings: async () => {
+    const response = await apiClient.get(
+      '/quality/defect-types/',
+      { params: { include_inactive: true } }
+    );
+    return response.data;
+  },
+
+  createDefectType: async (data: {
+    code: string;
+    description: string;
+    is_active: boolean;
+  }) => {
+    const response = await apiClient.post(
+      '/quality/defect-types/',
+      data
+    );
+    return response.data;
+  },
+
+  updateDefectType: async (
+    id: number,
+    data: {
+      code?: string;
+      description?: string;
+      is_active?: boolean;
+    }
+  ) => {
+    const response = await apiClient.put(
+      `/quality/defect-types/${id}/`,
+      data
+    );
+    return response.data;
+  },
+
+  deactivateDefectType: async (id: number) => {
+    await apiClient.delete(
+      `/quality/defect-types/${id}/`
+    );
+  },
+  
   getSeverityLevels: async (): Promise<SeverityLevel[]> => {
     const response = await apiClient.get('/quality/severity-levels/');
     return response.data;

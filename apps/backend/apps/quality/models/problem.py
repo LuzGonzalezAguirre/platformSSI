@@ -5,6 +5,52 @@ from django.utils import timezone
 from datetime import timedelta
 from apps.identity.models import User
 
+class ProblemCategoryCatalog(models.Model):
+    value = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+    )
+    label = models.CharField(
+        max_length=150,
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+    )
+
+    class Meta:
+        db_table = "quality_problem_category"
+        ordering = ["label"]
+        verbose_name = "Problem Category"
+        verbose_name_plural = "Problem Categories"
+
+    def __str__(self):
+        return self.label
+
+
+class ProblemTypeCatalog(models.Model):
+    value = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+    )
+    label = models.CharField(
+        max_length=150,
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+    )
+
+    class Meta:
+        db_table = "quality_problem_type"
+        ordering = ["label"]
+        verbose_name = "Problem Type"
+        verbose_name_plural = "Problem Types"
+
+    def __str__(self):
+        return self.label
 
 class Problem(models.Model):
     """

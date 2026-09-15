@@ -37,6 +37,12 @@ from ..cogp.models import (
     COGPDailySummary,
 )
 
+from .problem import (
+    Problem,
+    ProblemCategoryCatalog,
+    ProblemTypeCatalog,
+)
+
 from .downtime_workcenter import DowntimeWorkcenter
 from .downtime_workcenter_assignment import DowntimeWorkcenterAssignment
 from .downtime_group_assignment import DowntimeGroupAssignment
@@ -76,4 +82,6 @@ __all__ = [
     'ScrapRecord',
     'ProductionRecord',
     'COGPDailySummary',
+    'ProblemCategoryCatalog',
+'ProblemTypeCatalog',
 ]
