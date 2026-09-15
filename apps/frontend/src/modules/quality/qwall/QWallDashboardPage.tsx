@@ -7,24 +7,10 @@ import {
 } from "../services/qwall.service";
 import ParetoChart from "./ParetoChart";
 import TrendChart from "./TrendChart";
-import DateRangeSelector, { PresetGroup } from "../../../components/common/DateRangeSelector";
+import DateRangeSelector from "../../../components/common/DateRangeSelector";
 import { DateRange, resolvePreset } from "../../../components/common/date-presets";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-// Único preset que no viene incluido en los grupos estándar de
-// DateRangeSelector: "Año" en este dashboard significa año calendario
-// (1 enero → hoy), igual que en Scrap Rate. "Semana" y "Mes" sí matchean
-// con los presets incorporados (last_7_days / last_30_days) y no requieren
-// grupo extra.
-const DASHBOARD_EXTRA_PRESET_GROUPS: PresetGroup[] = [
-  {
-    title_es: "Año", title_en: "Year",
-    options: [
-      { preset: "year_to_date", es: "Año a la Fecha", en: "Year to Date" },
-    ],
-  },
-];
 
 function semaphore(val: number, target: number, lowerBetter = false): string {
   if (lowerBetter) return val <= target ? "#10b981" : val <= target * 1.5 ? "#f59e0b" : "#ef4444";
@@ -724,7 +710,6 @@ export default function QWallDashboardPage() {
             value={dateRange}
             onChange={setDateRange}
             defaultPreset="last_7_days"
-            extraGroups={DASHBOARD_EXTRA_PRESET_GROUPS}
           />
 
           {/* Filtro BU */}
