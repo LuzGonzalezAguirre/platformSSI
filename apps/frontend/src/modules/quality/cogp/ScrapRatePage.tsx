@@ -19,13 +19,12 @@ const SCRAP_RATE_BU_OPTIONS: ScrapRateBusinessUnit[] = ["VOLVO", "CUMMINS", "TUL
 
 // Presets propios de esta pantalla: Scrap Rate es una tendencia semanal de
 // hasta 104 semanas (ScrapRateService.MAX_WEEKS), y los grupos incorporados
-// de DateRangeSelector topan en 90 dias -- no alcanzan para YTD ni para
-// 26/52 semanas, que eran el uso principal de este reporte.
+// del DateRangeSelector ya incluyen YTD y rangos de hasta 365 días; aquí
+// sólo se conservan las ventanas alineadas a semanas propias del reporte.
 const SCRAP_RATE_EXTRA_PRESET_GROUPS: PresetGroup[] = [
   {
     title_es: "Tendencia", title_en: "Trend",
     options: [
-      { preset: "year_to_date",   es: "Año a la Fecha",     en: "Year to Date" },
       { preset: "last_26_weeks",  es: "Últimas 26 Semanas", en: "Last 26 Weeks" },
       { preset: "last_52_weeks",  es: "Últimas 52 Semanas", en: "Last 52 Weeks" },
     ],
