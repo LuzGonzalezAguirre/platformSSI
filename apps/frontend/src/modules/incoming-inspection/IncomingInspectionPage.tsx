@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshCw, Play, MessageSquare, X } from "lucide-react";
+import { RefreshCw, MessageSquare, X } from "lucide-react";
 import {
   useIncomingInspectionKPIs, useIncomingInspectionDetail, useRejectedLots,
   useSLAConfig, useUpdateSLAConfig, useRejectionComments, useCreateRejectionComment,
@@ -9,6 +9,7 @@ import {
 import type { IncomingInspectionFilters, IncomingContainerHistoryRow } from "./types";
 import DashboardTab from "./components/DashboardTab";
 import PendingTab from "./components/PendingTab";
+import { fetchLiveRefreshStatus, startLiveRefresh } from "./services/incomingInspectionService";
 
 const MAX_ROWS = 3000; // debe coincidir con MAX_PAGE_SIZE del backend
 
@@ -47,7 +48,12 @@ const tdStyle: React.CSSProperties = {
 // ── Date range presets ──────────────────────────────────────────────────────
 
 type DateRange = { from: string; to: string };
-const fmt = (d: Date) => d.toISOString().slice(0, 10);
+const fmt = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 const addDays = (d: Date, n: number) => { const c = new Date(d); c.setDate(c.getDate() + n); return c; };
 
 function startOfWeek(d: Date) {
@@ -80,7 +86,7 @@ function DateRangeDropdown({ filters, onChange }: {
   filters: IncomingInspectionFilters;
   onChange: (patch: Partial<IncomingInspectionFilters>) => void;
 }) {
-  const [preset, setPreset] = useState("custom");
+  const [preset, setPreset] = useState("today");
 
   const handlePresetChange = (key: string) => {
     setPreset(key);
@@ -363,30 +369,75 @@ function HistoryTable({ rows, userNames = {}, onRowClick }: {
 // ── Main page ────────────────────────────────────────────────────────────────
 
 const todayStr = (): string => fmt(new Date());
-const DEFAULT_FROM = "2026-01-01";
+const REFRESH_POLL_MS = 1_000;
+const REFRESH_MAX_POLLS = 300;
+
+type LiveRefreshState = "refreshing" | "ready" | "error";
+
+const wait = (milliseconds: number) => new Promise(resolve => window.setTimeout(resolve, milliseconds));
 
 export default function IncomingInspectionPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language.startsWith("es") ? "es" : "en";
 
   const [activeTab, setActiveTab] = useState<"dashboard" | "pending" | "summary" | "rejected">("dashboard");
   const [filters, setFilters] = useState<IncomingInspectionFilters>({
-    date_from: DEFAULT_FROM,
+    date_from: todayStr(),
     date_to: todayStr(),
   });
+  const [liveRefreshState, setLiveRefreshState] = useState<LiveRefreshState>("refreshing");
+  const [liveRefreshError, setLiveRefreshError] = useState<string | null>(null);
+  const refreshAttempt = useRef(0);
   const [showSLAModal, setShowSLAModal] = useState(false);
   const [activeCommentSerial, setActiveCommentSerial] = useState<string | null>(null);
 
-  const {
-    data: kpis, isFetching: kpisFetching, error: kpisError, refetch: refetchKPIs,
-  } = useIncomingInspectionKPIs(filters);
-  const {
-    data: detail, isFetching: detailFetching, refetch: refetchDetail,
-  } = useIncomingInspectionDetail(filters, 1, MAX_ROWS, "-change_date");
-  const {
-    data: rejected, isFetching: rejectedFetching, refetch: refetchRejected,
-  } = useRejectedLots(filters, 1, MAX_ROWS);
+  const runLiveRefresh = useCallback(async () => {
+    const attempt = ++refreshAttempt.current;
+    setLiveRefreshState("refreshing");
+    setLiveRefreshError(null);
 
-  const hasLoadedOnce = kpis !== undefined || rejected !== undefined;
+    try {
+      const started = await startLiveRefresh();
+      for (let poll = 0; poll < REFRESH_MAX_POLLS; poll += 1) {
+        if (attempt !== refreshAttempt.current) return;
+        const status = await fetchLiveRefreshStatus(started.task_id);
+        if (status.status === "ready") {
+          if (attempt === refreshAttempt.current) setLiveRefreshState("ready");
+          return;
+        }
+        if (status.status === "error") {
+          throw new Error(status.detail || "Incoming Inspection refresh failed");
+        }
+        await wait(REFRESH_POLL_MS);
+      }
+      throw new Error(lang === "es" ? "La actualización excedió cinco minutos." : "The refresh exceeded five minutes.");
+    } catch (error: any) {
+      if (attempt !== refreshAttempt.current) return;
+      setLiveRefreshError(
+        error?.response?.data?.detail
+          ?? error?.message
+          ?? (lang === "es" ? "No fue posible actualizar los datos desde Plex." : "Unable to refresh data from Plex."),
+      );
+      setLiveRefreshState("error");
+    }
+  }, [lang]);
+
+  useEffect(() => {
+    runLiveRefresh();
+    return () => { refreshAttempt.current += 1; };
+  }, [runLiveRefresh]);
+
+  const liveReady = liveRefreshState === "ready";
+
+  const {
+    data: kpis, isFetching: kpisFetching, error: kpisError,
+  } = useIncomingInspectionKPIs(filters, liveReady && activeTab === "summary");
+  const {
+    data: detail, isFetching: detailFetching,
+  } = useIncomingInspectionDetail(filters, 1, MAX_ROWS, "-change_date", liveReady && activeTab === "summary");
+  const {
+    data: rejected, isFetching: rejectedFetching,
+  } = useRejectedLots(filters, 1, MAX_ROWS, liveReady && activeTab === "rejected");
 
   const changeByNosSummary = (detail?.results ?? [])
     .map(r => r.change_by)
@@ -406,16 +457,7 @@ export default function IncomingInspectionPage() {
     setFilters(f => ({ ...f, ...patch }));
   };
 
-  const handleLoad = () => {
-    if (activeTab === "summary") {
-      refetchKPIs();
-      refetchDetail();
-    } else {
-      refetchRejected();
-    }
-  };
-
-  const isLoading = activeTab === "summary" ? (kpisFetching || detailFetching) : rejectedFetching;
+  const isRefreshing = liveRefreshState === "refreshing";
 
   const acceptance = kpis?.acceptance_rate;
   const sla = kpis?.sla_compliance;
@@ -484,39 +526,49 @@ export default function IncomingInspectionPage() {
 
         <button
           type="button"
-          onClick={handleLoad}
-          disabled={isLoading}
+          onClick={runLiveRefresh}
+          disabled={isRefreshing}
           style={{
             ...inputStyle, display: "flex", alignItems: "center", gap: "0.375rem",
-            fontWeight: 600, cursor: isLoading ? "default" : "pointer",
+            fontWeight: 600, cursor: isRefreshing ? "default" : "pointer",
             background: "#3b82f6", color: "#fff", border: "none", padding: "0.4rem 0.9rem",
-            opacity: isLoading ? 0.7 : 1,
+            opacity: isRefreshing ? 0.7 : 1,
           }}
         >
-          {isLoading
-            ? <RefreshCw size={14} style={{ animation: "iiSpin 1s linear infinite" }} />
-            : <Play size={14} />}
-          <span>{t("incomingInspection.filters.load")}</span>
+          <RefreshCw size={14} style={isRefreshing ? { animation: "iiSpin 1s linear infinite" } : undefined} />
+          <span>{lang === "es" ? "Actualizar ahora" : "Refresh now"}</span>
         </button>
       </div>
 
-      {kpisError && (
+      {isRefreshing && (
+        <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.6rem", padding: "2rem" }}>
+          <RefreshCw size={18} style={{ animation: "iiSpin 1s linear infinite", color: "#3b82f6" }} />
+          <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
+            {lang === "es" ? "Actualizando desde Plex hasta este momento…" : "Refreshing from Plex through this moment…"}
+          </span>
+        </div>
+      )}
+
+      {liveRefreshState === "error" && (
+        <div style={{ padding: "0.75rem 1rem", background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: "8px", color: "#ef4444", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+          <span>{liveRefreshError}</span>
+          <button type="button" onClick={runLiveRefresh} style={{ ...inputStyle, cursor: "pointer", fontWeight: 700 }}>
+            {lang === "es" ? "Reintentar" : "Retry"}
+          </button>
+        </div>
+      )}
+
+      {liveReady && kpisError && (
         <div style={{ padding: "0.75rem 1rem", background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: "8px", color: "#ef4444", fontSize: "0.85rem" }}>
           {t("incomingInspection.detail.error")}
         </div>
       )}
 
-      {!hasLoadedOnce && !isLoading && (
-        <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>
-          {t("incomingInspection.idle")}
-        </div>
-      )}
-
-      {activeTab === "dashboard" && <DashboardTab filters={filters} />}
-      {activeTab === "pending" && <PendingTab filters={filters} />}
+      {liveReady && activeTab === "dashboard" && <DashboardTab filters={filters} />}
+      {liveReady && activeTab === "pending" && <PendingTab filters={filters} />}
 
       {/* ── SUMMARY TAB ── */}
-      {activeTab === "summary" && (
+      {liveReady && activeTab === "summary" && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem" }}>
             <div style={card}>
@@ -606,7 +658,7 @@ export default function IncomingInspectionPage() {
       )}
 
       {/* ── REJECTED TAB ── */}
-      {activeTab === "rejected" && (
+      {liveReady && activeTab === "rejected" && (
         <div style={card}>
           <div style={{ ...cardTitle }}>
             {t("incomingInspection.rejected.title")}

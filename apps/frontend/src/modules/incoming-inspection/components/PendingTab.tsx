@@ -21,9 +21,9 @@ const PendingTab: React.FC<Props> = ({ filters }) => {
 
   // La conciliación historial vs snapshot sigue calculándose en backend y
   // viaja en el payload — se oculta de la UI a propósito, pero se reporta
-  // en consola durante desarrollo para poder auditar el drift.
+  // en consola para poder auditar el drift sin mostrar datos técnicos.
   useEffect(() => {
-    if (import.meta.env.DEV && data?.reconciliation?.status === "drift") {
+    if (data?.reconciliation?.status === "drift") {
       console.warn("[incoming-inspection] backlog drift", data.reconciliation);
     }
   }, [data]);
@@ -36,7 +36,7 @@ const PendingTab: React.FC<Props> = ({ filters }) => {
     );
   }
 
-  if (!data) {
+  if (isFetching || !data) {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
         <RefreshCw size={16} style={{ animation: "iiSpin 1s linear infinite", color: "var(--color-text-secondary)" }} />
@@ -53,7 +53,7 @@ const PendingTab: React.FC<Props> = ({ filters }) => {
       : t("incomingInspection.dashboard.range", { from: bucket.min_hours, to: bucket.max_hours });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", opacity: isFetching ? 0.65 : 1, transition: "opacity 120ms" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "1rem" }}>
         <div style={card}>
           <div style={cardTitle}>{t("incomingInspection.pending.total")}</div>

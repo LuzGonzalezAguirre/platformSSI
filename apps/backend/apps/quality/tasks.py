@@ -7,6 +7,7 @@ este módulo — ninguna view/serializer/servicio de request-time debe hacerlo.
 from datetime import timedelta
 
 from celery import shared_task
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
@@ -30,6 +31,9 @@ from apps.quality.repositories import incoming_inspection_plex_repository as ple
 # drásticamente la ventana de pérdida mientras tanto.
 HISTORY_OVERLAP = timedelta(hours=6)
 DEFAULT_HISTORY_LOOKBACK = timedelta(days=1)
+INCOMING_REFRESH_LOCK_KEY = "incoming_inspection:live_refresh:active_task"
+INCOMING_REFRESH_TASK_KEY_PREFIX = "incoming_inspection:live_refresh:task:"
+INCOMING_REFRESH_TTL = 10 * 60
 
 
 def _mark_error(sync_type: str, message: str):
@@ -118,9 +122,10 @@ def sync_incoming_snapshot():
             IncomingContainerSnapshot.objects.bulk_create(objects)
     except Exception as exc:
         _mark_error("snapshot", str(exc))
-        return
+        raise
 
     _mark_ok("snapshot", timezone.now())
+    return {"rows": len(objects)}
 
 
 @shared_task
@@ -131,12 +136,31 @@ def sync_incoming_history():
 
     try:
         rows = plex_repo.fetch_history_since(watermark)
-        upsert_history_rows(rows)
+        created_count, existing_count = upsert_history_rows(rows)
     except Exception as exc:
         _mark_error("history", str(exc))
-        return
+        raise
 
     _mark_ok("history", run_started_at)
+    return {
+        "rows": len(rows),
+        "created": created_count,
+        "updated": existing_count,
+        "synced_through": run_started_at.isoformat(),
+    }
+
+
+@shared_task(bind=True)
+def refresh_incoming_inspection(self):
+    """Refresh both Plex sources before the Incoming UI reads Postgres."""
+    task_id = self.request.id
+    try:
+        snapshot = sync_incoming_snapshot.run()
+        history = sync_incoming_history.run()
+        return {"status": "ok", "snapshot": snapshot, "history": history}
+    finally:
+        if cache.get(INCOMING_REFRESH_LOCK_KEY) == task_id:
+            cache.delete(INCOMING_REFRESH_LOCK_KEY)
 
 @shared_task
 def sync_downtime_workcenters():

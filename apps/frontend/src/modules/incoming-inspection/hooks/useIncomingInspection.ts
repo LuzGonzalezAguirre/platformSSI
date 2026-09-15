@@ -10,7 +10,9 @@ export const useIncomingDashboard = (filters: IncomingInspectionFilters, enabled
     queryKey: ["incoming-inspection-dashboard", filters],
     queryFn: () => svc.fetchDashboard(filters),
     enabled,
-    staleTime: 60_000,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
   });
 
 export const usePendingBacklog = (filters: IncomingInspectionFilters, enabled = true) =>
@@ -18,33 +20,43 @@ export const usePendingBacklog = (filters: IncomingInspectionFilters, enabled = 
     queryKey: ["incoming-inspection-pending", filters],
     queryFn: () => svc.fetchPendingBacklog(filters),
     enabled,
-    staleTime: 30_000,
-    refetchInterval: enabled ? 60_000 : false,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
   });
 
-export const useIncomingInspectionKPIs = (filters: IncomingInspectionFilters) =>
+export const useIncomingInspectionKPIs = (filters: IncomingInspectionFilters, enabled = true) =>
   useQuery({
     queryKey: ["incoming-inspection-kpis", filters],
     queryFn: () => svc.fetchKPIs(filters),
-    enabled: false,
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
   });
 
 export const useIncomingInspectionDetail = (
-  filters: IncomingInspectionFilters, page: number, pageSize: number, ordering: string,
+  filters: IncomingInspectionFilters, page: number, pageSize: number, ordering: string, enabled = true,
 ) =>
   useQuery({
     queryKey: ["incoming-inspection-detail", filters, page, pageSize, ordering],
     queryFn: () => svc.fetchDetail(filters, page, pageSize, ordering),
-    enabled: false,
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
   });
 
 export const useRejectedLots = (
-  filters: IncomingInspectionFilters, page: number, pageSize: number,
+  filters: IncomingInspectionFilters, page: number, pageSize: number, enabled = true,
 ) =>
   useQuery({
     queryKey: ["incoming-inspection-rejected-lots", filters, page, pageSize],
     queryFn: () => svc.fetchRejectedLots(filters, page, pageSize),
-    enabled: false,
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
   });
 
 export const useRejectionComments = (serialNo: string | null) =>
