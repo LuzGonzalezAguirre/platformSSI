@@ -7,6 +7,7 @@ from apps.quality.cogp.services.cogp_daily_bu_service import (
     CogpDailyBuService,
     empty_day as _empty_cogp_day,
 )
+from apps.ssi_common.plex_ranges import date_chunks
 
 PROXY_URL    = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
 PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
@@ -81,7 +82,7 @@ class OpsReportService:
             bu: {"scrap_qty": v["scrap_qty"], "scrap_cost": v["scrap_cost"]}
             for bu, v in day.items()
         }
-    
+
     @staticmethod
     def get_earned_labor_hours(report_date: date) -> dict:
         key    = f"ops:earned_hours:{report_date}"
@@ -197,12 +198,13 @@ class OpsReportService:
             return cached
 
         timeout = 120 if mode == "monthly" else 60
-        data = _post("/production-range", {
-            "start_date": str(start_date),
-            "end_date":   str(end_date),
-       }, timeout=timeout)
-
-        days_data = data.get("days", [])
+        days_data = []
+        for chunk_start, chunk_end in date_chunks(start_date, end_date, chunk_days=120):
+            data = _post("/production-range", {
+                "start_date": chunk_start.isoformat(),
+                "end_date":   chunk_end.isoformat(),
+            }, timeout=timeout)
+            days_data.extend(data.get("days", []))
 
         # El scrap y el costo COGP se sobreescriben con la clasificacion de
         # Django. El proxy sigue mandando su propia version en /production-range;
@@ -307,7 +309,7 @@ class OpsReportService:
                     "scrap_cogp_cum": cogp_pct(cum_scrap_cost, cum_cogp_cost),
                 },
             }
-    
+
         elif mode == "weekly":
             from collections import defaultdict
             weeks: dict[str, dict] = {}
@@ -469,5 +471,3 @@ class OpsReportService:
     
         cache.set(cache_key, result, CACHE_TTL)
         return result
-
-    
