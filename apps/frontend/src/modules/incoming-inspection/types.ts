@@ -9,6 +9,17 @@ export interface IncomingInspectionFilters {
   sla_status?: "on_time" | "late";
 }
 
+export interface IncomingRefreshStart {
+  task_id: string;
+  status: "refreshing";
+}
+
+export interface IncomingRefreshStatus {
+  task_id: string;
+  status: "refreshing" | "ready" | "error";
+  detail?: string;
+}
+
 export interface OperationCount {
   operation_key: string;
   operation_name: string;
