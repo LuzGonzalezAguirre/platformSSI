@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 import requests
 from django.core.cache import cache
