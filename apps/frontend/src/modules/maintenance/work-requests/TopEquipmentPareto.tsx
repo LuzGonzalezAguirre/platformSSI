@@ -26,17 +26,16 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang }: Props) {
     if (row.equipment_id) descriptions.set(row.equipment_id, row.equipment_description || row.equipment_id);
   });
 
-  const top = [...byEquipment]
-    .sort((a, b) => b.hours - a.hours)
-    .slice(0, 8);
-  const total = top.reduce((sum, item) => sum + item.hours, 0);
+  const top = [...byEquipment].sort((a, b) => b.hours - a.hours).slice(0, 8);
+  const allEquipmentHours = rows.reduce((sum, row) => sum + (Number(row.maintenance_hours) || 0), 0);
+  const denominator = allEquipmentHours > 0 ? allEquipmentHours : top.reduce((sum, item) => sum + item.hours, 0);
   let running = 0;
   const data = top.map((item) => {
     running += item.hours;
     return {
       ...item,
       fullLabel: descriptions.get(item.label) || item.label || (l ? "Sin equipo" : "Unknown equipment"),
-      cumulativePct: total > 0 ? (running / total) * 100 : 0,
+      cumulativePct: denominator > 0 ? Math.min((running / denominator) * 100, 100) : 0,
     };
   });
 
@@ -60,7 +59,6 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang }: Props) {
   const spacing = chartW / data.length;
   const barW = Math.min(52, spacing * 0.62);
   const cx = (i: number) => padL + spacing * (i + 0.5);
-  const yHours = (v: number) => padT + chartH * (1 - v / maxHours);
   const yPct = (v: number) => padT + chartH * (1 - v / 100);
   const points = data.map((d, i) => `${cx(i)},${yPct(d.cumulativePct)}`).join(" ");
   const active = hovered === null ? null : data[hovered];
@@ -91,11 +89,12 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang }: Props) {
           })}
           <line x1={padL} x2={W - padR} y1={yPct(80)} y2={yPct(80)} stroke="#ef4444" strokeWidth={1.2} strokeDasharray="5,4" />
           <text x={W - padR + 4} y={yPct(80) + 3} fontSize={8} fill="#ef4444">80%</text>
-          {[0,25,50,75,100].map((p) => <text key={p} x={W - padR + 7} y={yPct(p) + 3} fontSize={7} fill="#f59e0b">{p}%</text>)}
+          {[0, 25, 50, 75, 100].map((p) => <text key={p} x={W - padR + 7} y={yPct(p) + 3} fontSize={7} fill="#f59e0b">{p}%</text>)}
           {data.map((d, i) => {
             const h = (d.hours / maxHours) * chartH;
             const x = cx(i);
             return <g key={d.label} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} style={{ cursor: "pointer" }}>
+              <title>{d.fullLabel}</title>
               <rect x={x - barW / 2} y={padT + chartH - h} width={barW} height={h} rx={3} fill="#3b82f6" opacity={hovered === i ? 1 : .78} />
               <text x={x} y={padT + chartH - h - 5} textAnchor="middle" fontSize={8} fontWeight={700} fill="#3b82f6">{d.hours.toFixed(1)}h</text>
               <text x={x} y={padT + chartH + 16} textAnchor="middle" fontSize={7.5} fill="var(--color-text-secondary)">{compactLabel(d.fullLabel)}</text>
