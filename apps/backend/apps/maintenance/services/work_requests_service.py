@@ -3,6 +3,7 @@ import requests
 from datetime import date as date_type
 from django.core.cache import cache
 from apps.ssi_common.filters.base import FilterContext
+from apps.ssi_common.plex_ranges import date_chunks
 from apps.ssi_common.bu_classification import (
     resolve_bu_from_workcenter,
     resolve_customer_from_workcenter,
@@ -62,11 +63,15 @@ class WorkRequestsService:
         if cached:
             return cached
 
-        raw = _post("/work-requests", {
-            "start_date": filter_ctx.start_date.isoformat(),
-            "end_date": filter_ctx.end_date.isoformat(),
-        })
-        rows = raw.get("data", [])
+        by_number: dict = {}
+        for chunk_start, chunk_end in date_chunks(filter_ctx.start_date, filter_ctx.end_date):
+            raw = _post("/work-requests", {
+                "start_date": chunk_start.isoformat(),
+                "end_date": chunk_end.isoformat(),
+            })
+            for row in raw.get("data", []):
+                by_number[row.get("work_request_no")] = row
+        rows = list(by_number.values())
         rows = _apply_filters(rows, filter_ctx)
 
         if not rows:
