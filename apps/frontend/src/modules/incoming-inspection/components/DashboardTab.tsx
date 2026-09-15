@@ -44,14 +44,14 @@ const DashboardTab: React.FC<Props> = ({ filters }) => {
     );
   }
 
-  if (!data) {
+  if (isFetching || !data) {
     return <div style={{ padding: "2rem", textAlign: "center" }}><Spinner /></div>;
   }
 
   const { kpis } = data;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", opacity: isFetching ? 0.65 : 1, transition: "opacity 120ms" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
         <div style={card}>
           <div style={cardTitle}>{t("incomingInspection.kpis.lotsInspected")}</div>
