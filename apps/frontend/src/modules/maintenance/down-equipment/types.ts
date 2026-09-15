@@ -27,11 +27,19 @@ export interface DownTrendBu {
   events: number;
 }
 
+export interface RecurrentEvent {
+  date: string;
+  hours: number;
+  reason: string;
+  bu: string;
+}
+
 export interface RecurrentEquipment {
   equipment_id: string;
   description: string;
   hours: number;
   events: number;
+  event_items: RecurrentEvent[];
 }
 
 export interface DownEquipmentDashboard {
