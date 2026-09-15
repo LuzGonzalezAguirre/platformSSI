@@ -36,7 +36,7 @@ class BaseRangeFilterSerializer(serializers.Serializer):
                 {"end_date": "end_date debe ser mayor o igual a start_date."}
             )
 
-        if (end - start).days > self.MAX_RANGE_DAYS:
+        if (end - start).days >= self.MAX_RANGE_DAYS:
             raise serializers.ValidationError(
                 {"end_date": f"El rango máximo permitido es {self.MAX_RANGE_DAYS} días."}
             )
