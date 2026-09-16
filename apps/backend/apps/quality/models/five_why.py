@@ -106,7 +106,7 @@ class RootCause(models.Model):
         return f"{self.five_why} - Row {self.order}"
 
     def save(self, *args, **kwargs):
-        # Root cause = last non-empty corrective action in this line
-        self.root_cause = self.ca5 or self.ca4 or self.ca3 or self.ca2 or self.ca1
+        # Root cause = último Why capturado en la cadena.
+        self.root_cause = self.why5 or self.why4 or self.why3 or self.why2 or self.why1
         self.is_final = True
         super().save(*args, **kwargs)
