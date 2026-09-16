@@ -143,6 +143,20 @@ class ProblemRepository:
         team_members = data.pop('team_members', None)
         team_member_ids = data.pop('team_member_ids', None)
 
+        # Si cambia un aprobador, su aprobación anterior deja de ser válida.
+        approval_pairs = (
+            ('manufacturing_approver', 'manufacturing_approved_at'),
+            ('production_approver', 'production_approved_at'),
+            ('maintenance_approver', 'maintenance_approved_at'),
+        )
+        for approver_field, approved_at_field in approval_pairs:
+            if approver_field in data:
+                new_approver = data[approver_field]
+                current_id = getattr(problem, f'{approver_field}_id')
+                new_id = getattr(new_approver, 'id', None)
+                if current_id != new_id:
+                    setattr(problem, approved_at_field, None)
+
         for key, value in data.items():
             setattr(problem, key, value)
         problem.save()
