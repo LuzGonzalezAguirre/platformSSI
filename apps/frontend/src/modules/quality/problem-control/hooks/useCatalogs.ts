@@ -44,6 +44,14 @@ export const useQualityUsers = () => {
   });
 };
 
+export const useApprovalUsers = () => {
+  return useQuery({
+    queryKey: ['approval-users'],
+    queryFn: () => problemApi.getApprovalUsers(),
+    staleTime: 60000,
+  });
+};
+
 export const useQualityManagers = () => {
   return useQuery({
     queryKey: ['quality-managers'],

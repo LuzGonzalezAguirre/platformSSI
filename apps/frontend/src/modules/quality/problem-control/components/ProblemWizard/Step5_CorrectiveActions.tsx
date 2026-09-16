@@ -21,6 +21,7 @@ const makeEmptyForm = (root_cause_id: number) => ({
   due_date: '',
   completion_date: '',
   ongoing: false,
+  active: true,
   root_cause_id,
 });
 
@@ -72,6 +73,7 @@ export const Step5_CorrectiveActions: React.FC = () => {
       due_date: action.due_date || '',
       completion_date: action.completion_date || '',
       ongoing: action.ongoing,
+      active: action.active,
       root_cause_id: action.root_cause_id,
     });
   };
@@ -89,6 +91,7 @@ export const Step5_CorrectiveActions: React.FC = () => {
             action: formData.action,
             response: formData.response,
             ongoing: formData.ongoing,
+            active: formData.active,
             due_date: formData.due_date || null,
             completion_date: formData.completion_date || null,
             responsible_id: formData.responsible?.id,
@@ -104,6 +107,7 @@ export const Step5_CorrectiveActions: React.FC = () => {
           due_date: formData.due_date || null,
           completion_date: formData.completion_date || null,
           ongoing: formData.ongoing,
+          active: formData.active,
           root_cause_id: formData.root_cause_id,
         } as any);
       }
@@ -245,6 +249,14 @@ export const Step5_CorrectiveActions: React.FC = () => {
                       />
                       <span>Ongoing</span>
                     </label>
+                    <label style={styles.checkboxLabel}>
+                      <input
+                        type="checkbox" checked={formData.active}
+                        onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                        style={styles.checkbox}
+                      />
+                      <span>Active</span>
+                    </label>
                   </div>
                 </div>
                 <div style={styles.formActions}>
@@ -262,11 +274,12 @@ export const Step5_CorrectiveActions: React.FC = () => {
                 <table style={styles.table}>
                   <thead>
                     <tr>
-                      <th style={styles.th}>Root Cause</th>
+                      <th style={styles.th}>Root Cause (Last Why)</th>
                       <th style={styles.th}>Add Date</th>
                       <th style={styles.th}>Due Date</th>
                       <th style={styles.th}>Completion Date</th>
                       <th style={styles.thCenter}>Ongoing</th>
+                      <th style={styles.thCenter}>Active</th>
                       <th style={styles.th}>Action</th>
                       <th style={styles.th}>Response</th>
                       <th style={styles.th}>Responsible</th>
@@ -287,6 +300,11 @@ export const Step5_CorrectiveActions: React.FC = () => {
                         <td style={styles.tdCenter}>
                           {action.ongoing ? (
                             <span style={styles.ongoingDot} title="Ongoing">●</span>
+                          ) : '—'}
+                        </td>
+                        <td style={styles.tdCenter}>
+                          {action.active ? (
+                            <span style={styles.activeDot} title="Active">●</span>
                           ) : '—'}
                         </td>
                         <td style={styles.tdAction}>{action.action}</td>
@@ -488,6 +506,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '0.75rem', borderRadius: '0.25rem', fontWeight: 500, cursor: 'default',
   },
   ongoingDot: { color: '#3b82f6', fontWeight: 700 },
+  activeDot: { color: '#16a34a', fontWeight: 700 },
   editButton: {
     padding: '0.2rem 0.5rem', backgroundColor: '#3b82f6',
     color: 'white', border: 'none', borderRadius: '0.25rem',

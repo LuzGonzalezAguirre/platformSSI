@@ -39,26 +39,33 @@ function getStepValidation(problem: Problem | undefined): Record<number, StepErr
     problem.date_of_occurrence
   );
 
-  const d3 = !!(
-    problem.initial_response?.trim() ||
-    (problem.containment_actions?.length ?? 0) > 0
+  const d3 = (problem.containment_actions?.length ?? 0) > 0;
+
+  const requiredCategories = ['made', 'escape', 'systemic'];
+  const d4 = requiredCategories.every((category) =>
+    problem.five_why_analyses?.some((analysis) =>
+      analysis.category === category &&
+      analysis.root_causes?.some((rootCause) =>
+        rootCause.why1?.trim() && rootCause.why2?.trim() && rootCause.why3?.trim()
+      )
+    )
   );
 
-  const d4 =
-    (problem.five_why_analyses?.length ?? 0) > 0 &&
-    problem.five_why_analyses.some(a => (a.root_causes?.length ?? 0) > 0);
-
   const d5 = (problem.corrective_actions?.length ?? 0) > 0;
-  const d6 = (problem.verification_actions?.length ?? 0) > 0;
+  const d6 = d5 && problem.corrective_actions.every((action) =>
+    problem.attachments?.some((attachment) =>
+      attachment.step === 'step6' && attachment.corrective_action_id === action.id
+    )
+  );
   const d7 = (problem.prevention_actions?.length ?? 0) > 0;
 
   return {
     1: d1 ? ok : fail('D1: Brief description, full description, type, severity, champion and date are required'),
     2: ok,
-    3: d3 ? ok : fail('D3: Add an initial response or at least one containment action'),
-    4: d4 ? ok : fail('D4: Add a Five Why analysis with at least one root cause'),
+    3: d3 ? ok : fail('D3: Add at least one containment action'),
+    4: d4 ? ok : fail('D4: Complete Why 1, Why 2 and Why 3 in Made, Escape and Systemic'),
     5: d5 ? ok : fail('D5: Add at least one corrective action'),
-    6: d6 ? ok : fail('D6: Add at least one verification action'),
+    6: d6 ? ok : fail('D6: Upload test evidence for every D5 corrective action'),
     7: d7 ? ok : fail('D7: Add at least one prevention action'),
     8: ok,
   };
@@ -113,7 +120,10 @@ export const ProblemWizardPage: React.FC = () => {
         id: Number(id),
         data: {
           ...formData,
-          team_member_ids: formData.team_members?.map((m) => m.id), // ← AGREGAR
+          team_member_ids: formData.team_members?.map((m) => m.id),
+          manufacturing_approver_id: formData.manufacturing_approver?.id || null,
+          production_approver_id: formData.production_approver?.id || null,
+          maintenance_approver_id: formData.maintenance_approver?.id || null,
         },
       });
       alert('Problem saved successfully!');

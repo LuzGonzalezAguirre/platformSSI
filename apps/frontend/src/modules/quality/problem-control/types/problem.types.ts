@@ -56,6 +56,7 @@ export interface UserBasic {
   first_name: string;
   last_name: string;
   email: string;
+  job_title: string;
 }
 
 export interface SeverityLevel {
@@ -117,8 +118,8 @@ export interface ContainmentAction {
   responsible?: UserBasic;
   responsible_id?: number;
   add_date?: string; // ISO date
-  due_date?: string; // ISO date
-  completion_date?: string; // ISO date
+  due_date?: string | null; // ISO date
+  completion_date?: string | null; // ISO date
   ongoing: boolean;
 }
 
@@ -131,6 +132,7 @@ export interface CorrectiveAction {
   due_date: string | null;
   completion_date: string | null;
   ongoing: boolean;
+  active: boolean;
   action: string;
   response: string;
   responsible: UserBasic | null;
@@ -167,6 +169,7 @@ export interface ProblemAttachment {
   id: number;
   step: AttachmentStep;
   step_display: string;
+  corrective_action_id: number | null;
   file: string;
   filename: string;
   file_size: number;
@@ -314,6 +317,12 @@ export interface Problem {
   approved_by: UserBasic | null;
   approved_at: string | null;
   approval_comments: string;
+  manufacturing_approver: UserBasic | null;
+  production_approver: UserBasic | null;
+  maintenance_approver: UserBasic | null;
+  manufacturing_approved_at: string | null;
+  production_approved_at: string | null;
+  maintenance_approved_at: string | null;
   
   // Override
   override_requested: boolean;

@@ -37,6 +37,14 @@ class ProblemAttachment(models.Model):
         default='general',
         help_text="Step donde se subió el attachment"
     )
+    corrective_action = models.ForeignKey(
+        'CorrectiveAction',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='verification_evidence',
+        help_text="Acción de D5 verificada por este archivo de prueba"
+    )
     file = models.FileField(
         upload_to='problem_attachments/%Y/%m/',
         help_text="Max 10MB por archivo"
@@ -61,6 +69,7 @@ class ProblemAttachment(models.Model):
         verbose_name_plural = 'Problem Attachments'
         indexes = [
             models.Index(fields=['problem', 'step']),
+            models.Index(fields=['problem', 'step', 'corrective_action']),
         ]
     
     def __str__(self):

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWizardStore } from '../../store/wizardStore';
-import { useQualityUsers } from '../../hooks/useCatalogs';
 import {
   useContainmentActions,
   useContainmentActionCreate,
@@ -18,8 +17,13 @@ export const Step3b_Containment: React.FC = () => {
   const problemId = id ? Number(id) : undefined;
 
   const setStepValidation = useWizardStore((s) => s.setStepValidation);
-  const { data: qualityUsers } = useQualityUsers();
+  const problemFormData = useWizardStore((s) => s.formData);
   const { data: actions, isLoading } = useContainmentActions(problemId);
+
+  const assignedUsers = [
+    ...(problemFormData.champion ? [problemFormData.champion] : []),
+    ...(problemFormData.team_members || []),
+  ].filter((user, index, list) => list.findIndex((item) => item.id === user.id) === index);
 
   const createMutation = useContainmentActionCreate();
   const updateMutation = useContainmentActionUpdate();
@@ -28,6 +32,7 @@ export const Step3b_Containment: React.FC = () => {
   // Form state
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
   const [formData, setFormData] = useState<Partial<ContainmentAction>>({
     action: '',
     response: '',
@@ -37,14 +42,14 @@ export const Step3b_Containment: React.FC = () => {
     ongoing: false,
   });
 
-  // Step 3b es opcional — siempre válido
   useEffect(() => {
-    setStepValidation(4, true);
-  }, [setStepValidation]);
+    setStepValidation(3, Boolean(actions?.length));
+  }, [actions, setStepValidation]);
 
   const handleAdd = () => {
     setIsAdding(true);
     setEditingId(null);
+    setIsComplete(false);
     setFormData({
       action: '',
       response: '',
@@ -58,6 +63,7 @@ export const Step3b_Containment: React.FC = () => {
   const handleEdit = (action: ContainmentAction) => {
     setIsAdding(false);
     setEditingId(action.id);
+    setIsComplete(Boolean(action.completion_date));
     setFormData({
       action: action.action,
       response: action.response || '',
@@ -71,6 +77,7 @@ export const Step3b_Containment: React.FC = () => {
   const handleCancel = () => {
     setIsAdding(false);
     setEditingId(null);
+    setIsComplete(false);
     setFormData({
       action: '',
       response: '',
@@ -100,9 +107,11 @@ export const Step3b_Containment: React.FC = () => {
           data: {
             action: formData.action,
             response: formData.response,
-            ongoing: formData.ongoing,
-            due_date: formData.due_date || undefined,
-            completion_date: formData.completion_date || undefined,
+            ongoing: isComplete ? false : formData.ongoing,
+            due_date: formData.due_date || null,
+            completion_date: isComplete
+              ? (formData.completion_date || new Date().toISOString().slice(0, 10))
+              : null,
             responsible_id: formData.responsible?.id,
           },
         });
@@ -114,8 +123,10 @@ export const Step3b_Containment: React.FC = () => {
           response: formData.response,
           responsible_id: formData.responsible?.id,
           due_date: formData.due_date || undefined,
-          completion_date: formData.completion_date || undefined,
-          ongoing: formData.ongoing,
+          completion_date: isComplete
+            ? (formData.completion_date || new Date().toISOString().slice(0, 10))
+            : null,
+          ongoing: isComplete ? false : formData.ongoing,
         } as any);
       }
 
@@ -197,13 +208,13 @@ export const Step3b_Containment: React.FC = () => {
               <select
                 value={formData.responsible?.id || ''}
                 onChange={(e) => {
-                  const user = qualityUsers?.find((u) => u.id === parseInt(e.target.value));
+                  const user = assignedUsers.find((u) => u.id === parseInt(e.target.value));
                   setFormData({ ...formData, responsible: user });
                 }}
                 style={styles.select}
               >
                 <option value="">Select...</option>
-                {Array.isArray(qualityUsers) && qualityUsers.map((user) => (
+                {assignedUsers.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.first_name} {user.last_name}
                   </option>
@@ -237,10 +248,25 @@ export const Step3b_Containment: React.FC = () => {
               <input
                 type="checkbox"
                 checked={formData.ongoing || false}
-                onChange={(e) => setFormData({ ...formData, ongoing: e.target.checked })}
+                onChange={(e) => {
+                  setFormData({ ...formData, ongoing: e.target.checked });
+                  if (e.target.checked) setIsComplete(false);
+                }}
                 style={styles.checkbox}
               />
               <span>Ongoing Action</span>
+            </label>
+            <label style={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={isComplete}
+                onChange={(e) => {
+                  setIsComplete(e.target.checked);
+                  if (e.target.checked) setFormData({ ...formData, ongoing: false });
+                }}
+                style={styles.checkbox}
+              />
+              <span>Complete</span>
             </label>
           </div>
 

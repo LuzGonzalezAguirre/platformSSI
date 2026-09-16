@@ -342,6 +342,23 @@ class Problem(models.Model):
     approved_at = models.DateTimeField(null=True, blank=True)
     approval_comments = models.TextField(blank=True)
 
+    # Aprobadores funcionales requeridos para cerrar el 8D.
+    manufacturing_approver = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='problems_manufacturing_approver'
+    )
+    production_approver = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='problems_production_approver'
+    )
+    maintenance_approver = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='problems_maintenance_approver'
+    )
+    manufacturing_approved_at = models.DateTimeField(null=True, blank=True)
+    production_approved_at = models.DateTimeField(null=True, blank=True)
+    maintenance_approved_at = models.DateTimeField(null=True, blank=True)
+
     # ══════════════════════════════════════════════════════════════════════
     # OVERRIDE MECHANISM (después de 30 días globales)
     # ══════════════════════════════════════════════════════════════════════
@@ -475,22 +492,30 @@ class Problem(models.Model):
         if self.control_plan_update_required and not self.control_plan_completed:
             errors.append("Control Plan update required but not completed")
 
-        # Five Why validation: cada categoría debe tener mínimo 3 Why's
-        for five_why in self.five_why_analyses.all():
-            if not five_why.is_valid():
-                errors.append(
-                    f"Five Why '{five_why.get_category_display()}' "
-                    f"requires minimum 3 answers"
-                )
+        # D4: las tres categorías son obligatorias y cada una requiere
+        # una cadena con Why 1, Why 2 y Why 3 completos.
+        analyses = {item.category: item for item in self.five_why_analyses.all()}
+        required_categories = {
+            'made': 'Why Made (Creation)',
+            'escape': 'Why Escape (Detection)',
+            'systemic': 'Systemic',
+        }
+        for category, label in required_categories.items():
+            five_why = analyses.get(category)
+            if not five_why or not five_why.is_valid():
+                errors.append(f"Five Why '{label}' requires Why 1, Why 2 and Why 3")
 
-        # Root Cause validation: cada 5Why debe tener mínimo 3 root causes
-        for five_why in self.five_why_analyses.all():
-            rc_count = five_why.root_causes.count()
-            if rc_count < 3:
-                errors.append(
-                    f"Five Why '{five_why.get_category_display()}' "
-                    f"requires minimum 3 root causes (has {rc_count})"
-                )
+        # Aprobaciones funcionales, adicionales a la del Quality Manager.
+        approval_requirements = (
+            ('Manufacturing', self.manufacturing_approver_id, self.manufacturing_approved_at),
+            ('Production', self.production_approver_id, self.production_approved_at),
+            ('Maintenance', self.maintenance_approver_id, self.maintenance_approved_at),
+        )
+        for department, approver_id, approved_at in approval_requirements:
+            if not approver_id:
+                errors.append(f"{department} approver is not assigned")
+            elif not approved_at:
+                errors.append(f"{department} approval is pending")
 
         # Corrective Actions: cada root cause debe tener mínimo 1 corrective action
         for five_why in self.five_why_analyses.all():
