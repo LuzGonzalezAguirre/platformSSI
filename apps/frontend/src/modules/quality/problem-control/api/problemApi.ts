@@ -185,6 +185,11 @@ getProblemTypes: async () => {
     return response.data;
   },
 
+  getApprovalUsers: async (): Promise<UserBasic[]> => {
+    const response = await apiClient.get('/quality/approval-users/');
+    return response.data;
+  },
+
   // ═══════════════════════════════════════════════════════════════════════════
   // CRUD
   // ═══════════════════════════════════════════════════════════════════════════
@@ -222,6 +227,14 @@ getProblemTypes: async () => {
 
   approve: async (id: number, data: ApproveRequest): Promise<Problem> => {
     const response = await apiClient.post(`/quality/problems/${id}/approve/`, data);
+    return response.data;
+  },
+
+  approveDepartment: async (
+    id: number,
+    role: 'manufacturing' | 'production' | 'maintenance',
+  ): Promise<Problem> => {
+    const response = await apiClient.post(`/quality/problems/${id}/department-approval/`, { role });
     return response.data;
   },
 
@@ -395,10 +408,16 @@ getProblemTypes: async () => {
     return response.data;
   },
 
-  uploadAttachment: async (problemId: number, step: AttachmentStep, file: File): Promise<ProblemAttachment> => {
+  uploadAttachment: async (
+    problemId: number,
+    step: AttachmentStep,
+    file: File,
+    correctiveActionId?: number,
+  ): Promise<ProblemAttachment> => {
     const formData = new FormData();
     formData.append('problem_id', String(problemId));
     formData.append('step', step);
+    if (correctiveActionId) formData.append('corrective_action_id', String(correctiveActionId));
     formData.append('file', file);
     const response = await apiClient.post('/quality/attachments/upload/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
