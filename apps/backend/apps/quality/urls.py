@@ -20,6 +20,7 @@ from apps.quality.views import (
     ProblemDetailView,
     ProblemSubmitView,
     ProblemApproveView,
+    ProblemDepartmentApprovalView,
     ProblemRejectView,
     ProblemCloseView,
     ProblemOverrideRequestView,
@@ -27,6 +28,7 @@ from apps.quality.views import (
     SeverityLevelListView,
     DefectTypeListView,
     QualityUsersListView,
+    ApprovalUsersListView,
     QualityManagersListView,
     ContainmentActionListCreateView,
     ContainmentActionDetailView,
@@ -90,6 +92,7 @@ urlpatterns = [
     # Workflow actions
     path("problems/<int:pk>/submit/", ProblemSubmitView.as_view(), name="problem-submit"),
     path("problems/<int:pk>/approve/", ProblemApproveView.as_view(), name="problem-approve"),
+    path("problems/<int:pk>/department-approval/", ProblemDepartmentApprovalView.as_view(), name="problem-department-approval"),
     path("problems/<int:pk>/reject/", ProblemRejectView.as_view(), name="problem-reject"),
     path("problems/<int:pk>/close/", ProblemCloseView.as_view(), name="problem-close"),
     
@@ -103,6 +106,7 @@ urlpatterns = [
     path("severity-levels/", SeverityLevelListView.as_view(), name="severity-levels"),
     path("defect-types/", DefectTypeListView.as_view(), name="defect-types"),
     path("quality-users/", QualityUsersListView.as_view(), name="quality-users"),
+    path("approval-users/", ApprovalUsersListView.as_view(), name="approval-users"),
     path("quality-managers/", QualityManagersListView.as_view(), name="quality-managers"),
 
     # ═════════════════════════════════════════════════════════════════════
