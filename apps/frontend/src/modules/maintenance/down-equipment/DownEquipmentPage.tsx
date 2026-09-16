@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Activity, AlertTriangle, Clock3, Factory, RefreshCw, Search, Siren,
+  Activity, AlertTriangle, Clock3, Factory, RefreshCw, Search, Siren, X,
 } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { useDownEquipmentData } from "./useDownEquipmentData";
-import { DownEquipmentItem, DownSeverity } from "./types";
+import { DownEquipmentItem, DownSeverity, RecurrentEquipment } from "./types";
 
 const severityColors: Record<DownSeverity, { bg: string; color: string; labelEs: string; labelEn: string }> = {
   normal: { bg: "rgba(34,197,94,.13)", color: "#16a34a", labelEs: "Menos de 1 h", labelEn: "Under 1 h" },
@@ -45,12 +45,27 @@ export default function DownEquipmentPage() {
   const [search, setSearch] = useState("");
   const [bu, setBu] = useState("all");
   const [severity, setSeverity] = useState("all");
+  const [selectedRecurrent, setSelectedRecurrent] = useState<RecurrentEquipment | null>(null);
   const [, setClockTick] = useState(0);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockTick((value) => value + 1), 30_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!selectedRecurrent) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedRecurrent(null);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [selectedRecurrent]);
 
   const liveMinutes = (row: DownEquipmentItem) =>
     row.elapsed_minutes + Math.max(Math.floor((Date.now() - fetchedAt) / 60_000), 0);
@@ -190,7 +205,7 @@ export default function DownEquipmentPage() {
           </div>
           <div style={s.segmented}>
             {[7, 30, 90].map((value) => (
-              <button key={value} type="button" onClick={() => setDays(value)} style={{ ...s.segmentButton, ...(days === value ? s.segmentActive : {}) }}>
+              <button key={value} type="button" onClick={() => { setDays(value); setSelectedRecurrent(null); }} style={{ ...s.segmentButton, ...(days === value ? s.segmentActive : {}) }}>
                 {value} {tr("días", "days")}
               </button>
             ))}
@@ -225,22 +240,80 @@ export default function DownEquipmentPage() {
           <h3 style={s.chartTitle}>{tr("Equipos con mayor recurrencia", "Most recurrent equipment")}</h3>
           <div style={s.recurrentGrid}>
             {(data?.trends.recurrent ?? []).map((item, index) => (
-              <div key={item.equipment_id} style={s.recurrentItem}>
+              <button
+                key={item.equipment_id}
+                type="button"
+                style={s.recurrentItem}
+                onClick={() => setSelectedRecurrent(item)}
+                aria-label={tr(
+                  "Ver eventos de " + item.equipment_id,
+                  "View events for " + item.equipment_id,
+                )}
+              >
                 <span style={s.rank}>{index + 1}</span>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={s.primary}>{item.equipment_id}</div>
-                  <div style={s.secondary}>{item.description}</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={s.primary}>{item.events} {tr("eventos", "events")}</div>
-                  <div style={s.secondary}>{item.hours.toFixed(1)} h</div>
-                </div>
-              </div>
+                <span style={{ minWidth: 0, flex: 1, textAlign: "left" }}>
+                  <span style={{ ...s.primary, display: "block" }}>{item.equipment_id}</span>
+                  <span style={{ ...s.secondary, display: "block" }}>{item.description}</span>
+                </span>
+                <span style={{ textAlign: "right" }}>
+                  <span style={{ ...s.primary, display: "block" }}>{item.events} {tr("eventos", "events")}</span>
+                  <span style={{ ...s.secondary, display: "block" }}>{item.hours.toFixed(1)} h · {tr("Ver detalle", "View detail")}</span>
+                </span>
+              </button>
             ))}
             {!data?.trends.recurrent.length && <div style={s.empty}>{tr("Sin historial en el rango.", "No history in this range.")}</div>}
           </div>
         </div>
       </section>
+
+      {selectedRecurrent && (
+        <div style={s.modalBackdrop} role="presentation" onMouseDown={() => setSelectedRecurrent(null)}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="recurrent-events-title"
+            style={s.modal}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header style={s.modalHeader}>
+              <div>
+                <h2 id="recurrent-events-title" style={s.modalTitle}>
+                  {selectedRecurrent.equipment_id} · {tr("Eventos de downtime", "Downtime events")}
+                </h2>
+                <p style={s.modalSubtitle}>
+                  {selectedRecurrent.description} · {selectedRecurrent.events} {tr("eventos", "events")} · {selectedRecurrent.hours.toFixed(1)} h
+                </p>
+              </div>
+              <button type="button" onClick={() => setSelectedRecurrent(null)} style={s.closeButton} aria-label={tr("Cerrar", "Close")}>
+                <X size={18} />
+              </button>
+            </header>
+
+            <div style={s.modalTableWrap}>
+              <table style={s.modalTable}>
+                <thead>
+                  <tr>
+                    <th style={s.th}>{tr("Fecha", "Date")}</th>
+                    <th style={s.th}>{tr("Duración", "Duration")}</th>
+                    <th style={s.th}>{tr("Motivo", "Reason")}</th>
+                    <th style={s.th}>BU</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedRecurrent.event_items.map((event, index) => (
+                    <tr key={event.date + "-" + event.reason + "-" + index} style={s.tr}>
+                      <td style={s.td}>{event.date || "—"}</td>
+                      <td style={{ ...s.td, fontWeight: 700 }}>{event.hours.toFixed(2)} h</td>
+                      <td style={s.td}>{event.reason || tr("Sin razón", "No reason")}</td>
+                      <td style={s.td}><span style={s.buBadge}>{event.bu}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -304,6 +377,14 @@ const styles: Record<string, React.CSSProperties> = {
   chartCard: { minWidth: 0, padding: "0.8rem", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 10 },
   chartTitle: { margin: "0 0 0.65rem", fontSize: "0.8rem", color: "var(--color-text-primary)" },
   recurrentGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "0.5rem" },
-  recurrentItem: { display: "flex", alignItems: "center", gap: "0.65rem", padding: "0.65rem", border: "1px solid var(--color-border)", borderRadius: 8, background: "var(--color-bg)" },
-  rank: { width: 25, height: 25, display: "grid", placeItems: "center", borderRadius: 7, background: "rgba(37,99,235,.12)", color: "#2563eb", fontWeight: 750, fontSize: "0.72rem" },
+  recurrentItem: { width: "100%", display: "flex", alignItems: "center", gap: "0.65rem", padding: "0.65rem", border: "1px solid var(--color-border)", borderRadius: 8, background: "var(--color-bg)", color: "inherit", font: "inherit", cursor: "pointer" },
+  rank: { width: 25, height: 25, display: "grid", placeItems: "center", borderRadius: 7, background: "rgba(37,99,235,.12)", color: "#2563eb", fontWeight: 750, fontSize: "0.72rem", flexShrink: 0 },
+  modalBackdrop: { position: "fixed", inset: 0, zIndex: 1000, display: "grid", placeItems: "center", padding: "1rem", background: "rgba(15,23,42,.58)", backdropFilter: "blur(2px)" },
+  modal: { width: "min(760px, 100%)", maxHeight: "min(720px, 88vh)", display: "flex", flexDirection: "column", overflow: "hidden", border: "1px solid var(--color-border)", borderRadius: 14, background: "var(--color-surface)", boxShadow: "0 24px 70px rgba(0,0,0,.32)" },
+  modalHeader: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", padding: "1rem 1.1rem", borderBottom: "1px solid var(--color-border)" },
+  modalTitle: { margin: 0, fontSize: "1rem", color: "var(--color-text-primary)" },
+  modalSubtitle: { margin: "0.3rem 0 0", fontSize: "0.75rem", color: "var(--color-text-secondary)" },
+  closeButton: { width: 34, height: 34, display: "grid", placeItems: "center", flexShrink: 0, border: "1px solid var(--color-border)", borderRadius: 8, background: "var(--color-bg)", color: "var(--color-text-primary)", cursor: "pointer" },
+  modalTableWrap: { overflow: "auto", padding: "0 1rem 1rem" },
+  modalTable: { width: "100%", borderCollapse: "collapse", minWidth: 560, fontSize: "0.78rem" },
 };
