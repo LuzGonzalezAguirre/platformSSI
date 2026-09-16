@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.utils import timezone
 
 from apps.quality.services.problem_service import ProblemService
 from apps.quality.serializers import (
@@ -14,7 +15,7 @@ from apps.quality.serializers import (
     DefectTypeSerializer,
 )
 from apps.quality.models import (
-    ContainmentAction, FiveWhyAnalysis, RootCause,
+    Problem, ContainmentAction, FiveWhyAnalysis, RootCause,
     CorrectiveAction, VerificationAction, PreventionAction,ProblemCategoryCatalog,
     ProblemTypeCatalog,
     DefectType,
@@ -213,6 +214,54 @@ class ProblemApproveView(APIView):
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ProblemDepartmentApprovalView(APIView):
+    """POST: registra la aprobación funcional asignada en D4."""
+
+    permission_classes = [IsAuthenticated]
+    ROLE_FIELDS = {
+        'manufacturing': ('manufacturing_approver', 'manufacturing_approved_at'),
+        'production': ('production_approver', 'production_approved_at'),
+        'maintenance': ('maintenance_approver', 'maintenance_approved_at'),
+    }
+
+    def post(self, request, pk: int):
+        role = request.data.get('role')
+        fields = self.ROLE_FIELDS.get(role)
+        if not fields:
+            return Response(
+                {'detail': 'role must be manufacturing, production or maintenance'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            problem = Problem.objects.select_related(
+                'manufacturing_approver',
+                'production_approver',
+                'maintenance_approver',
+            ).get(pk=pk)
+        except Problem.DoesNotExist:
+            return Response({'detail': 'Problem not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        approver_field, approved_at_field = fields
+        approver = getattr(problem, approver_field)
+        if approver is None:
+            return Response(
+                {'detail': f'{role.title()} approver is not assigned'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if approver.id != request.user.id:
+            return Response(
+                {'detail': 'Only the configured approver can approve this department'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if getattr(problem, approved_at_field) is None:
+            setattr(problem, approved_at_field, timezone.now())
+            problem.save(update_fields=[approved_at_field, 'updated_at'])
+
+        return Response(ProblemDetailSerializer(problem).data)
 
 
 class ProblemRejectView(APIView):
@@ -636,6 +685,19 @@ class QualityUsersListView(APIView):
             return Response({"detail": str(e)}, status=500)
 
 
+class ApprovalUsersListView(APIView):
+    """GET: usuarios activos disponibles para configurar aprobadores."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.identity.models import User
+        from apps.quality.serializers.problem_serializer import UserBasicSerializer
+
+        users = User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'employee_id')
+        return Response(UserBasicSerializer(users, many=True).data)
+
+
 class QualityManagersListView(APIView):
     """GET: Lista de Quality Managers (para approval workflow)"""
     permission_classes = [IsAuthenticated]
@@ -1003,6 +1065,7 @@ class ProblemAttachmentUploadView(APIView):
     def post(self, request):
         problem_id = request.data.get('problem_id')
         step = request.data.get('step', 'general')
+        corrective_action_id = request.data.get('corrective_action_id')
         file = request.FILES.get('file')
 
         if not problem_id or not file:
@@ -1018,9 +1081,23 @@ class ProblemAttachmentUploadView(APIView):
         except Problem.DoesNotExist:
             return Response({'detail': 'Problem not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        corrective_action = None
+        if corrective_action_id:
+            try:
+                corrective_action = CorrectiveAction.objects.get(
+                    pk=corrective_action_id,
+                    problem=problem,
+                )
+            except CorrectiveAction.DoesNotExist:
+                return Response(
+                    {'detail': 'Corrective action does not belong to this problem'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         attachment = ProblemAttachment.objects.create(
             problem=problem,
             step=step,
+            corrective_action=corrective_action,
             file=file,
             filename=file.name,
             file_size=file.size,
@@ -1050,6 +1127,9 @@ class ProblemAttachmentListView(APIView):
         step = request.query_params.get('step')
         if step:
             qs = qs.filter(step=step)
+        corrective_action_id = request.query_params.get('corrective_action_id')
+        if corrective_action_id:
+            qs = qs.filter(corrective_action_id=corrective_action_id)
 
         return Response(ProblemAttachmentSerializer(qs.order_by('-uploaded_at'), many=True).data)
 
