@@ -60,6 +60,7 @@ class CorrectiveAction(models.Model):
     due_date = models.DateField(null=True, blank=True)
     completion_date = models.DateField(null=True, blank=True)
     ongoing = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
     action = models.TextField()
     response = models.TextField(blank=True)
     responsible = models.ForeignKey(
