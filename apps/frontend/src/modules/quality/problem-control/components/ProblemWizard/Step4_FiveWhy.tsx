@@ -1,9 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { problemApi } from '../../api/problemApi';
 import type { FiveWhyAnalysis, FiveWhyCategory } from '../../types/problem.types';
 import { StepMediaBar } from '../shared/StepMediaBar';
+import { useApprovalUsers } from '../../hooks/useCatalogs';
+import { useWizardStore } from '../../store/wizardStore';
+import { useAuthStore } from '../../../../../store/authStore';
 
 const CATEGORIES: { key: FiveWhyCategory; label: string }[] = [
   { key: 'made',     label: 'Why Made (Creation)' },
@@ -12,14 +15,11 @@ const CATEGORIES: { key: FiveWhyCategory; label: string }[] = [
 ];
 
 const WHY_KEYS = ['why1', 'why2', 'why3', 'why4', 'why5'] as const;
-const CA_KEYS  = ['ca1',  'ca2',  'ca3',  'ca4',  'ca5']  as const;
-
 type CatKey = FiveWhyCategory;
 
 interface RowState {
   rootCauseId?: number;
   why1: string; why2: string; why3: string; why4: string; why5: string;
-  ca1:  string; ca2:  string; ca3:  string; ca4:  string; ca5:  string;
 }
 
 interface LineState {
@@ -28,7 +28,7 @@ interface LineState {
 }
 
 function emptyRow(): RowState {
-  return { why1:'', why2:'', why3:'', why4:'', why5:'', ca1:'', ca2:'', ca3:'', ca4:'', ca5:'' };
+  return { why1:'', why2:'', why3:'', why4:'', why5:'' };
 }
 
 function emptyLine(order: number): LineState {
@@ -36,7 +36,7 @@ function emptyLine(order: number): LineState {
 }
 
 function deriveRootCause(row: RowState): string {
-  return row.ca5 || row.ca4 || row.ca3 || row.ca2 || row.ca1 || '';
+  return row.why5 || row.why4 || row.why3 || row.why2 || row.why1 || '';
 }
 
 function buildLines(analyses: FiveWhyAnalysis[]): LineState[] {
@@ -49,7 +49,6 @@ function buildLines(analyses: FiveWhyAnalysis[]): LineState[] {
       line.rows[cat] = {
         rootCauseId: rc.id,
         why1: rc.why1, why2: rc.why2, why3: rc.why3, why4: rc.why4, why5: rc.why5,
-        ca1:  rc.ca1,  ca2:  rc.ca2,  ca3:  rc.ca3,  ca4:  rc.ca4,  ca5:  rc.ca5,
       };
     }
   }
@@ -81,6 +80,9 @@ export const Step4_FiveWhy: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const problemId = Number(id) || 0;
   const qc = useQueryClient();
+  const { formData, updateFormData, setStepValidation } = useWizardStore();
+  const currentUser = useAuthStore((state) => state.user);
+  const { data: approvalUsers = [] } = useApprovalUsers();
 
   const { data: analyses = [], isLoading } = useQuery<FiveWhyAnalysis[]>({
     queryKey: ['fiveWhy', problemId],
@@ -94,6 +96,16 @@ export const Step4_FiveWhy: React.FC = () => {
     made: undefined, escape: undefined, systemic: undefined,
   });
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
+
+  const approvalMutation = useMutation({
+    mutationFn: (role: 'manufacturing' | 'production' | 'maintenance') =>
+      problemApi.approveDepartment(problemId, role),
+    onSuccess: (updated) => {
+      updateFormData(updated);
+      qc.invalidateQueries({ queryKey: ['problem', problemId] });
+    },
+    onError: (error: any) => alert(extractErrorMessage(error)),
+  });
 
   // Refs for immediate reads inside async callbacks (avoid stale closures)
   const linesRef     = useRef(lines);
@@ -111,6 +123,16 @@ export const Step4_FiveWhy: React.FC = () => {
       setFiveWhyIds(buildFiveWhyIdMap(analyses));
     }
   }, [isLoading, analyses]);
+
+  useEffect(() => {
+    const valid = lines.every((line) =>
+      CATEGORIES.every(({ key }) => {
+        const row = line.rows[key];
+        return Boolean(row.why1.trim() && row.why2.trim() && row.why3.trim());
+      })
+    );
+    setStepValidation(4, valid);
+  }, [lines, setStepValidation]);
 
   const handleChange = useCallback((order: number, cat: CatKey, field: string, value: string) => {
     setLines(prev => prev.map(line =>
@@ -134,7 +156,7 @@ export const Step4_FiveWhy: React.FC = () => {
     if (!line) return;
     const row = line.rows[cat];
 
-    const hasContent = WHY_KEYS.some(k => row[k]) || CA_KEYS.some(k => row[k]);
+    const hasContent = WHY_KEYS.some(k => row[k]);
     if (!hasContent) return;
 
     inFlightRef.current.add(key);
@@ -153,7 +175,6 @@ export const Step4_FiveWhy: React.FC = () => {
         five_why: fwId,
         order,
         why1: row.why1, why2: row.why2, why3: row.why3, why4: row.why4, why5: row.why5,
-        ca1:  row.ca1,  ca2:  row.ca2,  ca3:  row.ca3,  ca4:  row.ca4,  ca5:  row.ca5,
       };
 
       // Re-read rootCauseId via ref in case another async call updated it
@@ -225,8 +246,7 @@ export const Step4_FiveWhy: React.FC = () => {
             <col style={{ width: '148px' }} />
             <col style={{ width: '60px' }} />
             <col />
-            <col />
-            <col style={{ width: '160px' }} />
+            <col style={{ width: '180px' }} />
           </colgroup>
           <thead>
             <tr>
@@ -234,15 +254,13 @@ export const Step4_FiveWhy: React.FC = () => {
               <th style={s.th}>Category</th>
               <th style={s.th}>Why #</th>
               <th style={s.th}>Why Description</th>
-              <th style={s.th}>Corrective Action</th>
-              <th style={s.th}>Root Cause</th>
+              <th style={s.th}>Root Cause (Last Why)</th>
             </tr>
           </thead>
           <tbody>
             {lines.map((line, lineIdx) =>
               CATEGORIES.map((catDef, catIdx) =>
                 WHY_KEYS.map((whyKey, whyIdx) => {
-                  const caKey = CA_KEYS[whyIdx];
                   const row = line.rows[catDef.key];
                   const isSaving    = savingKeys.has(`${line.order}-${catDef.key}`);
                   const rootCause   = deriveRootCause(row);
@@ -283,22 +301,12 @@ export const Step4_FiveWhy: React.FC = () => {
                         />
                       </td>
 
-                      <td style={s.td}>
-                        <textarea
-                          value={row[caKey]}
-                          onChange={e => handleChange(line.order, catDef.key, caKey, e.target.value)}
-                          onBlur={() => handleBlur(line.order, catDef.key)}
-                          style={s.textarea}
-                          rows={1}
-                          placeholder={`CA ${whyIdx + 1}…`}
-                        />
-                      </td>
 
                       {isFirstOfCat && (
                         <td rowSpan={5} style={{ ...s.td, ...s.rcCell }}>
                           {rootCause
                             ? <span style={s.rcText}>{rootCause}</span>
-                            : <span style={s.rcPlaceholder}>Auto-derived from last CA</span>
+                            : <span style={s.rcPlaceholder}>Complete at least Why 1–3</span>
                           }
                         </td>
                       )}
@@ -312,8 +320,75 @@ export const Step4_FiveWhy: React.FC = () => {
       </div>
 
       <div style={s.hint}>
-        Fields save automatically on focus loss. Root Cause is derived from the last filled Corrective Action per category.
+        Fields save automatically on focus loss. Why 1, Why 2 and Why 3 are required; Root Cause is the last completed Why.
       </div>
+
+      <section style={s.approvalSection}>
+        <div>
+          <h3 style={s.approvalTitle}>8D Functional Approvals</h3>
+          <p style={s.approvalHelp}>
+            Configure one approver from Manufacturing, Production and Maintenance. Save the assignments before each person approves.
+          </p>
+        </div>
+        <div style={s.approvalGrid}>
+          {([
+            {
+              role: 'manufacturing' as const,
+              label: 'Manufacturing',
+              field: 'manufacturing_approver' as const,
+              approver: formData.manufacturing_approver,
+              approvedAt: formData.manufacturing_approved_at,
+            },
+            {
+              role: 'production' as const,
+              label: 'Production',
+              field: 'production_approver' as const,
+              approver: formData.production_approver,
+              approvedAt: formData.production_approved_at,
+            },
+            {
+              role: 'maintenance' as const,
+              label: 'Maintenance',
+              field: 'maintenance_approver' as const,
+              approver: formData.maintenance_approver,
+              approvedAt: formData.maintenance_approved_at,
+            },
+          ]).map((item) => {
+            const canApprove = item.approver?.id === currentUser?.id && !item.approvedAt;
+            return (
+              <div key={item.role} style={s.approvalCard}>
+                <label style={s.approvalLabel}>{item.label} approver</label>
+                <select
+                  value={item.approver?.id || ''}
+                  onChange={(event) => {
+                    const selected = approvalUsers.find((user) => user.id === Number(event.target.value)) || null;
+                    updateFormData({ [item.field]: selected } as any);
+                  }}
+                  style={s.approvalSelect}
+                >
+                  <option value="">Select approver...</option>
+                  {approvalUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.first_name} {user.last_name}{user.job_title ? ` · ${user.job_title}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <div style={item.approvedAt ? s.approvedStatus : s.pendingStatus}>
+                  {item.approvedAt ? `Approved · ${new Date(item.approvedAt).toLocaleString()}` : 'Pending approval'}
+                </div>
+                <button
+                  type="button"
+                  style={{ ...s.approveButton, ...(!canApprove ? s.disabledButton : {}) }}
+                  disabled={!canApprove || approvalMutation.isPending}
+                  onClick={() => approvalMutation.mutate(item.role)}
+                >
+                  {item.approvedAt ? 'Approved' : 'Approve 8D'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {problemId && <StepMediaBar problemId={problemId} step="step4" />}
     </div>
@@ -364,5 +439,16 @@ const s: Record<string, React.CSSProperties> = {
   rcText:        { fontSize: '0.8125rem', fontWeight: 500, color: '#92400e', wordBreak: 'break-word', display: 'block' },
   rcPlaceholder: { fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontStyle: 'italic', display: 'block' },
   hint:          { fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontStyle: 'italic' },
+  approvalSection: { padding: '1rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-surface)' },
+  approvalTitle: { margin: 0, fontSize: '1rem', fontWeight: 700 },
+  approvalHelp: { margin: '0.35rem 0 1rem', color: 'var(--color-text-secondary)', fontSize: '0.8rem' },
+  approvalGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' },
+  approvalCard: { padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-bg)' },
+  approvalLabel: { display: 'block', marginBottom: '0.35rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' },
+  approvalSelect: { width: '100%', padding: '0.45rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' },
+  approvedStatus: { margin: '0.5rem 0', color: '#15803d', fontSize: '0.75rem', fontWeight: 600 },
+  pendingStatus: { margin: '0.5rem 0', color: '#b45309', fontSize: '0.75rem', fontWeight: 600 },
+  approveButton: { width: '100%', padding: '0.4rem 0.65rem', border: 'none', borderRadius: 'var(--radius-sm)', backgroundColor: '#16a34a', color: '#fff', fontWeight: 600, cursor: 'pointer' },
+  disabledButton: { opacity: 0.45, cursor: 'not-allowed' },
   saveFirst:     { padding: '1.5rem', color: '#92400e', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem' },
 };
