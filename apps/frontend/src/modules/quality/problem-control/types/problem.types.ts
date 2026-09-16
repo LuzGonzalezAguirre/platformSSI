@@ -118,8 +118,8 @@ export interface ContainmentAction {
   responsible?: UserBasic;
   responsible_id?: number;
   add_date?: string; // ISO date
-  due_date?: string; // ISO date
-  completion_date?: string; // ISO date
+  due_date?: string | null; // ISO date
+  completion_date?: string | null; // ISO date
   ongoing: boolean;
 }
 
