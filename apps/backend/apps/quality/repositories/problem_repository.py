@@ -30,6 +30,9 @@ class ProblemRepository:
             'defect_type',
             'created_by',
             'approved_by',
+            'manufacturing_approver',
+            'production_approver',
+            'maintenance_approver',
         ).prefetch_related(
             'team_members',
             'five_why_analyses__root_causes',
@@ -82,6 +85,9 @@ class ProblemRepository:
                 'defect_type',
                 'created_by',
                 'approved_by',
+            'manufacturing_approver',
+            'production_approver',
+            'maintenance_approver',
                 'fmea_responsible',
                 'control_plan_responsible',
             ).prefetch_related(
