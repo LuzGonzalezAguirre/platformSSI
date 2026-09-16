@@ -45,7 +45,7 @@ export const Step2_DefineTeam: React.FC = () => {
 
   const selectedMemberIds = (formData.team_members || []).map((m) => m.id);
   const availableUsers = (qualityUsers || []).filter(
-    (user) => !selectedMemberIds.includes(user.id)
+    (user) => !selectedMemberIds.includes(user.id) && user.id !== formData.champion?.id
   );
 
   return (
@@ -72,6 +72,7 @@ export const Step2_DefineTeam: React.FC = () => {
                   <div style={styles.userInfo}>
                     <div style={styles.userName}>
                       {user.first_name} {user.last_name}
+                      {user.job_title && <span style={styles.jobTitle}> · {user.job_title}</span>}
                     </div>
                     {user.email && (
                       <div style={styles.userEmail}>{user.email}</div>
@@ -104,6 +105,7 @@ export const Step2_DefineTeam: React.FC = () => {
               <div style={styles.userInfo}>
                 <div style={styles.userName}>
                   {formData.champion.first_name} {formData.champion.last_name}
+                  {formData.champion.job_title && <span style={styles.jobTitle}> · {formData.champion.job_title}</span>}
                 </div>
                 {formData.champion.email && (
                   <div style={styles.userEmail}>{formData.champion.email}</div>
@@ -123,6 +125,7 @@ export const Step2_DefineTeam: React.FC = () => {
                   <div style={styles.userInfo}>
                     <div style={styles.userName}>
                       {member.first_name} {member.last_name}
+                      {member.job_title && <span style={styles.jobTitle}> · {member.job_title}</span>}
                     </div>
                     {member.email && (
                       <div style={styles.userEmail}>{member.email}</div>
@@ -222,6 +225,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '0.875rem',
     fontWeight: 500,
     color: 'var(--color-text-primary)',
+  },
+  jobTitle: {
+    color: 'var(--color-text-secondary)',
+    fontWeight: 400,
   },
   userEmail: {
     fontSize: '0.75rem',
