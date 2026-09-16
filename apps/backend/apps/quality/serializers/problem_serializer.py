@@ -26,7 +26,7 @@ class UserBasicSerializer(serializers.ModelSerializer):
     """Usuario básico para referencias (champion, responsible, etc.)"""
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'email']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'job_title']
 
 
 class SeverityLevelSerializer(serializers.ModelSerializer):
@@ -131,7 +131,7 @@ class CorrectiveActionSerializer(serializers.ModelSerializer):
         model = CorrectiveAction
         fields = [
             'id', 'problem', 'root_cause_id', 'root_cause_description',
-            'add_date', 'due_date', 'completion_date', 'ongoing',
+            'add_date', 'due_date', 'completion_date', 'ongoing', 'active',
             'action', 'response', 'responsible', 'responsible_id'
         ]
         read_only_fields = ['add_date']
@@ -182,12 +182,18 @@ class PreventionActionSerializer(serializers.ModelSerializer):
 class ProblemAttachmentSerializer(serializers.ModelSerializer):
     uploaded_by = UserBasicSerializer(read_only=True)
     step_display = serializers.CharField(source='get_step_display', read_only=True)
+    corrective_action_id = serializers.PrimaryKeyRelatedField(
+        queryset=CorrectiveAction.objects.all(),
+        source='corrective_action',
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = ProblemAttachment
         fields = [
-            'id', 'step', 'step_display', 'file', 'filename',
-            'file_size', 'uploaded_by', 'uploaded_at', 'description'
+            'id', 'step', 'step_display', 'corrective_action_id',
+            'file', 'filename', 'file_size', 'uploaded_by', 'uploaded_at', 'description'
         ]
         read_only_fields = ['filename', 'file_size', 'uploaded_by', 'uploaded_at']
 
@@ -313,6 +319,9 @@ class ProblemDetailSerializer(serializers.ModelSerializer):
     defect_type_data = DefectTypeSerializer(source='defect_type', read_only=True)
     created_by = UserBasicSerializer(read_only=True)
     approved_by = UserBasicSerializer(read_only=True)
+    manufacturing_approver = UserBasicSerializer(read_only=True)
+    production_approver = UserBasicSerializer(read_only=True)
+    maintenance_approver = UserBasicSerializer(read_only=True)
     fmea_responsible = UserBasicSerializer(read_only=True)
     control_plan_responsible = UserBasicSerializer(read_only=True)
     
@@ -355,6 +364,27 @@ class ProblemDetailSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    manufacturing_approver_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(is_active=True),
+        source='manufacturing_approver',
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    production_approver_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(is_active=True),
+        source='production_approver',
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    maintenance_approver_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(is_active=True),
+        source='maintenance_approver',
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
     
     # Nested relations
     five_why_analyses = FiveWhyAnalysisSerializer(many=True, read_only=True)
@@ -388,6 +418,9 @@ class ProblemDetailSerializer(serializers.ModelSerializer):
             'created_by',
             'approved_by',
             'approved_at',
+            'manufacturing_approved_at',
+            'production_approved_at',
+            'maintenance_approved_at',
             'closed_at',
             'initial_response_due',
             'target_close_date',
