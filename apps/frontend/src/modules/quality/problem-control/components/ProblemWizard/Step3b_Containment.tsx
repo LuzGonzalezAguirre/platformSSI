@@ -42,10 +42,9 @@ export const Step3b_Containment: React.FC = () => {
     ongoing: false,
   });
 
-  // Step 3b es opcional — siempre válido
   useEffect(() => {
-    setStepValidation(4, true);
-  }, [setStepValidation]);
+    setStepValidation(3, Boolean(actions?.length));
+  }, [actions, setStepValidation]);
 
   const handleAdd = () => {
     setIsAdding(true);
