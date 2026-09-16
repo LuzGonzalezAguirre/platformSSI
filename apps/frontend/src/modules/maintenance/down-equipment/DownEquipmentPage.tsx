@@ -293,6 +293,7 @@ export default function DownEquipmentPage() {
               <table style={s.modalTable}>
                 <thead>
                   <tr>
+                    <th style={s.th}>{tr("Equipo", "Equipment")}</th>
                     <th style={s.th}>{tr("Fecha", "Date")}</th>
                     <th style={s.th}>{tr("Duración", "Duration")}</th>
                     <th style={s.th}>{tr("Motivo", "Reason")}</th>
@@ -302,6 +303,10 @@ export default function DownEquipmentPage() {
                 <tbody>
                   {selectedRecurrent.event_items.map((event, index) => (
                     <tr key={event.date + "-" + event.reason + "-" + index} style={s.tr}>
+                      <td style={s.td}>
+                        <div style={s.primary}>{selectedRecurrent.equipment_id}</div>
+                        <div style={s.secondary}>{selectedRecurrent.description || "—"}</div>
+                      </td>
                       <td style={s.td}>{event.date || "—"}</td>
                       <td style={{ ...s.td, fontWeight: 700 }}>{event.hours.toFixed(2)} h</td>
                       <td style={s.td}>{event.reason || tr("Sin razón", "No reason")}</td>
@@ -386,5 +391,5 @@ const styles: Record<string, React.CSSProperties> = {
   modalSubtitle: { margin: "0.3rem 0 0", fontSize: "0.75rem", color: "var(--color-text-secondary)" },
   closeButton: { width: 34, height: 34, display: "grid", placeItems: "center", flexShrink: 0, border: "1px solid var(--color-border)", borderRadius: 8, background: "var(--color-bg)", color: "var(--color-text-primary)", cursor: "pointer" },
   modalTableWrap: { overflow: "auto", padding: "0 1rem 1rem" },
-  modalTable: { width: "100%", borderCollapse: "collapse", minWidth: 560, fontSize: "0.78rem" },
+  modalTable: { width: "100%", borderCollapse: "collapse", minWidth: 720, fontSize: "0.78rem" },
 };
