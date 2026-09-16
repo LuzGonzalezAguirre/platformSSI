@@ -4,6 +4,13 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
+def recompute_root_causes(apps, schema_editor):
+    RootCause = apps.get_model('quality', 'RootCause')
+    for item in RootCause.objects.all().iterator():
+        item.root_cause = item.why5 or item.why4 or item.why3 or item.why2 or item.why1 or ''
+        item.save(update_fields=['root_cause'])
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -68,6 +75,7 @@ class Migration(migrations.Migration):
                 to='quality.correctiveaction',
             ),
         ),
+        migrations.RunPython(recompute_root_causes, migrations.RunPython.noop),
         migrations.AddIndex(
             model_name='problemattachment',
             index=models.Index(
