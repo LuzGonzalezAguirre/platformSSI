@@ -1,24 +1,13 @@
 import React from 'react';
-import { Navigate, useParams } from 'react-router-dom';
-import { useProblemDetail } from '../hooks/useProblemDetail';
 import { ProblemDetailPage } from './ProblemDetailPage';
 
+/**
+ * Stable entry point for viewing an 8D problem.
+ *
+ * View must always display the complete 8D detail, regardless of workflow
+ * status. Final Approval is intentionally a separate route/action so assigned
+ * approvers can review the full problem before opening the approval screen.
+ */
 export const ProblemEntryPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const problemId = Number(id);
-  const { data: problem, isLoading } = useProblemDetail(problemId);
-
-  if (isLoading) {
-    return (
-      <div style={{ padding: '2rem', color: 'var(--color-text-secondary)' }}>
-        Loading problem...
-      </div>
-    );
-  }
-
-  if (problem?.status === 'pending_approval') {
-    return <Navigate to={`/quality/problems/${problemId}/approval`} replace />;
-  }
-
   return <ProblemDetailPage />;
 };
