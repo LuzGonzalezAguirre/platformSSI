@@ -4,8 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.quality.models import Problem, ProblemNote
-from apps.quality.services.problem_service import ProblemService
+from apps.quality.models import Problem, ProblemNote, ProblemControlSettings
 
 
 APPROVAL_NOTE_PREFIX = "[8D_APPROVAL:{role}] "
@@ -16,7 +15,7 @@ def _user_data(user):
         return None
     return {
         "id": user.id,
-        "username": user.username,
+        "username": user.employee_id,
         "first_name": user.first_name,
         "last_name": user.last_name,
         "email": user.email,
@@ -74,17 +73,22 @@ def _sync_status(problem):
 
 
 def _payload(problem, request_user):
+    settings_obj = ProblemControlSettings.load()
+    configured_quality_manager = settings_obj.quality_manager
+    quality_display_user = problem.approved_by if problem.approved_at else configured_quality_manager
+
     roles = [
         {
             "role": "quality",
             "label": "Quality Manager",
-            "approver": _user_data(problem.approved_by),
+            "approver": _user_data(quality_display_user),
             "approved_at": problem.approved_at,
             "comments": problem.approval_comments or "",
             "can_approve": (
                 problem.status == "pending_approval"
                 and problem.approved_at is None
-                and ProblemService._is_quality_manager(request_user)
+                and configured_quality_manager is not None
+                and configured_quality_manager.id == request_user.id
             ),
         },
         {
@@ -178,8 +182,17 @@ class ProblemFinalApprovalView(APIView):
         now = timezone.now()
 
         if role == "quality":
-            if not ProblemService._is_quality_manager(request.user):
-                return Response({"detail": "Only a Quality Manager can approve this section."}, status=status.HTTP_403_FORBIDDEN)
+            configured_manager = ProblemControlSettings.load().quality_manager
+            if not configured_manager:
+                return Response(
+                    {"detail": "A Quality Manager has not been configured in Problem Control Settings."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if configured_manager.id != request.user.id:
+                return Response(
+                    {"detail": "Only the Quality Manager configured in Problem Control Settings can approve this section."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             if not problem.approved_at:
                 problem.approved_by = request.user
                 problem.approved_at = now
