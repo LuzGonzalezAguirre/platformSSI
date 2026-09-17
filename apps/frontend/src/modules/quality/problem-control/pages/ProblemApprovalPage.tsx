@@ -92,7 +92,7 @@ export const ProblemApprovalPage: React.FC = () => {
       qc.invalidateQueries({ queryKey: ['problem', problemId] });
       qc.invalidateQueries({ queryKey: ['problems'] });
       setMessage({ type: 'success', text: 'Problem closed successfully.' });
-      window.setTimeout(() => navigate(`/quality/problems/${problemId}`), 700);
+      window.setTimeout(() => navigate('/quality/problems'), 700);
     },
     onError: (err: any) => {
       setMessage({
@@ -123,7 +123,7 @@ export const ProblemApprovalPage: React.FC = () => {
 
   return (
     <div style={s.page}>
-      <button style={s.backBtn} onClick={() => navigate(`/quality/problems/${problemId}`)}>← Back to Problem</button>
+      <button style={s.backBtn} onClick={() => navigate('/quality/problems')}>← Back to Problem Control</button>
 
       <div style={s.header}>
         <div>
@@ -161,9 +161,7 @@ export const ProblemApprovalPage: React.FC = () => {
           const typedComment = comments[item.role];
           const approverName = item.approver
             ? `${item.approver.first_name} ${item.approver.last_name}`.trim() || item.approver.username
-            : item.role === 'quality'
-              ? 'Any Quality Manager'
-              : 'Not assigned';
+            : 'Not assigned';
 
           return (
             <div key={item.role} style={{ ...s.card, ...(approved ? s.cardApproved : {}) }}>
@@ -206,7 +204,7 @@ export const ProblemApprovalPage: React.FC = () => {
                     </>
                   ) : (
                     <div style={s.waitingBox}>
-                      {item.role !== 'quality' && !item.approver
+                      {!item.approver
                         ? 'An approver must be assigned before this approval can be completed.'
                         : 'Waiting for the authorized approver.'}
                     </div>
