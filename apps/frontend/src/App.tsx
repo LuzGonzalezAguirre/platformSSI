@@ -14,7 +14,7 @@ import SafetyPage from "./modules/production/safety/SafetyPage";
 import AssistancePage from "./modules/production/assistance/AssistancePage";
 import LeysillaPage from "./modules/production/leysilla/LeysillaPage";
 import OpsReportPage from "./modules/production/ops-report/OpsReportPage";
-import OverviewPage from "./modules/maintenance/overview/OverviewPage"; 
+import OverviewPage from "./modules/maintenance/overview/OverviewPage";
 import WorkRequestsPage from "./modules/maintenance/work-requests/WorkRequestsPage";
 import QualityDashboard from "./modules/quality/QualityDashboard";
 import QualityPanelPage from "./modules/quality/QualityPanelPage";
@@ -28,54 +28,31 @@ import CogpMappingPage from "./modules/quality/cogp/CogpMappingPage";
 import DowntimeSettingsPage from "./modules/quality/downtime-settings/DowntimeSettingsPage";
 import PmpPage from "./modules/maintenance/pmp/PmpPage";
 import DownEquipmentPage from "./modules/maintenance/down-equipment/DownEquipmentPage";
-
-
-// ════════════════════════════════════════════════════════════════════════
-// PROBLEM CONTROL IMPORTS (NUEVO)
-// ════════════════════════════════════════════════════════════════════════
 import { ProblemListPage } from "./modules/quality/problem-control/pages/ProlemListPage";
 import { ProblemWizardPage } from "./modules/quality/problem-control/pages/ProblemWizardPage";
 import { ProblemDetailPage } from "./modules/quality/problem-control/pages/ProblemDetailPage";
+import { ProblemApprovalPage } from "./modules/quality/problem-control/pages/ProblemApprovalPage";
 import AuditPage from "./modules/admin/AuditPage";
 import FailureCatalogPage from "./modules/quality/qwall/catalog/FailureCatalogPage";
 import QWallSettingsPage from "./modules/qwall-settings/index";
 import HelpPage from "./modules/quality/qwall/HelpPage";
 import IncomingInspectionPage from "./modules/incoming-inspection/IncomingInspectionPage";
-
 import DowntimePage from "./modules/quality/downtime/DowntimePage";
 import ScrapRatePage from "./modules/quality/cogp/ScrapRatePage";
 
 const now = new Date();
 const hour = now.getHours();
-
-const greeting =
-  hour < 12 ? "Buenos días" :
-  hour < 19 ? "Buenas tardes" :
-  "Buenas noches";
+const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
 
 function Dashboard() {
   const user = useAuthStore((s) => s.user);
-
   return (
     <div style={styles.container}>
-      <img
-        src="/logoSSIclaro.png"
-        style={styles.logo} 
-        alt="logo"
-      />
-
+      <img src="/logoSSIclaro.png" style={styles.logo} alt="logo" />
       <div style={styles.content}>
-        <h1 style={styles.title}>
-          {greeting}{user?.full_name ? `, ${user.full_name}` : ""}
-        </h1>
-
-        <p style={styles.subtitle}>
-          {now.toLocaleString()}
-        </p>
-        <p style={styles.subtitle}>
-          {user?.role_display || "Usuario"} ·{" "}
-          {user?.plant || "Sin planta asignada"}
-        </p>
+        <h1 style={styles.title}>{greeting}{user?.full_name ? `, ${user.full_name}` : ""}</h1>
+        <p style={styles.subtitle}>{now.toLocaleString()}</p>
+        <p style={styles.subtitle}>{user?.role_display || "Usuario"} · {user?.plant || "Sin planta asignada"}</p>
       </div>
     </div>
   );
@@ -95,18 +72,18 @@ function AppRoutes() {
         <Route path="/production/targets" element={<TargetsPage />} />
         <Route path="/production/safety" element={<SafetyPage />} />
         <Route path="/production/assistance" element={<AssistancePage />} />
-        <Route path="/production/leysilla"  element={<LeysillaPage />} />
+        <Route path="/production/leysilla" element={<LeysillaPage />} />
         <Route path="/maintenance/orders" element={<div>Órdenes de Mantenimiento</div>} />
         <Route path="/settings/users" element={<UsersPage />} />
         <Route path="/settings/roles" element={<RolesPage />} />
         <Route path="/settings/audit" element={<AuditPage />} />
         <Route path="/settings/plant" element={<div>Planta</div>} />
-        <Route path="/profile" element={<ProfilePage />} />        
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<div>Configuración</div>} />
         <Route path="/warehouse/ctb" element={<ClearToBuildPage />} />
         <Route path="/warehouse/demand" element={<DemandPage />} />
         <Route path="/maintenance/overview" element={<OverviewPage />} />
-        <Route path="/maintenance/actions" element={<div>Actions — próximamente</div>} /> 
+        <Route path="/maintenance/actions" element={<div>Actions — próximamente</div>} />
         <Route path="/maintenance/workcenter" element={<div>Workcenter Detail — próximamente</div>} />
         <Route path="/maintenance/work-requests" element={<WorkRequestsPage />} />
         <Route path="/quality/dashboard" element={<QualityDashboard />} />
@@ -117,24 +94,24 @@ function AppRoutes() {
         <Route path="/quality/qwall-dashboard" element={<QWallDashboardPage />} />
         <Route path="/quality/rejections" element={<RejectionReportPage />} />
         <Route path="/quality/downtime" element={<DowntimePage />} />
-        {/* ════════════════════════════════════════════════════════════════ */}
-        {/* PROBLEM CONTROL ROUTES (NUEVO) */}
-        {/* ════════════════════════════════════════════════════════════════ */}
+
         <Route path="/quality/problems" element={<ProblemListPage />} />
         <Route path="/quality/problems/new" element={<ProblemWizardPage />} />
         <Route path="/quality/problems/:id" element={<ProblemDetailPage />} />
         <Route path="/quality/problems/:id/edit" element={<ProblemWizardPage />} />
+        <Route path="/quality/problems/:id/approval" element={<ProblemApprovalPage />} />
+
         <Route path="/quality/qwall/catalog" element={<FailureCatalogPage />} />
         <Route path="/quality/qwall/settings" element={<QWallSettingsPage />} />
         <Route path="/quality/qwall/help" element={<HelpPage />} />
         <Route path="/quality/incoming-inspection" element={<IncomingInspectionPage />} />
         <Route path="/quality/cogp" element={<CogpDashboardPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="/quality/cogp/mapping" element={<CogpMappingPage />} />
         <Route path="/quality/downtime/settings" element={<DowntimeSettingsPage />} />
         <Route path="/quality/scrap-rate" element={<ScrapRatePage />} />
         <Route path="/maintenance/pmp" element={<PmpPage />} />
         <Route path="/maintenance/down-equipment" element={<DownEquipmentPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>
   );
@@ -142,67 +119,21 @@ function AppRoutes() {
 
 export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-
   return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/login"
-          element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
-        />
-        <Route
-          path="/*"
-          element={
-            <PrivateRoute>
-              <AppRoutes />
-            </PrivateRoute>
-          }
-        />
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/*" element={<PrivateRoute><AppRoutes /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
   );
 }
 
 const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    position: "relative",
-    padding: "2rem",
-    borderRadius: "16px",
-    overflow: "visible",
-    background: "var(--color-bg-primary)",
-  },
-
-  logo: {
-    position: "absolute",
-    left: "50%",
-    top: "50%", 
-    transform: "translate(-50%, 190px)", 
-    width: "60%",
-    opacity: 0.10,
-    pointerEvents: "none",
-  },
-
-  content: {
-    position: "relative",
-    zIndex: 1,
-  },
-
-  title: {
-    color: "var(--color-text-primary)",
-    fontSize: "1.8rem",
-    fontWeight: 600,
-    marginBottom: "0.3rem",
-  },
-
-  subtitle: {
-    color: "var(--color-text-secondary)",
-    fontSize: "1rem",
-    marginBottom: "0.5rem",
-  },
-
-  meta: {
-    color: "var(--color-text-secondary)",
-    fontSize: "0.85rem",
-    opacity: 0.7,
-  },
+  container: { position: "relative", padding: "2rem", borderRadius: "16px", overflow: "visible", background: "var(--color-bg-primary)" },
+  logo: { position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, 190px)", width: "60%", opacity: 0.10, pointerEvents: "none" },
+  content: { position: "relative", zIndex: 1 },
+  title: { color: "var(--color-text-primary)", fontSize: "1.8rem", fontWeight: 600, marginBottom: "0.3rem" },
+  subtitle: { color: "var(--color-text-secondary)", fontSize: "1rem", marginBottom: "0.5rem" },
+  meta: { color: "var(--color-text-secondary)", fontSize: "0.85rem", opacity: 0.7 },
 };
