@@ -27,6 +27,15 @@ echo Iniciando platformSSI...
 cd /d "C:\Users\ssi.production\platformSSI\platformSSI"
 docker compose up -d
 
+echo Aplicando migraciones de base de datos...
+docker compose exec -T backend python manage.py migrate
+if %errorlevel% neq 0 (
+    echo ERROR: No se pudieron aplicar las migraciones de Django.
+    echo Revisa los logs del backend antes de usar platformSSI.
+    pause
+    exit /b 1
+)
+
 echo.
 echo ============================================
 echo  Acceso desde la red:
