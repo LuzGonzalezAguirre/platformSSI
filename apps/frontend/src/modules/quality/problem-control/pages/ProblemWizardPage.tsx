@@ -39,7 +39,7 @@ function getStepValidation(problem: Problem | undefined): Record<number, StepErr
   );
   const d3 = (problem.containment_actions?.length ?? 0) > 0;
   const requiredCategories = ['made', 'escape', 'systemic'];
-  const d4 = requiredCategories.every((category) =>
+  const whyComplete = requiredCategories.every((category) =>
     problem.five_why_analyses?.some((analysis) =>
       analysis.category === category &&
       analysis.root_causes?.some((rootCause) =>
@@ -47,6 +47,12 @@ function getStepValidation(problem: Problem | undefined): Record<number, StepErr
       )
     )
   );
+  const approversAssigned = Boolean(
+    problem.manufacturing_approver?.id &&
+    problem.production_approver?.id &&
+    problem.maintenance_approver?.id
+  );
+  const d4 = whyComplete && approversAssigned;
   const d5 = (problem.corrective_actions?.length ?? 0) > 0;
   const d6 = d5 && problem.corrective_actions.every((action) =>
     problem.attachments?.some((attachment) =>
@@ -59,7 +65,7 @@ function getStepValidation(problem: Problem | undefined): Record<number, StepErr
     1: d1 ? ok : fail('D1: Brief description, full description, type, severity, champion and date are required'),
     2: ok,
     3: d3 ? ok : fail('D3: Add at least one containment action'),
-    4: d4 ? ok : fail('D4: Complete Why 1, Why 2 and Why 3 in Made, Escape and Systemic'),
+    4: d4 ? ok : fail('D4: Complete Why 1-3 for Made, Escape and Systemic, and assign Manufacturing, Production and Maintenance approvers'),
     5: d5 ? ok : fail('D5: Add at least one corrective action'),
     6: d6 ? ok : fail('D6: Upload test evidence for every D5 corrective action'),
     7: d7 ? ok : fail('D7: Add at least one prevention action'),
@@ -106,19 +112,18 @@ export const ProblemWizardPage: React.FC = () => {
     setNotification({ type, title, message });
   };
 
+  const buildUpdatePayload = () => ({
+    ...formData,
+    team_member_ids: formData.team_members?.map((member) => member.id),
+    manufacturing_approver_id: formData.manufacturing_approver?.id || null,
+    production_approver_id: formData.production_approver?.id || null,
+    maintenance_approver_id: formData.maintenance_approver?.id || null,
+  });
+
   const handleSave = async () => {
     try {
       if (isEditMode && id) {
-        await updateMutation.mutateAsync({
-          id: Number(id),
-          data: {
-            ...formData,
-            team_member_ids: formData.team_members?.map((member) => member.id),
-            manufacturing_approver_id: formData.manufacturing_approver?.id || null,
-            production_approver_id: formData.production_approver?.id || null,
-            maintenance_approver_id: formData.maintenance_approver?.id || null,
-          },
-        });
+        await updateMutation.mutateAsync({ id: Number(id), data: buildUpdatePayload() });
         showNotification('success', 'Changes saved', 'The 8D problem was saved successfully.');
       } else {
         const createData: ProblemCreateRequest = {
@@ -146,12 +151,25 @@ export const ProblemWizardPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!isEditMode || !id) {
+      showNotification('info', 'Save required', 'Please save the problem before submitting it.');
+      return;
+    }
+
+    if (!formData.manufacturing_approver || !formData.production_approver || !formData.maintenance_approver) {
+      showNotification(
+        'error',
+        'Approval routing incomplete',
+        'Assign Manufacturing, Production and Maintenance approvers in D4 before submitting the 8D.'
+      );
+      setCurrentStep(4);
+      return;
+    }
+
     if (!window.confirm('Submit this problem for final approval? The 8D will become read-only while the four approvals are collected.')) return;
+
     try {
-      if (!isEditMode || !id) {
-        showNotification('info', 'Save required', 'Please save the problem before submitting it.');
-        return;
-      }
+      await updateMutation.mutateAsync({ id: Number(id), data: buildUpdatePayload() });
       await submitMutation.mutateAsync(Number(id));
       showNotification('success', 'Submitted', 'The 8D is ready for Quality, Manufacturing, Production and Maintenance approval.');
       window.setTimeout(() => navigate(`/quality/problems/${id}/approval`), 450);
