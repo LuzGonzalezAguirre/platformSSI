@@ -18,7 +18,7 @@ from apps.quality.views import (
     RejectionReportPDFView,
     ProblemListCreateView,
     ProblemDetailView,
-    ProblemSubmitView,
+    ProblemSubmitForFinalApprovalView,
     ProblemApproveView,
     ProblemDepartmentApprovalView,
     ProblemFinalApprovalView,
@@ -83,7 +83,7 @@ urlpatterns = [
     # Problem Control CRUD / workflow
     path("problems/", ProblemListCreateView.as_view(), name="problem-list-create"),
     path("problems/<int:pk>/", ProblemDetailView.as_view(), name="problem-detail"),
-    path("problems/<int:pk>/submit/", ProblemSubmitView.as_view(), name="problem-submit"),
+    path("problems/<int:pk>/submit/", ProblemSubmitForFinalApprovalView.as_view(), name="problem-submit"),
     path("problems/<int:pk>/approve/", ProblemApproveView.as_view(), name="problem-approve"),
     path("problems/<int:pk>/department-approval/", ProblemDepartmentApprovalView.as_view(), name="problem-department-approval"),
     path("problems/<int:pk>/final-approvals/", ProblemFinalApprovalView.as_view(), name="problem-final-approvals"),
