@@ -16,6 +16,7 @@ from .audit import ProblemAudit
 from .failure_catalog import FailureModeImage
 from .fail_mode_translation import FailModeTranslation
 from .qwall_settings import QWallSettings
+from .problem_control_settings import ProblemControlSettings
 from .incoming_inspection import (
     IncomingContainerSnapshot,
     IncomingContainerHistory,
@@ -36,13 +37,11 @@ from ..cogp.models import (
     ProductionRecord,
     COGPDailySummary,
 )
-
 from .problem import (
     Problem,
     ProblemCategoryCatalog,
     ProblemTypeCatalog,
 )
-
 from .downtime_workcenter import DowntimeWorkcenter
 from .downtime_workcenter_assignment import DowntimeWorkcenterAssignment
 from .downtime_group_assignment import DowntimeGroupAssignment
@@ -69,6 +68,7 @@ __all__ = [
     'FailureModeImage',
     'FailModeTranslation',
     'QWallSettings',
+    'ProblemControlSettings',
     'IncomingContainerSnapshot',
     'IncomingContainerHistory',
     'IncomingInspectionSLAConfig',
@@ -83,5 +83,5 @@ __all__ = [
     'ProductionRecord',
     'COGPDailySummary',
     'ProblemCategoryCatalog',
-'ProblemTypeCatalog',
+    'ProblemTypeCatalog',
 ]
