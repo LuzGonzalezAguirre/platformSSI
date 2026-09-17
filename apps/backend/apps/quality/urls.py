@@ -22,6 +22,7 @@ from apps.quality.views import (
     ProblemApproveView,
     ProblemDepartmentApprovalView,
     ProblemFinalApprovalView,
+    ProblemControlSettingsView,
     ProblemRejectView,
     ProblemCloseView,
     ProblemOverrideRequestView,
@@ -91,7 +92,8 @@ urlpatterns = [
     path("problems/<int:pk>/override/request/", ProblemOverrideRequestView.as_view(), name="problem-override-request"),
     path("problems/<int:pk>/override/approve/", ProblemOverrideApproveView.as_view(), name="problem-override-approve"),
 
-    # Catalogs
+    # Problem Control settings / catalogs
+    path("problem-control-settings/", ProblemControlSettingsView.as_view(), name="problem-control-settings"),
     path("severity-levels/", SeverityLevelListView.as_view(), name="severity-levels"),
     path("defect-types/", DefectTypeListView.as_view(), name="defect-types"),
     path("quality-users/", QualityUsersListView.as_view(), name="quality-users"),
