@@ -30,7 +30,7 @@ import PmpPage from "./modules/maintenance/pmp/PmpPage";
 import DownEquipmentPage from "./modules/maintenance/down-equipment/DownEquipmentPage";
 import { ProblemListPage } from "./modules/quality/problem-control/pages/ProlemListPage";
 import { ProblemWizardPage } from "./modules/quality/problem-control/pages/ProblemWizardPage";
-import { ProblemDetailPage } from "./modules/quality/problem-control/pages/ProblemDetailPage";
+import { ProblemEntryPage } from "./modules/quality/problem-control/pages/ProblemEntryPage";
 import { ProblemApprovalPage } from "./modules/quality/problem-control/pages/ProblemApprovalPage";
 import AuditPage from "./modules/admin/AuditPage";
 import FailureCatalogPage from "./modules/quality/qwall/catalog/FailureCatalogPage";
@@ -97,7 +97,7 @@ function AppRoutes() {
 
         <Route path="/quality/problems" element={<ProblemListPage />} />
         <Route path="/quality/problems/new" element={<ProblemWizardPage />} />
-        <Route path="/quality/problems/:id" element={<ProblemDetailPage />} />
+        <Route path="/quality/problems/:id" element={<ProblemEntryPage />} />
         <Route path="/quality/problems/:id/edit" element={<ProblemWizardPage />} />
         <Route path="/quality/problems/:id/approval" element={<ProblemApprovalPage />} />
 
