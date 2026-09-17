@@ -21,7 +21,8 @@ from apps.quality.views import (
     ProblemSubmitForFinalApprovalView,
     ProblemApproveView,
     ProblemDepartmentApprovalView,
-    ProblemFinalApprovalView,
+    AssignedProblemFinalApprovalView,
+    MyApprovalAssignmentsView,
     ProblemControlSettingsView,
     ProblemRejectView,
     ProblemCloseView,
@@ -82,11 +83,12 @@ urlpatterns = [
 
     # Problem Control CRUD / workflow
     path("problems/", ProblemListCreateView.as_view(), name="problem-list-create"),
+    path("problems/my-approval-assignments/", MyApprovalAssignmentsView.as_view(), name="problem-my-approval-assignments"),
     path("problems/<int:pk>/", ProblemDetailView.as_view(), name="problem-detail"),
     path("problems/<int:pk>/submit/", ProblemSubmitForFinalApprovalView.as_view(), name="problem-submit"),
     path("problems/<int:pk>/approve/", ProblemApproveView.as_view(), name="problem-approve"),
     path("problems/<int:pk>/department-approval/", ProblemDepartmentApprovalView.as_view(), name="problem-department-approval"),
-    path("problems/<int:pk>/final-approvals/", ProblemFinalApprovalView.as_view(), name="problem-final-approvals"),
+    path("problems/<int:pk>/final-approvals/", AssignedProblemFinalApprovalView.as_view(), name="problem-final-approvals"),
     path("problems/<int:pk>/reject/", ProblemRejectView.as_view(), name="problem-reject"),
     path("problems/<int:pk>/close/", ProblemCloseView.as_view(), name="problem-close"),
     path("problems/<int:pk>/override/request/", ProblemOverrideRequestView.as_view(), name="problem-override-request"),
