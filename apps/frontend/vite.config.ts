@@ -10,5 +10,11 @@ export default defineConfig({
       usePolling: true,
       interval: 1000,
     },
+    proxy: {
+      "/media": {
+        target: "http://backend:8000",
+        changeOrigin: true,
+      },
+    },
   },
 });
