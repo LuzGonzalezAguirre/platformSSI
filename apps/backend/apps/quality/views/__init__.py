@@ -46,7 +46,7 @@ from .problem_views import (
     DefectTypeDetailView,
 )
 from .approval_views import ProblemFinalApprovalView
-from .downtime_views import DowntimeLogsView, DowntimeTrendView
+from .problem_control_settings_views import ProblemControlSettingsView
 from .downtime_views import DowntimeLogsView, DowntimeTrendView, DowntimeSummaryView
 from .downtime_workcenter_views import DowntimeWorkcentersView
 from .downtime_assignment_views import DowntimeAssignmentsView
@@ -72,6 +72,7 @@ __all__ = [
     'ProblemApproveView',
     'ProblemDepartmentApprovalView',
     'ProblemFinalApprovalView',
+    'ProblemControlSettingsView',
     'ProblemRejectView',
     'ProblemCloseView',
     'ProblemOverrideRequestView',
