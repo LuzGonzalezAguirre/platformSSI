@@ -1,36 +1,76 @@
 // D6 — Verification evidence copied from D5
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { problemApi } from '../../api/problemApi';
 import { useCorrectiveActions } from '../../hooks/useCorrectiveActions';
 import { useWizardStore } from '../../store/wizardStore';
-import type { ProblemAttachment } from '../../types/problem.types';
+import type { CorrectiveAction, ProblemAttachment } from '../../types/problem.types';
 
 export const Step6_Verification: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const problemId = id ? Number(id) : undefined;
   const qc = useQueryClient();
   const setStepValidation = useWizardStore((state) => state.setStepValidation);
-  const { data: actions = [], isLoading } = useCorrectiveActions(problemId);
-  const { data: attachments = [] } = useQuery<ProblemAttachment[]>({
+
+  const {
+    data: rawActions,
+    isLoading: actionsLoading,
+    isError: actionsIsError,
+    error: actionsError,
+  } = useCorrectiveActions(problemId);
+
+  const {
+    data: rawAttachments,
+    isLoading: attachmentsLoading,
+    isError: attachmentsIsError,
+    error: attachmentsError,
+  } = useQuery<ProblemAttachment[]>({
     queryKey: ['attachments', problemId, 'step6'],
     queryFn: () => problemApi.getAttachments(problemId!, 'step6'),
     enabled: !!problemId,
   });
+
+  // Never allow a malformed/empty API response to crash the whole wizard.
+  const actions: CorrectiveAction[] = useMemo(
+    () => (Array.isArray(rawActions) ? rawActions : []),
+    [rawActions]
+  );
+  const attachments: ProblemAttachment[] = useMemo(
+    () => (Array.isArray(rawAttachments) ? rawAttachments : []),
+    [rawAttachments]
+  );
+
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const uploadMutation = useMutation({
     mutationFn: ({ actionId, file }: { actionId: number; file: File }) =>
       problemApi.uploadAttachment(problemId!, 'step6', file, actionId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['attachments', problemId, 'step6'] }),
-    onError: (error: any) => alert(error.response?.data?.detail || error.message),
+    onSuccess: () => {
+      setMessage({ type: 'success', text: 'Test evidence uploaded successfully.' });
+      qc.invalidateQueries({ queryKey: ['attachments', problemId, 'step6'] });
+    },
+    onError: (error: any) => {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.detail || error.message || 'Unable to upload test evidence.',
+      });
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (attachmentId: number) => problemApi.deleteAttachment(attachmentId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['attachments', problemId, 'step6'] }),
-    onError: (error: any) => alert(error.response?.data?.detail || error.message),
+    onSuccess: () => {
+      setMessage({ type: 'success', text: 'Evidence file deleted.' });
+      qc.invalidateQueries({ queryKey: ['attachments', problemId, 'step6'] });
+    },
+    onError: (error: any) => {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.detail || error.message || 'Unable to delete evidence file.',
+      });
+    },
   });
 
   useEffect(() => {
@@ -40,11 +80,25 @@ export const Step6_Verification: React.FC = () => {
     setStepValidation(6, complete);
   }, [actions, attachments, setStepValidation]);
 
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+
   const fmt = (date: string | null | undefined) =>
     date ? new Date(date).toLocaleDateString() : '—';
 
   const evidenceFor = (actionId: number) =>
     attachments.filter((attachment) => attachment.corrective_action_id === actionId);
+
+  const getErrorText = (error: unknown, fallback: string) => {
+    const apiError = error as any;
+    return apiError?.response?.data?.detail || apiError?.message || fallback;
+  };
+
+  const isLoading = actionsLoading || attachmentsLoading;
+  const hasLoadError = actionsIsError || attachmentsIsError;
 
   return (
     <div style={s.container}>
@@ -53,107 +107,137 @@ export const Step6_Verification: React.FC = () => {
         D5 corrective actions are copied here automatically. Open each line to review it and upload its test evidence.
       </p>
 
+      {message && (
+        <div style={message.type === 'success' ? s.successMessage : s.errorMessage}>
+          <span style={s.messageIcon}>{message.type === 'success' ? '✓' : '!'}</span>
+          <span>{message.text}</span>
+        </div>
+      )}
+
       {!problemId && <div style={s.warning}>Save the problem before uploading verification evidence.</div>}
 
-      <div style={s.tableWrap}>
-        {isLoading ? (
-          <p style={s.empty}>Loading D5 actions...</p>
-        ) : actions.length === 0 ? (
-          <p style={s.empty}>No D5 corrective actions are available yet.</p>
-        ) : (
-          <table style={s.table}>
-            <thead>
-              <tr>
-                {['Root Cause (Last Why)', 'Corrective Action', 'Response', 'Responsible', 'Due Date', 'Active', 'Evidence', ''].map((heading) => (
-                  <th key={heading} style={s.th}>{heading}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {actions.map((action, index) => {
-                const evidence = evidenceFor(action.id);
-                const expanded = expandedId === action.id;
-                return (
-                  <React.Fragment key={action.id}>
-                    <tr style={index % 2 === 0 ? s.trEven : s.trOdd}>
-                      <td style={s.tdRoot}>{action.root_cause_description || '—'}</td>
-                      <td style={s.td}>{action.action}</td>
-                      <td style={s.tdMuted}>{action.response || '—'}</td>
-                      <td style={s.tdNowrap}>
-                        {action.responsible
-                          ? `${action.responsible.first_name} ${action.responsible.last_name}`
-                          : '—'}
-                      </td>
-                      <td style={s.tdDate}>{fmt(action.due_date)}</td>
-                      <td style={s.tdCenter}>{action.active ? <span style={s.activeDot}>●</span> : '—'}</td>
-                      <td style={s.tdCenter}>
-                        <span style={evidence.length ? s.evidenceReady : s.evidenceMissing}>
-                          {evidence.length} file{evidence.length === 1 ? '' : 's'}
-                        </span>
-                      </td>
-                      <td style={s.tdBtn}>
-                        <button
-                          type="button"
-                          onClick={() => setExpandedId(expanded ? null : action.id)}
-                          style={s.viewBtn}
-                        >
-                          {expanded ? 'Hide' : 'View'}
-                        </button>
-                      </td>
-                    </tr>
-                    {expanded && (
-                      <tr>
-                        <td colSpan={8} style={s.evidenceCell}>
-                          <div style={s.evidencePanel}>
-                            <div>
-                              <strong>Test evidence for this line</strong>
-                              <div style={s.evidenceList}>
-                                {evidence.length === 0 && <span style={s.noEvidence}>No evidence uploaded yet.</span>}
-                                {evidence.map((attachment) => (
-                                  <span key={attachment.id} style={s.fileChip}>
-                                    <a href={attachment.file} target="_blank" rel="noopener noreferrer" style={s.fileLink}>
-                                      {attachment.filename}
-                                    </a>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        if (window.confirm('Delete this evidence file?')) {
-                                          deleteMutation.mutate(attachment.id);
-                                        }
-                                      }}
-                                      style={s.deleteBtn}
-                                      aria-label="Delete evidence"
-                                    >
-                                      ×
-                                    </button>
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            <label style={s.uploadBtn}>
-                              {uploadMutation.isPending ? 'Uploading...' : '+ Upload test file'}
-                              <input
-                                type="file"
-                                hidden
-                                disabled={uploadMutation.isPending}
-                                onChange={(event) => {
-                                  const file = event.target.files?.[0];
-                                  if (file) uploadMutation.mutate({ actionId: action.id, file });
-                                  event.target.value = '';
-                                }}
-                              />
-                            </label>
-                          </div>
+      {hasLoadError && (
+        <div style={s.errorPanel}>
+          <strong>Unable to load D6 verification data.</strong>
+          <span>
+            {actionsIsError
+              ? getErrorText(actionsError, 'Unable to load D5 corrective actions.')
+              : getErrorText(attachmentsError, 'Unable to load verification evidence.')}
+          </span>
+          <button
+            type="button"
+            style={s.retryBtn}
+            onClick={() => {
+              qc.invalidateQueries({ queryKey: ['correctiveActions', problemId] });
+              qc.invalidateQueries({ queryKey: ['attachments', problemId, 'step6'] });
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!hasLoadError && (
+        <div style={s.tableWrap}>
+          {isLoading ? (
+            <p style={s.empty}>Loading D5 actions and verification evidence...</p>
+          ) : actions.length === 0 ? (
+            <p style={s.empty}>No D5 corrective actions are available yet.</p>
+          ) : (
+            <table style={s.table}>
+              <thead>
+                <tr>
+                  {['Root Cause (Last Why)', 'Corrective Action', 'Response', 'Responsible', 'Due Date', 'Active', 'Evidence', ''].map((heading) => (
+                    <th key={heading} style={s.th}>{heading}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {actions.map((action, index) => {
+                  const evidence = evidenceFor(action.id);
+                  const expanded = expandedId === action.id;
+                  return (
+                    <React.Fragment key={action.id}>
+                      <tr style={index % 2 === 0 ? s.trEven : s.trOdd}>
+                        <td style={s.tdRoot}>{action.root_cause_description || '—'}</td>
+                        <td style={s.td}>{action.action || '—'}</td>
+                        <td style={s.tdMuted}>{action.response || '—'}</td>
+                        <td style={s.tdNowrap}>
+                          {action.responsible
+                            ? `${action.responsible.first_name || ''} ${action.responsible.last_name || ''}`.trim() || action.responsible.username || '—'
+                            : '—'}
+                        </td>
+                        <td style={s.tdDate}>{fmt(action.due_date)}</td>
+                        <td style={s.tdCenter}>{action.active ? <span style={s.activeDot}>●</span> : '—'}</td>
+                        <td style={s.tdCenter}>
+                          <span style={evidence.length ? s.evidenceReady : s.evidenceMissing}>
+                            {evidence.length} file{evidence.length === 1 ? '' : 's'}
+                          </span>
+                        </td>
+                        <td style={s.tdBtn}>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedId(expanded ? null : action.id)}
+                            style={s.viewBtn}
+                          >
+                            {expanded ? 'Hide' : 'View'}
+                          </button>
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+                      {expanded && (
+                        <tr>
+                          <td colSpan={8} style={s.evidenceCell}>
+                            <div style={s.evidencePanel}>
+                              <div>
+                                <strong>Test evidence for this line</strong>
+                                <div style={s.evidenceList}>
+                                  {evidence.length === 0 && <span style={s.noEvidence}>No evidence uploaded yet.</span>}
+                                  {evidence.map((attachment) => (
+                                    <span key={attachment.id} style={s.fileChip}>
+                                      <a href={attachment.file} target="_blank" rel="noopener noreferrer" style={s.fileLink}>
+                                        {attachment.filename}
+                                      </a>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (window.confirm('Delete this evidence file?')) {
+                                            deleteMutation.mutate(attachment.id);
+                                          }
+                                        }}
+                                        style={s.deleteBtn}
+                                        aria-label="Delete evidence"
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <label style={s.uploadBtn}>
+                                {uploadMutation.isPending ? 'Uploading...' : '+ Upload test file'}
+                                <input
+                                  type="file"
+                                  hidden
+                                  disabled={uploadMutation.isPending}
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    if (file) uploadMutation.mutate({ actionId: action.id, file });
+                                    event.target.value = '';
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -163,6 +247,11 @@ const s: Record<string, React.CSSProperties> = {
   title: { fontSize: '1.4rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '0.25rem' },
   subtitle: { fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '1.25rem' },
   warning: { padding: '0.875rem', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '0.5rem', color: '#92400e', fontSize: '0.875rem', marginBottom: '1rem' },
+  successMessage: { display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0.75rem 0.9rem', marginBottom: '1rem', borderRadius: '0.5rem', border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', color: '#166534', fontSize: '0.85rem', fontWeight: 600 },
+  errorMessage: { display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0.75rem 0.9rem', marginBottom: '1rem', borderRadius: '0.5rem', border: '1px solid #fecaca', backgroundColor: '#fef2f2', color: '#991b1b', fontSize: '0.85rem', fontWeight: 600 },
+  messageIcon: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '1.35rem', height: '1.35rem', borderRadius: '999px', border: '1px solid currentColor', fontSize: '0.75rem', flexShrink: 0 },
+  errorPanel: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #fecaca', backgroundColor: '#fef2f2', color: '#991b1b', fontSize: '0.85rem' },
+  retryBtn: { marginTop: '0.25rem', padding: '0.4rem 0.75rem', border: 'none', borderRadius: '0.35rem', backgroundColor: '#991b1b', color: '#fff', fontWeight: 700, cursor: 'pointer' },
   tableWrap: { overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '0.5rem' },
   empty: { padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '0.875rem', margin: 0 },
   table: { width: '100%', borderCollapse: 'collapse', minWidth: '960px' },
