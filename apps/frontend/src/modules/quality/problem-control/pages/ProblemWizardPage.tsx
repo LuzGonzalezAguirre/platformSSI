@@ -1,6 +1,6 @@
 // apps/frontend/src/modules/quality/problem-control/pages/ProblemWizardPage.tsx
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useWizardStore } from '../store/wizardStore';
 import { WizardLayout } from '../components/ProblemWizard/WizardLayout';
 import { useProblemDetail } from '../hooks/useProblemDetail';
@@ -82,6 +82,7 @@ export const ProblemWizardPage: React.FC = () => {
 
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isEditMode = !!id;
   const { formData, updateFormData, resetFormData, setCurrentStep } = useWizardStore();
   const { data: problem, isLoading: isLoadingProblem } = useProblemDetail(isEditMode ? Number(id) : undefined);
@@ -96,6 +97,13 @@ export const ProblemWizardPage: React.FC = () => {
   useEffect(() => {
     if (isEditMode && problem) updateFormData(problem);
   }, [isEditMode, problem, updateFormData]);
+
+  useEffect(() => {
+    const requestedStep = Number(searchParams.get('step'));
+    if (Number.isInteger(requestedStep) && requestedStep >= 1 && requestedStep <= 8) {
+      setCurrentStep(requestedStep);
+    }
+  }, [searchParams, setCurrentStep]);
 
   useEffect(() => () => {
     resetFormData();

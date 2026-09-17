@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
+from apps.notifications.services import NotificationService
 
 from apps.quality.services.problem_service import ProblemService
 from apps.quality.serializers import (
@@ -728,7 +729,8 @@ class ContainmentActionListCreateView(APIView):
         serializer = ContainmentActionSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        action = serializer.save()
+        NotificationService.sync_action_assignment(action, actor=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -752,13 +754,20 @@ class ContainmentActionDetailView(APIView):
         serializer = ContainmentActionSerializer(obj, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        previous_responsible_id = obj.responsible_id
+        action = serializer.save()
+        NotificationService.sync_action_assignment(
+            action,
+            previous_responsible_id=previous_responsible_id,
+            actor=request.user,
+        )
         return Response(serializer.data)
 
     def delete(self, request, pk):
         obj = self._get_object(pk)
         if not obj:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        NotificationService.resolve_action(obj)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -901,7 +910,8 @@ class CorrectiveActionListCreateView(APIView):
         serializer = CorrectiveActionSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        action = serializer.save()
+        NotificationService.sync_action_assignment(action, actor=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -925,13 +935,20 @@ class CorrectiveActionDetailView(APIView):
         serializer = CorrectiveActionSerializer(obj, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        previous_responsible_id = obj.responsible_id
+        action = serializer.save()
+        NotificationService.sync_action_assignment(
+            action,
+            previous_responsible_id=previous_responsible_id,
+            actor=request.user,
+        )
         return Response(serializer.data)
 
     def delete(self, request, pk):
         obj = self._get_object(pk)
         if not obj:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        NotificationService.resolve_action(obj)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -960,7 +977,8 @@ class VerificationActionListCreateView(APIView):
         serializer = VerificationActionSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        action = serializer.save()
+        NotificationService.sync_action_assignment(action, actor=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -984,13 +1002,20 @@ class VerificationActionDetailView(APIView):
         serializer = VerificationActionSerializer(obj, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        previous_responsible_id = obj.responsible_id
+        action = serializer.save()
+        NotificationService.sync_action_assignment(
+            action,
+            previous_responsible_id=previous_responsible_id,
+            actor=request.user,
+        )
         return Response(serializer.data)
 
     def delete(self, request, pk):
         obj = self._get_object(pk)
         if not obj:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        NotificationService.resolve_action(obj)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1019,7 +1044,8 @@ class PreventionActionListCreateView(APIView):
         serializer = PreventionActionSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        action = serializer.save()
+        NotificationService.sync_action_assignment(action, actor=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -1043,13 +1069,20 @@ class PreventionActionDetailView(APIView):
         serializer = PreventionActionSerializer(obj, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        previous_responsible_id = obj.responsible_id
+        action = serializer.save()
+        NotificationService.sync_action_assignment(
+            action,
+            previous_responsible_id=previous_responsible_id,
+            actor=request.user,
+        )
         return Response(serializer.data)
 
     def delete(self, request, pk):
         obj = self._get_object(pk)
         if not obj:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        NotificationService.resolve_action(obj)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

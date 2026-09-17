@@ -2,6 +2,7 @@ import * as Icons from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../navigation";
 import { Theme } from "../../navigation/types";
+import NotificationCenter from "../../modules/notifications/NotificationCenter";
 
 interface TopBarProps {
   onUserMenuClick: () => void;
@@ -61,9 +62,7 @@ export default function TopBar({
           <span style={styles.controlLabel}>{themeLabel}</span>
         </button>
 
-        <button style={styles.controlBtn} title="Notificaciones">
-          <Icons.Bell size={18} />
-        </button>
+        <NotificationCenter language={currentLanguage} />
 
         <button style={styles.userBtn} onClick={onUserMenuClick}>
           <div style={styles.avatar}>
