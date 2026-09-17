@@ -25,7 +25,25 @@ timeout /t 3 /nobreak >nul
 
 echo Iniciando platformSSI...
 cd /d "C:\Users\ssi.production\platformSSI\platformSSI"
-docker compose up -d
+
+REM Recreate app services so docker-compose environment changes are actually applied.
+echo Recreando servicios de aplicacion con variables de entorno actuales...
+docker compose up -d --force-recreate backend celery_worker celery_beat frontend
+if %errorlevel% neq 0 (
+    echo ERROR: No se pudieron recrear los servicios de platformSSI.
+    pause
+    exit /b 1
+)
+
+REM Incoming Inspection depends on this secret inside Celery.
+echo Validando PLEX_PROXY_SECRET en Celery...
+docker compose exec -T celery_worker python -c "import os,sys; s=os.getenv('PLEX_PROXY_SECRET',''); print('PLEX_PROXY_SECRET loaded:', bool(s), 'length:', len(s)); sys.exit(0 if s else 1)"
+if %errorlevel% neq 0 (
+    echo ERROR: PLEX_PROXY_SECRET no esta cargado en celery_worker.
+    echo Revisa docker-compose.yml y recrea el contenedor antes de usar Incoming Inspection.
+    pause
+    exit /b 1
+)
 
 echo Aplicando migraciones de base de datos...
 docker compose exec -T backend python manage.py migrate
