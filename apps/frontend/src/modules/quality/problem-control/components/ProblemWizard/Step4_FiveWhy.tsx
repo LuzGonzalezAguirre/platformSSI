@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../../../../../services/api.client';
 import { problemApi } from '../../api/problemApi';
-import type { FiveWhyAnalysis, FiveWhyCategory } from '../../types/problem.types';
+import type { FiveWhyAnalysis, FiveWhyCategory, UserBasic } from '../../types/problem.types';
 import { StepMediaBar } from '../shared/StepMediaBar';
 import { useApprovalUsers } from '../../hooks/useCatalogs';
 import { useWizardStore } from '../../store/wizardStore';
@@ -28,6 +29,11 @@ interface RowState {
 interface LineState {
   order: number;
   rows: Record<CatKey, RowState>;
+}
+
+interface ApprovalSettings {
+  quality_manager: UserBasic | null;
+  can_edit: boolean;
 }
 
 const emptyRow = (): RowState => ({ why1: '', why2: '', why3: '', why4: '', why5: '' });
@@ -77,6 +83,15 @@ export const Step4_FiveWhy: React.FC = () => {
     staleTime: 30000,
   });
 
+  const { data: approvalSettings } = useQuery<ApprovalSettings>({
+    queryKey: ['problem-control-settings'],
+    queryFn: async () => {
+      const response = await apiClient.get('/quality/problem-control-settings/');
+      return response.data;
+    },
+    staleTime: 30000,
+  });
+
   const [lines, setLines] = useState<LineState[]>([emptyLine(1)]);
   const [fiveWhyIds, setFiveWhyIds] = useState<Record<CatKey, number | undefined>>({
     made: undefined,
@@ -101,14 +116,20 @@ export const Step4_FiveWhy: React.FC = () => {
   }, [isLoading, analyses]);
 
   useEffect(() => {
-    const valid = lines.every((line) =>
+    const whyValid = lines.every((line) =>
       CATEGORIES.every(({ key }) => {
         const row = line.rows[key];
         return Boolean(row.why1.trim() && row.why2.trim() && row.why3.trim());
       })
     );
-    setStepValidation(4, valid);
-  }, [lines, setStepValidation]);
+    const routingValid = Boolean(
+      approvalSettings?.quality_manager &&
+      formData.manufacturing_approver &&
+      formData.production_approver &&
+      formData.maintenance_approver
+    );
+    setStepValidation(4, whyValid && routingValid);
+  }, [lines, approvalSettings, formData.manufacturing_approver, formData.production_approver, formData.maintenance_approver, setStepValidation]);
 
   const handleChange = useCallback((order: number, cat: CatKey, field: string, value: string) => {
     setLines((prev) => prev.map((line) =>
@@ -209,6 +230,8 @@ export const Step4_FiveWhy: React.FC = () => {
     { label: 'Maintenance', field: 'maintenance_approver' as const, approver: formData.maintenance_approver },
   ];
 
+  const qualityManager = approvalSettings?.quality_manager || null;
+
   return (
     <div style={s.wrapper}>
       <div style={s.headerRow}>
@@ -284,10 +307,27 @@ export const Step4_FiveWhy: React.FC = () => {
         <div>
           <h3 style={s.routingTitle}>Final Approval Routing</h3>
           <p style={s.routingHelp}>
-            Select who will represent Manufacturing, Production and Maintenance in the final approval stage. No approval is performed here. After Submit, the four approvers will sign and comment from the dedicated Approval page.
+            Manufacturing, Production and Maintenance are selected for this 8D. The Quality Manager is controlled centrally from Problem Control Settings by an Admin and is pulled here automatically. No approval is performed in D4.
           </p>
         </div>
         <div style={s.routingGrid}>
+          <div style={{ ...s.routingCard, ...s.qualityCard }}>
+            <label style={s.routingLabel}>Quality Manager approver</label>
+            <select value={qualityManager?.id || ''} disabled style={{ ...s.routingSelect, ...s.lockedSelect }}>
+              <option value="">Not configured in Settings</option>
+              {qualityManager && (
+                <option value={qualityManager.id}>
+                  {qualityManager.first_name} {qualityManager.last_name}{qualityManager.job_title ? ` · ${qualityManager.job_title}` : ''}
+                </option>
+              )}
+            </select>
+            <div style={qualityManager ? s.routingStatus : s.routingWarning}>
+              {qualityManager
+                ? 'Managed by Admin in Problem Control Settings. Signature will be requested after Submit.'
+                : 'An Admin must assign the Quality Manager in Problem Control Settings before final approval.'}
+            </div>
+          </div>
+
           {routing.map((item) => (
             <div key={item.label} style={s.routingCard}>
               <label style={s.routingLabel}>{item.label} approver</label>
@@ -343,8 +383,11 @@ const s: Record<string, React.CSSProperties> = {
   routingHelp: { margin: '0.35rem 0 1rem', color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: 1.45 },
   routingGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' },
   routingCard: { padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-bg)' },
+  qualityCard: { borderColor: '#bfdbfe', backgroundColor: '#eff6ff' },
   routingLabel: { display: 'block', marginBottom: '0.35rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' },
   routingSelect: { width: '100%', padding: '0.45rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' },
-  routingStatus: { marginTop: '0.5rem', color: '#64748b', fontSize: '0.75rem' },
+  lockedSelect: { cursor: 'not-allowed', opacity: 0.85 },
+  routingStatus: { marginTop: '0.5rem', color: '#64748b', fontSize: '0.75rem', lineHeight: 1.35 },
+  routingWarning: { marginTop: '0.5rem', color: '#b45309', fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.35 },
   saveFirst: { padding: '1.5rem', color: '#92400e', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem' },
 };
