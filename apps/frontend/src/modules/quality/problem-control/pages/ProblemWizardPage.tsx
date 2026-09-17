@@ -1,12 +1,11 @@
 // apps/frontend/src/modules/quality/problem-control/pages/ProblemWizardPage.tsx
-import React, { useEffect,useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWizardStore } from '../store/wizardStore';
 import { WizardLayout } from '../components/ProblemWizard/WizardLayout';
 import { useProblemDetail } from '../hooks/useProblemDetail';
 import { useProblemCreate, useProblemUpdate, useProblemSubmit } from '../hooks/useProblemMutations';
 import type { Problem, ProblemCreateRequest } from '../types/problem.types';
-import { Settings } from 'lucide-react';
 
 export interface StepError {
   valid: boolean;
@@ -21,10 +20,10 @@ function getStepValidation(problem: Problem | undefined): Record<number, StepErr
     return {
       1: fail('Complete and save D1 fields first'),
       2: ok,
-      3: fail('Save the problem, then add initial response or containment actions'),
+      3: fail('Save the problem, then add containment actions'),
       4: fail('No Five Why analysis saved yet'),
       5: fail('No corrective actions saved yet'),
-      6: fail('No verification actions saved yet'),
+      6: fail('No verification evidence saved yet'),
       7: fail('No prevention actions saved yet'),
       8: ok,
     };
@@ -72,16 +71,19 @@ function getStepValidation(problem: Problem | undefined): Record<number, StepErr
 }
 
 export const ProblemWizardPage: React.FC = () => {
-
   const [settingsOpen, setSettingsOpen] = useState(false);
-  
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+  } | null>(null);
+
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditMode = !!id;
 
   const { formData, updateFormData, resetFormData, setCurrentStep } = useWizardStore();
 
-  // Fetch existing problem if edit mode
   const { data: problem, isLoading: isLoadingProblem } = useProblemDetail(
     isEditMode ? Number(id) : undefined
   );
@@ -92,19 +94,16 @@ export const ProblemWizardPage: React.FC = () => {
     [stepValidation]
   );
 
-  // Mutations
   const createMutation = useProblemCreate();
   const updateMutation = useProblemUpdate();
   const submitMutation = useProblemSubmit();
 
-  // Load problem data into wizard when editing
   useEffect(() => {
     if (isEditMode && problem) {
       updateFormData(problem);
     }
   }, [isEditMode, problem, updateFormData]);
 
-  // Reset wizard when unmounting
   useEffect(() => {
     return () => {
       resetFormData();
@@ -112,48 +111,71 @@ export const ProblemWizardPage: React.FC = () => {
     };
   }, [resetFormData, setCurrentStep]);
 
-  const handleSave = async () => {
-  try {
-    if (isEditMode && id) {
-      // Update existing problem
-      await updateMutation.mutateAsync({
-        id: Number(id),
-        data: {
-          ...formData,
-          team_member_ids: formData.team_members?.map((m) => m.id),
-          manufacturing_approver_id: formData.manufacturing_approver?.id || null,
-          production_approver_id: formData.production_approver?.id || null,
-          maintenance_approver_id: formData.maintenance_approver?.id || null,
-        },
-      });
-      alert('Problem saved successfully!');
-    } else {
-      // Create new problem (Draft)
-      const createData: ProblemCreateRequest = {
-        brief_description: formData.brief_description || '',
-        full_description: formData.full_description || '',
-        category: formData.category || '',
-        problem_type: formData.problem_type!,
-        severity_level_id: formData.severity_level_data?.id!,
-        severity_context: formData.severity_context || 'customer',
-        champion_id: formData.champion?.id!,
-        date_of_occurrence: formData.date_of_occurrence || new Date().toISOString(),
-        part_no: formData.part_no,
-        defect_type_id: formData.defect_type_data?.id,
-        customer_no: formData.customer_no,
-        supplier_no: formData.supplier_no,
-        team_member_ids: formData.team_members?.map((m) => m.id), // ← AGREGAR
-      };
+  useEffect(() => {
+    if (!notification) return;
+    const timer = window.setTimeout(() => setNotification(null), 3600);
+    return () => window.clearTimeout(timer);
+  }, [notification]);
 
-      const newProblem = await createMutation.mutateAsync(createData);
-      alert('Problem created successfully!');
-      
-      navigate(`/quality/problems/${newProblem.id}/edit`, { replace: true });
+  const showNotification = (
+    type: 'success' | 'error' | 'info',
+    title: string,
+    message: string
+  ) => {
+    setNotification({ type, title, message });
+  };
+
+  const handleSave = async () => {
+    try {
+      if (isEditMode && id) {
+        await updateMutation.mutateAsync({
+          id: Number(id),
+          data: {
+            ...formData,
+            team_member_ids: formData.team_members?.map((m) => m.id),
+            manufacturing_approver_id: formData.manufacturing_approver?.id || null,
+            production_approver_id: formData.production_approver?.id || null,
+            maintenance_approver_id: formData.maintenance_approver?.id || null,
+          },
+        });
+
+        showNotification(
+          'success',
+          'Changes saved',
+          'The 8D problem was saved successfully.'
+        );
+      } else {
+        const createData: ProblemCreateRequest = {
+          brief_description: formData.brief_description || '',
+          full_description: formData.full_description || '',
+          category: formData.category || '',
+          problem_type: formData.problem_type!,
+          severity_level_id: formData.severity_level_data?.id!,
+          severity_context: formData.severity_context || 'customer',
+          champion_id: formData.champion?.id!,
+          date_of_occurrence: formData.date_of_occurrence || new Date().toISOString(),
+          part_no: formData.part_no,
+          defect_type_id: formData.defect_type_data?.id,
+          customer_no: formData.customer_no,
+          supplier_no: formData.supplier_no,
+          team_member_ids: formData.team_members?.map((m) => m.id),
+        };
+
+        const newProblem = await createMutation.mutateAsync(createData);
+
+        showNotification(
+          'success',
+          'Problem created',
+          'The new 8D problem was created successfully.'
+        );
+
+        navigate(`/quality/problems/${newProblem.id}/edit`, { replace: true });
+      }
+    } catch (error: any) {
+      const detail = error.response?.data?.detail || error.message || 'Unable to save the problem.';
+      showNotification('error', 'Save failed', detail);
     }
-  } catch (error: any) {
-    alert(`Error saving problem: ${error.response?.data?.detail || error.message}`);
-  }
-};
+  };
 
   const handleSubmit = async () => {
     if (!window.confirm('Submit this problem for approval? You will not be able to edit it after submission.')) {
@@ -162,15 +184,16 @@ export const ProblemWizardPage: React.FC = () => {
 
     try {
       if (!isEditMode || !id) {
-        alert('Please save the problem first before submitting.');
+        showNotification('info', 'Save required', 'Please save the problem before submitting it.');
         return;
       }
 
       await submitMutation.mutateAsync(Number(id));
-      alert('Problem submitted for approval successfully!');
-      navigate('/quality/problems');
+      showNotification('success', 'Submitted', 'The problem was submitted for approval successfully.');
+      window.setTimeout(() => navigate('/quality/problems'), 500);
     } catch (error: any) {
-      alert(`Error submitting problem: ${error.response?.data?.detail || error.message}`);
+      const detail = error.response?.data?.detail || error.message || 'Unable to submit the problem.';
+      showNotification('error', 'Submit failed', detail);
     }
   };
 
@@ -192,7 +215,45 @@ export const ProblemWizardPage: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      {/* Header */}
+      {notification && (
+        <div
+          role="status"
+          style={{
+            ...styles.notification,
+            ...(notification.type === 'success'
+              ? styles.notificationSuccess
+              : notification.type === 'error'
+                ? styles.notificationError
+                : styles.notificationInfo),
+          }}
+        >
+          <div
+            style={{
+              ...styles.notificationIcon,
+              ...(notification.type === 'success'
+                ? styles.notificationIconSuccess
+                : notification.type === 'error'
+                  ? styles.notificationIconError
+                  : styles.notificationIconInfo),
+            }}
+          >
+            {notification.type === 'success' ? '✓' : notification.type === 'error' ? '!' : 'i'}
+          </div>
+          <div style={styles.notificationText}>
+            <div style={styles.notificationTitle}>{notification.title}</div>
+            <div style={styles.notificationMessage}>{notification.message}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+            style={styles.notificationClose}
+            aria-label="Close notification"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div style={styles.header}>
         <div>
           <button onClick={handleBack} style={styles.backButton}>
@@ -216,7 +277,6 @@ export const ProblemWizardPage: React.FC = () => {
         )}
       </div>
 
-      {/* Wizard */}
       <WizardLayout
         onSave={handleSave}
         onSubmit={handleSubmit}
@@ -231,11 +291,85 @@ export const ProblemWizardPage: React.FC = () => {
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
     padding: '2rem',
+    position: 'relative',
   },
   loadingContainer: {
     padding: '2rem',
     textAlign: 'center',
     color: 'var(--color-text-secondary)',
+  },
+  notification: {
+    position: 'fixed',
+    top: '1.25rem',
+    right: '1.25rem',
+    zIndex: 9999,
+    minWidth: '320px',
+    maxWidth: '430px',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0.75rem',
+    padding: '0.9rem 1rem',
+    borderRadius: '0.65rem',
+    border: '1px solid var(--color-border)',
+    boxShadow: '0 12px 28px rgba(15, 23, 42, 0.18)',
+    backgroundColor: 'var(--color-bg-secondary)',
+  },
+  notificationSuccess: {
+    borderLeft: '4px solid #16a34a',
+  },
+  notificationError: {
+    borderLeft: '4px solid #dc2626',
+  },
+  notificationInfo: {
+    borderLeft: '4px solid #2563eb',
+  },
+  notificationIcon: {
+    width: '1.75rem',
+    height: '1.75rem',
+    borderRadius: '999px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.85rem',
+    fontWeight: 800,
+    flexShrink: 0,
+  },
+  notificationIconSuccess: {
+    backgroundColor: '#dcfce7',
+    color: '#15803d',
+  },
+  notificationIconError: {
+    backgroundColor: '#fee2e2',
+    color: '#b91c1c',
+  },
+  notificationIconInfo: {
+    backgroundColor: '#dbeafe',
+    color: '#1d4ed8',
+  },
+  notificationText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  notificationTitle: {
+    color: 'var(--color-text-primary)',
+    fontSize: '0.875rem',
+    fontWeight: 700,
+    marginBottom: '0.15rem',
+  },
+  notificationMessage: {
+    color: 'var(--color-text-secondary)',
+    fontSize: '0.78rem',
+    lineHeight: 1.4,
+    overflowWrap: 'anywhere',
+  },
+  notificationClose: {
+    border: 'none',
+    backgroundColor: 'transparent',
+    color: 'var(--color-text-secondary)',
+    cursor: 'pointer',
+    fontSize: '1.2rem',
+    lineHeight: 1,
+    padding: 0,
   },
   header: {
     display: 'flex',
