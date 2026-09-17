@@ -6,6 +6,7 @@ from apps.quality.models import Problem, ProblemAudit
 from apps.quality.repositories.problem_repository import ProblemRepository
 from apps.quality.services.sla_service import SLAService
 from apps.identity.models import User
+from apps.notifications.services import NotificationService
 
 
 class ProblemService:
@@ -92,6 +93,12 @@ class ProblemService:
         # Crear problem
         problem = ProblemRepository.create_problem(data, user)
 
+        NotificationService.notify_team_members(
+            problem,
+            problem.team_members.values_list('id', flat=True),
+            actor=user,
+        )
+
         # Audit log
         ProblemService._create_audit(
             problem=problem,
@@ -131,7 +138,8 @@ class ProblemService:
                 "Manager override approval required to continue editing."
             )
 
-        # Capturar cambios para audit
+        # Capturar cambios para audit y detectar nuevas asignaciones D2.
+        old_team_member_ids = set(problem.team_members.values_list('id', flat=True))
         old_values = {
             'status': problem.status,
             'brief_description': problem.brief_description,
@@ -139,6 +147,13 @@ class ProblemService:
 
         # Actualizar
         problem = ProblemRepository.update_problem(problem, data)
+
+        new_team_member_ids = set(problem.team_members.values_list('id', flat=True))
+        NotificationService.notify_team_members(
+            problem,
+            new_team_member_ids - old_team_member_ids,
+            actor=user,
+        )
 
         # Audit log
         ProblemService._create_audit(
