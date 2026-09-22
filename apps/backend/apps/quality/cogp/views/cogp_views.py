@@ -4,10 +4,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import serializers
+from decimal import Decimal
 
 from apps.quality.cogp.serializers.cogp_serializers import CogpSummaryResponseSerializer
 from apps.quality.cogp.services.cogp_live_trend_service import CogpLiveTrendService
-from apps.quality.models import CustomerPartMapping
+from apps.quality.models import CustomerPartMapping, CogpSettings
 from apps.quality.cogp.services.cogp_pareto_service import CogpParetoService
 
 from apps.quality.cogp.services.scrap_rate_service import ScrapRateService
@@ -15,6 +17,32 @@ from apps.ssi_common.filters.base import BaseRangeFilterSerializer
 
 
 ALLOWED_ROLES = {"quality_engineer", "plant_manager", "admin"}
+
+
+class CogpSettingsSerializer(serializers.Serializer):
+    cost_target_pct = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=Decimal("0.01"), max_value=Decimal("100"))
+    pieces_target_pct = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=Decimal("0.01"), max_value=Decimal("100"))
+
+
+class CogpSettingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.roles.filter(slug__in=ALLOWED_ROLES).exists() and not request.user.is_superuser:
+            return Response({"detail": "No tienes permiso para ver este reporte."}, status=status.HTTP_403_FORBIDDEN)
+        obj = CogpSettings.get_solo()
+        return Response({**CogpSettingsSerializer(obj).data, "can_edit": request.user.is_superuser or request.user.roles.filter(slug__in=("admin", "quality_engineer")).exists()})
+
+    def put(self, request):
+        if not request.user.is_superuser and not request.user.roles.filter(slug__in=("admin", "quality_engineer")).exists():
+            return Response({"detail": "No tienes permiso para cambiar los targets."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = CogpSettingsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        obj = CogpSettings.get_solo()
+        obj.cost_target_pct = serializer.validated_data["cost_target_pct"]
+        obj.pieces_target_pct = serializer.validated_data["pieces_target_pct"]
+        obj.save(update_fields=["cost_target_pct", "pieces_target_pct", "updated_at"])
+        return Response({**CogpSettingsSerializer(obj).data, "can_edit": True})
 
 class CogpParetoView(APIView):
     permission_classes = [IsAuthenticated]

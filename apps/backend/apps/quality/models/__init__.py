@@ -30,6 +30,7 @@ from ..chatbot.models import (
     ChatbotSuggestion,
 )
 from ..cogp.models import (
+    CogpSettings,
     CustomerPartMapping,
     BusinessUnit,
     ClassificationSource,
@@ -82,6 +83,7 @@ __all__ = [
     'ScrapRecord',
     'ProductionRecord',
     'COGPDailySummary',
+    'CogpSettings',
     'ProblemCategoryCatalog',
     'ProblemTypeCatalog',
 ]

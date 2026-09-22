@@ -120,6 +120,16 @@
     "confirm": "Confirm"
   },
   "cogpPareto": {
+  "settings": "COGP settings",
+  "byCost": "Cost Pareto",
+  "byPieces": "Pieces Pareto",
+  "costTarget": "Cost target (%)",
+  "piecesTarget": "Pieces target (%)",
+  "totalPieces": "Scrapped pieces",
+  "pieceRate": "Scrap rate by pieces",
+  "offenders": "Red reasons are the leading contributors that push scrap above the target.",
+  "invalidTarget": "Targets must be between 0.01% and 100%.",
+  "saveError": "Could not save COGP settings.",
   "title": "Scrap Pareto Breakdown",
   "subtitle": "Top scrap reasons by workcenter for the selected period",
   "totalScrap": "Total Scrap",
