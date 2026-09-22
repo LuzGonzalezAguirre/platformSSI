@@ -180,3 +180,13 @@ def sync_downtime_workcenters():
     except Exception as exc:
         import logging
         logging.getLogger(__name__).error("sync_downtime_workcenters failed: %s", exc)
+
+
+# Import explícito para que Celery autodiscover registre las tareas
+# ubicadas en el submódulo apps.quality.cogp.tasks.
+from apps.quality.cogp.tasks import (  # noqa: E402,F401
+    sync_cogp_daily,
+    backfill_cogp_range,
+    warm_scrap_rate_cache,
+    stage_weekly_cogp_offenders,
+)
