@@ -6,10 +6,12 @@ from apps.quality.cogp.views.cogp_views import (
     CogpParetoView,
     ScrapRateWeeklyView,
     CogpSettingsView,
+    CogpScrapIntegrationTestView,
 )
 
 urlpatterns = [
     path("settings/", CogpSettingsView.as_view()),
+    path("scrap-integration/test/", CogpScrapIntegrationTestView.as_view()),
     path("summary/", CogpSummaryView.as_view()),
     path("weekly-trend/", CogpWeeklyTrendView.as_view()),
     path("mapping/", CogpMappingCatalogView.as_view()),
