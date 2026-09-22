@@ -11,12 +11,43 @@ from apps.quality.cogp.serializers.cogp_serializers import CogpSummaryResponseSe
 from apps.quality.cogp.services.cogp_live_trend_service import CogpLiveTrendService
 from apps.quality.models import CustomerPartMapping, CogpSettings
 from apps.quality.cogp.services.cogp_pareto_service import CogpParetoService
+from apps.quality.cogp.services.scrap_action_service import manual_test
 
 from apps.quality.cogp.services.scrap_rate_service import ScrapRateService
 from apps.ssi_common.filters.base import BaseRangeFilterSerializer
 
 
 ALLOWED_ROLES = {"quality_engineer", "plant_manager", "admin"}
+
+
+class CogpScrapIntegrationTestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_superuser and not request.user.roles.filter(slug__in=("quality_engineer", "admin")).exists():
+            return Response({"detail": "No tienes permiso para probar la integración."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = CogpIntegrationTestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            return Response(manual_test(serializer.validated_data), status=status.HTTP_201_CREATED)
+        except (ValueError, KeyError, TypeError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response({"detail": "No se pudo conectar a ActionTracker. Revisa configuración y servicio."},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class CogpIntegrationTestSerializer(serializers.Serializer):
+    test_run_id = serializers.UUIDField()
+    business_unit = serializers.ChoiceField(choices=("VOLVO", "CUMMINS", "TULC", "JOHN_DEERE", "EATON"))
+    workcenter = serializers.CharField(max_length=150)
+    part_no = serializers.CharField(max_length=80)
+    part_name = serializers.CharField(max_length=250, required=False, allow_blank=True)
+    reason = serializers.CharField(max_length=250)
+    scrap_cost = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=Decimal("0"))
+    production_cost = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=Decimal("0"))
+    scrap_qty = serializers.IntegerField(min_value=0)
+    produced_qty = serializers.IntegerField(min_value=0)
 
 
 class CogpSettingsSerializer(serializers.Serializer):

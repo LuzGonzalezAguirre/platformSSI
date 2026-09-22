@@ -53,6 +53,19 @@ export interface CogpSettings {
   can_edit: boolean;
 }
 
+export interface CogpScrapTest {
+  test_run_id: string;
+  business_unit: string;
+  workcenter: string;
+  part_no: string;
+  part_name: string;
+  reason: string;
+  scrap_cost: string;
+  scrap_qty: string;
+  production_cost: string;
+  produced_qty: string;
+}
+
 export interface CogpParetoBucket {
   total_scrap: string;
   total_extended_cost: string;
@@ -134,6 +147,8 @@ export interface ScrapRateResponse {
 }
 
 export const CogpService = {
+  createScrapTest: (data: CogpScrapTest): Promise<{ source_key: string; tracker_code: string }> =>
+    apiClient.post(`${BASE}/scrap-integration/test/`, data).then((r: any) => r.data),
   getSettings: (): Promise<CogpSettings> =>
     apiClient.get(`${BASE}/settings/`).then((r: any) => r.data),
 

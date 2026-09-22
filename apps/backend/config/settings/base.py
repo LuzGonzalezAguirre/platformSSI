@@ -128,4 +128,7 @@ PLEX_PROXY_SECRET = env("PLEX_PROXY_SECRET", default="")
 PLEX_CACHE_TTL    = 300  # segundos — 5 minutos default
 
 QWALL_PROXY_URL    = env("QWALL_PROXY_URL", default="http://host.docker.internal:8002")
+ACTION_TRACKER_URL = env("ACTION_TRACKER_URL", default="")
+ACTION_TRACKER_BOT_USER = env("ACTION_TRACKER_BOT_USER", default="")
+ACTION_TRACKER_BOT_PASSWORD = env("ACTION_TRACKER_BOT_PASSWORD", default="")
 QWALL_PROXY_TOKEN = env("QWALL_PROXY_TOKEN", default="")

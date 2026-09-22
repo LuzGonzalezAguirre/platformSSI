@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { CogpService, CogpWeeklyTrendResponse, CogpParetoResponse, CogpSettings } from "../services/cogp.service";
+import { CogpService, CogpWeeklyTrendResponse, CogpParetoResponse, CogpSettings, CogpScrapTest } from "../services/cogp.service";
 import CogpTrendChart from "./CogpTrendChart";
 import CogpParetoChart from "./CogpParetoChart";
 import FilterBar from "../../../components/common/FilterBar";
@@ -26,6 +26,12 @@ const card: React.CSSProperties = {
   border: "1px solid var(--color-border)",
   borderRadius: "var(--radius-lg, 10px)",
   padding: "1.25rem",
+};
+
+const emptyScrapTest: CogpScrapTest = {
+  test_run_id: "",
+  business_unit: "VOLVO", workcenter: "", part_no: "", part_name: "", reason: "",
+  scrap_cost: "3", scrap_qty: "12", production_cost: "100", produced_qty: "88",
 };
 
 const cardTitle: React.CSSProperties = {
@@ -144,6 +150,11 @@ export default function CogpDashboardPage() {
   const [piecesDraft, setPiecesDraft] = useState("10");
   const [settingsError, setSettingsError] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [testOpen, setTestOpen] = useState(false);
+  const [testDraft, setTestDraft] = useState<CogpScrapTest>(() => ({ ...emptyScrapTest, test_run_id: crypto.randomUUID() }));
+  const [testSaving, setTestSaving] = useState(false);
+  const [testResult, setTestResult] = useState("");
+  const [testError, setTestError] = useState("");
   const [openPareto, setOpenPareto] = useState<string[]>([]);
   const costTarget = Number(settings?.cost_target_pct ?? 2);
   const piecesTarget = Number(settings?.pieces_target_pct ?? 10);
@@ -188,6 +199,21 @@ export default function CogpDashboardPage() {
       setSettingsError(t("cogpPareto.saveError"));
     } finally {
       setSettingsSaving(false);
+    }
+  };
+
+  const submitScrapTest = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setTestSaving(true);
+    setTestError("");
+    setTestResult("");
+    try {
+      const result = await CogpService.createScrapTest(testDraft);
+      setTestResult(`${t("cogpPareto.testCreated")}: ${result.tracker_code} · CCS ${result.source_key}`);
+    } catch (error: any) {
+      setTestError(error?.response?.data?.detail || t("cogpPareto.testError"));
+    } finally {
+      setTestSaving(false);
     }
   };
 
@@ -292,10 +318,49 @@ export default function CogpDashboardPage() {
               </label>
             </div>
             {settingsError && <p role="alert" style={{ color: "#ef4444" }}>{settingsError}</p>}
+            {settings?.can_edit && <button type="button" disabled={settingsSaving} onClick={() => {
+              setSettingsOpen(false); setTestError(""); setTestResult(""); setTestOpen(true);
+            }}>{t("cogpPareto.testIntegration")}</button>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem", marginTop: "1.25rem" }}>
               <button type="button" disabled={settingsSaving} onClick={() => setSettingsOpen(false)}>{t("common.cancel")}</button>
               {settings?.can_edit && <button type="button" disabled={settingsSaving} onClick={saveSettings}>{t("common.save")}</button>}
             </div>
+          </div>
+        </div>, document.body
+      )}
+
+      {testOpen && createPortal(
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="scrap-test-title" style={{ ...card, width: "min(100%, 600px)", maxHeight: "90vh", overflowY: "auto" }}>
+            <h2 id="scrap-test-title">{t("cogpPareto.testIntegration")}</h2>
+            <p>{t("cogpPareto.testHelp")}</p>
+            <form onSubmit={submitScrapTest} style={{ display: "grid", gap: "0.7rem" }}>
+              <label>BU <select value={testDraft.business_unit} onChange={e => setTestDraft({ ...testDraft, business_unit: e.target.value })}>
+                {["VOLVO", "CUMMINS", "TULC", "JOHN_DEERE", "EATON"].map(bu => <option key={bu} value={bu}>{bu}</option>)}
+              </select></label>
+              {([
+                ["workcenter", "Workcenter"], ["part_no", t("cogpPareto.testPart")],
+                ["part_name", t("cogpPareto.testName")], ["reason", t("cogpPareto.testReason")],
+                ["scrap_cost", t("cogpPareto.testCost")], ["scrap_qty", t("cogpPareto.testQty")],
+                ["production_cost", t("cogpPareto.testProductionCost")], ["produced_qty", t("cogpPareto.testProductionQty")],
+              ] as [keyof CogpScrapTest, string][]).map(([key, label]) => (
+                <label key={key} style={{ display: "grid", gap: "0.25rem" }}>{label}
+                  <input required={key !== "part_name"} disabled={testSaving} type={key.includes("cost") || key.includes("qty") ? "number" : "text"}
+                    min={key.includes("cost") || key.includes("qty") ? "0" : undefined}
+                    step={key.includes("cost") ? "0.01" : key.includes("qty") ? "1" : undefined}
+                    value={testDraft[key]} onChange={e => setTestDraft({ ...testDraft, [key]: e.target.value })} />
+                </label>
+              ))}
+              {testError && <p role="alert" style={{ color: "#ef4444" }}>{testError}</p>}
+              {testResult && <p role="status" style={{ color: "#059669", overflowWrap: "anywhere" }}>{testResult}</p>}
+              {testResult && <button type="button" onClick={() => {
+                setTestDraft({ ...emptyScrapTest, test_run_id: crypto.randomUUID() }); setTestResult("");
+              }}>{t("cogpPareto.testAnother")}</button>}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem" }}>
+                <button type="button" disabled={testSaving} onClick={() => setTestOpen(false)}>{t("common.cancel")}</button>
+                <button type="submit" disabled={testSaving}>{testSaving ? t("common.loading") : t("cogpPareto.testCreate")}</button>
+              </div>
+            </form>
           </div>
         </div>, document.body
       )}
