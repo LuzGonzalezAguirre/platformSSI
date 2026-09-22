@@ -176,7 +176,7 @@ def stage_current_offenders(
     total_scrap_qty = {bu: 0 for bu in all_bus}
     production_cost = {bu: Decimal("0") for bu in all_bus}
     produced_qty = {bu: 0 for bu in all_bus}
-    component_rows: dict[tuple[str, str, str, str], dict] = {}
+    pareto_rows: dict[tuple[str, str, str], dict] = {}
 
     for row in scrap_rows:
         wc = row.get("Workcenter") or ""
@@ -199,21 +199,22 @@ def stage_current_offenders(
         total_scrap_cost[bu] += cost
         total_scrap_qty[bu] += qty
 
-        key = (bu, wc, part_no, reason)
-        item = component_rows.setdefault(
+        key = (bu, reason, wc)
+        item = pareto_rows.setdefault(
             key,
             {
                 "business_unit": bu,
                 "workcenter": wc,
-                "part_no": part_no,
-                "part_name": "",
                 "reason": reason,
                 "scrap_cost": Decimal("0"),
                 "scrap_qty": 0,
+                "part_nos": set(),
             },
         )
         item["scrap_cost"] += cost
         item["scrap_qty"] += qty
+        if part_no:
+            item["part_nos"].add(part_no)
 
     for row in production_rows:
         wc = row.get("Workcenter") or ""
@@ -241,21 +242,79 @@ def stage_current_offenders(
         if bu in produced_qty:
             produced_qty[bu] += _to_int_qty(row.get("Quantity"))
 
+    def red_keys_for_metric(
+        bu: str,
+        metric: str,
+        denominator: Decimal,
+        target_pct: Decimal,
+        is_over_target: bool,
+    ) -> set[tuple[str, str, str]]:
+        if not is_over_target:
+            return set()
+
+        rows = [
+            (key, item)
+            for key, item in pareto_rows.items()
+            if item["business_unit"] == bu
+        ]
+        rows.sort(
+            key=lambda pair: (
+                pair[1]["scrap_cost"] if metric == "cost" else pair[1]["scrap_qty"]
+            ),
+            reverse=True,
+        )
+
+        budget = denominator * target_pct / Decimal("100")
+        cumulative = Decimal("0")
+        selected: set[tuple[str, str, str]] = set()
+        for key, item in rows:
+            value = (
+                item["scrap_cost"]
+                if metric == "cost"
+                else Decimal(item["scrap_qty"])
+            )
+            cumulative += value
+            selected.add(key)
+            if cumulative > budget:
+                break
+        return selected
+
     red_bus: dict[str, dict] = {}
+    red_keys: set[tuple[str, str, str]] = set()
+    cost_red_keys: set[tuple[str, str, str]] = set()
+    pieces_red_keys: set[tuple[str, str, str]] = set()
+
     for bu in all_bus:
         cost_rate = (
             total_scrap_cost[bu] / production_cost[bu] * 100
             if production_cost[bu] > 0
             else Decimal("0")
         )
-        piece_denominator = total_scrap_qty[bu] + produced_qty[bu]
+        piece_denominator_int = total_scrap_qty[bu] + produced_qty[bu]
+        piece_denominator = Decimal(piece_denominator_int)
         piece_rate = (
-            Decimal(total_scrap_qty[bu]) / Decimal(piece_denominator) * 100
-            if piece_denominator > 0
+            Decimal(total_scrap_qty[bu]) / piece_denominator * 100
+            if piece_denominator_int > 0
             else Decimal("0")
         )
         cost_offender = production_cost[bu] > 0 and cost_rate > cfg.cost_target_pct
-        pieces_offender = piece_denominator > 0 and piece_rate > cfg.pieces_target_pct
+        pieces_offender = piece_denominator_int > 0 and piece_rate > cfg.pieces_target_pct
+
+        bu_cost_keys = red_keys_for_metric(
+            bu,
+            "cost",
+            production_cost[bu],
+            cfg.cost_target_pct,
+            cost_offender,
+        )
+        bu_piece_keys = red_keys_for_metric(
+            bu,
+            "pieces",
+            piece_denominator,
+            cfg.pieces_target_pct,
+            pieces_offender,
+        )
+
         if cost_offender or pieces_offender:
             red_bus[bu] = {
                 "cost_rate": cost_rate,
@@ -264,14 +323,19 @@ def stage_current_offenders(
                 "pieces_offender": pieces_offender,
             }
 
+        cost_red_keys.update(bu_cost_keys)
+        pieces_red_keys.update(bu_piece_keys)
+        red_keys.update(bu_cost_keys)
+        red_keys.update(bu_piece_keys)
+
     staged = []
-    for item in component_rows.values():
+    for key in sorted(red_keys):
+        item = pareto_rows[key]
         bu = item["business_unit"]
-        status = red_bus.get(bu)
-        if not status:
-            continue
-        if item["scrap_cost"] <= 0 and item["scrap_qty"] <= 0:
-            continue
+        status = red_bus[bu]
+
+        part_nos = sorted(item["part_nos"])
+        part_no = part_nos[0] if len(part_nos) == 1 else "MULTIPLE"
 
         staged.append(
             stage(
@@ -280,8 +344,8 @@ def stage_current_offenders(
                     "week_end": end_date.isoformat(),
                     "business_unit": bu,
                     "workcenter": item["workcenter"],
-                    "part_no": item["part_no"] or "SIN_PARTE",
-                    "part_name": item["part_name"],
+                    "part_no": part_no,
+                    "part_name": "",
                     "reason": item["reason"],
                     "scrap_cost": str(item["scrap_cost"]),
                     "scrap_qty": item["scrap_qty"],
@@ -293,8 +357,8 @@ def stage_current_offenders(
                     "pieces_rate_pct": str(status["piece_rate"]),
                     "cost_target_pct": str(cfg.cost_target_pct),
                     "pieces_target_pct": str(cfg.pieces_target_pct),
-                    "cost_offender": status["cost_offender"],
-                    "pieces_offender": status["pieces_offender"],
+                    "cost_offender": key in cost_red_keys,
+                    "pieces_offender": key in pieces_red_keys,
                     "is_test": False,
                 }
             )
