@@ -12,7 +12,7 @@ from apps.quality.cogp.serializers.cogp_serializers import CogpSummaryResponseSe
 from apps.quality.cogp.services.cogp_live_trend_service import CogpLiveTrendService
 from apps.quality.models import CustomerPartMapping, CogpSettings
 from apps.quality.cogp.services.cogp_pareto_service import CogpParetoService
-from apps.quality.cogp.services.scrap_action_service import manual_test
+from apps.quality.cogp.services.scrap_action_service import manual_test, stage_current_offenders
 
 from apps.quality.cogp.services.scrap_rate_service import ScrapRateService
 from apps.ssi_common.filters.base import BaseRangeFilterSerializer
@@ -55,6 +55,59 @@ class CogpScrapIntegrationTestView(APIView):
                 {"detail": f"Error de integración COGP: {type(exc).__name__}: {exc}"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+
+
+class CogpCurrentOffendersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_superuser and not request.user.roles.filter(slug__in=("quality_engineer", "admin")).exists():
+            return Response({"detail": "No tienes permiso para enviar ofensores."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = CogpCurrentOffendersSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            result = stage_current_offenders(
+                data["start_date"],
+                data["end_date"],
+                tuple(data.get("workcenter") or ()),
+            )
+            return Response(result, status=status.HTTP_201_CREATED)
+        except (ValueError, KeyError, TypeError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except requests.HTTPError as exc:
+            response = exc.response
+            detail = None
+            if response is not None:
+                try:
+                    detail = response.json().get("detail")
+                except Exception:
+                    detail = response.text[:500]
+            return Response(
+                {"detail": f"qwall-proxy respondió con error: {detail or str(exc)}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except requests.RequestException as exc:
+            return Response(
+                {"detail": f"No se pudo contactar qwall-proxy: {type(exc).__name__}: {exc}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as exc:
+            return Response(
+                {"detail": f"Error enviando ofensores COGP: {type(exc).__name__}: {exc}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+
+class CogpCurrentOffendersSerializer(serializers.Serializer):
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
+    workcenter = serializers.ListField(
+        child=serializers.CharField(max_length=150),
+        required=False,
+        default=list,
+    )
 
 
 class CogpIntegrationTestSerializer(serializers.Serializer):
