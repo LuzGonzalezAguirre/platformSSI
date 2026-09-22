@@ -47,6 +47,15 @@ export interface CogpPieceItem {
   pct_of_total: string;
 }
 
+export interface CogpCurrentOffendersResult {
+  start_date: string;
+  end_date: string;
+  red_business_units: string[];
+  offenders_detected: number;
+  staged: number;
+  source_keys: string[];
+}
+
 export interface CogpSettings {
   cost_target_pct: string;
   pieces_target_pct: string;
@@ -147,6 +156,8 @@ export interface ScrapRateResponse {
 }
 
 export const CogpService = {
+  stageCurrentOffenders: (data: { start_date: string; end_date: string; workcenter?: string[] }): Promise<CogpCurrentOffendersResult> =>
+    apiClient.post(`${BASE}/scrap-integration/current-offenders/`, data).then((r: any) => r.data),
   createScrapTest: (data: CogpScrapTest): Promise<{ source_key: string; tracker_code: string }> =>
     apiClient.post(`${BASE}/scrap-integration/test/`, data).then((r: any) => r.data),
   getSettings: (): Promise<CogpSettings> =>

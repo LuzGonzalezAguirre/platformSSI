@@ -1,117 +1,110 @@
 {
   "nav": {
-  "sections": {
-    "production": "Production",
-    "quality": "Quality",
-    "maintenance": "Maintenance",
-    "warehouse": "Warehouse",
-    "administration": "Administration",
-    "ssi": "SSI - Chair Law",
-    "warehouseBom": "BOM Explorer",
-    "warehouseCtb": "Clear To Build",
-    "warehouseDemand": "Demand",
-    "operationalPanel": "Dashboard"
-
-  },
-  "items": {
-    "operationalPanel": "Overview",
-    "productionOpsDaily": "Ops Daily Report",
-"productionTargets": "Targets Configuration",
-"productionSafety": "Safety",
-"productionAssistance": "Assistance",
-    "qualityInspections": "Inspections",
-    "qualityDefects": "Defects",
-    "maintenanceOrders": "Work Orders",
-    "maintenanceAssets": "Assets",
-    "warehouseInventory": "Inventory",
-    "warehouseMovements": "Movements",
-    "warehouseReceiving": "Receiving",
-    "adminUsers": "Users",
-    "adminRoles": "Roles",
-    "adminPlant": "Plant",
-    "adminAudit": "Audit",
-    "warehouseBom": "BOM Explorer",
-    "warehouseCtb": "Clear To Build",
-    "warehouseDemand": "Demand",
-    "maintenanceOverview":   "Overview",
-    "maintenanceActions":    "Actions",
-    "maintenanceWorkcenter": "Workcenter Detail",
-    "maintenanceWorkRequests": "Work Requests",
-    "qualityDashboard": "Dashboard",
-    "qualityPanel": "Operational Panel",
-    "maintenanceCorrectiveActions": "Corrective Actions",
-    "qualityQwallGroup": "Q-Wall",
-    "qualityQwallReport": "Report",
-    "qualityQwall": "Q-Wall Report",
-    "qualityQwallDashboard": "Q-Wall Dashboard",
-    "qualityRejections": "Rejections",
-    "qualityQwallCatalog": "Failure Catalog",
-    "qualityQwallHelp": "Help / Tutorial",
-    "qualityIncomingInspection": "Incoming Inspection",
-    "qualityProblems": "Problem Control",
-    "qwallSettings": "QWall Settings",
-    "productionLeysilla": "Chair Law",
-    "ssiChairs": "Chair Law ",
-    "ssiAttendance": "Attendance",
-    "qualityDowntime": "Downtime",
-    "qualityCogp": "COGP",
-    "qualityCogpMapping": "COGP Mapping",
-    "qualityScrapRate": "Scrap Rate",
-    "maintenancePmp": "PM Program",
+    "sections": {
+      "production": "Production",
+      "quality": "Quality",
+      "maintenance": "Maintenance",
+      "warehouse": "Warehouse",
+      "administration": "Administration",
+      "ssi": "SSI - Chair Law",
+      "warehouseBom": "BOM Explorer",
+      "warehouseCtb": "Clear To Build",
+      "warehouseDemand": "Demand",
+      "operationalPanel": "Dashboard"
+    },
+    "items": {
+      "operationalPanel": "Overview",
+      "productionOpsDaily": "Ops Daily Report",
+      "productionTargets": "Targets Configuration",
+      "productionSafety": "Safety",
+      "productionAssistance": "Assistance",
+      "qualityInspections": "Inspections",
+      "qualityDefects": "Defects",
+      "maintenanceOrders": "Work Orders",
+      "maintenanceAssets": "Assets",
+      "warehouseInventory": "Inventory",
+      "warehouseMovements": "Movements",
+      "warehouseReceiving": "Receiving",
+      "adminUsers": "Users",
+      "adminRoles": "Roles",
+      "adminPlant": "Plant",
+      "adminAudit": "Audit",
+      "warehouseBom": "BOM Explorer",
+      "warehouseCtb": "Clear To Build",
+      "warehouseDemand": "Demand",
+      "maintenanceOverview": "Overview",
+      "maintenanceActions": "Actions",
+      "maintenanceWorkcenter": "Workcenter Detail",
+      "maintenanceWorkRequests": "Work Requests",
+      "qualityDashboard": "Dashboard",
+      "qualityPanel": "Operational Panel",
+      "maintenanceCorrectiveActions": "Corrective Actions",
+      "qualityQwallGroup": "Q-Wall",
+      "qualityQwallReport": "Report",
+      "qualityQwall": "Q-Wall Report",
+      "qualityQwallDashboard": "Q-Wall Dashboard",
+      "qualityRejections": "Rejections",
+      "qualityQwallCatalog": "Failure Catalog",
+      "qualityQwallHelp": "Help / Tutorial",
+      "qualityIncomingInspection": "Incoming Inspection",
+      "qualityProblems": "Problem Control",
+      "qwallSettings": "QWall Settings",
+      "productionLeysilla": "Chair Law",
+      "ssiChairs": "Chair Law ",
+      "ssiAttendance": "Attendance",
+      "qualityDowntime": "Downtime",
+      "qualityCogp": "COGP",
+      "qualityCogpMapping": "COGP Mapping",
+      "qualityScrapRate": "Scrap Rate",
+      "maintenancePmp": "PM Program",
       "maintenanceDownEquipment": "Down Equipment"
-
-
-
-
-  }
-},
-
-"scrapRate": {
-  "title": "Scrap Rate — Pieces",
-  "subtitle": "Weekly trend of produced pieces vs scrap. Source: COGP (Plex).",
-  "noData": "No data for the selected range.",
-  "loading": "Loading trend...",
-  "loadError": "Failed to load scrap rate.",
-  "target": "target",
-  "fullscreen": "Fullscreen",
-  "exitFullscreen": "Exit (Esc)",
-  "partialWeek": "week in progress",
-  "undefinedRate": "No input this week: the rate is undefined, not zero.",
-  "meta": "{{range}} · {{cache}} weeks cached, {{plex}} from Plex",
-  "kpis": {
-    "input": "Total input",
-    "produced": "Produced",
-    "scrap": "Scrap",
-    "rate": "Scrap Rate",
-    "weeks": "Weeks"
+    }
   },
-  "legend": {
-    "produced": "Produced",
-    "scrap": "Scrap",
-    "rate": "Scrap Rate",
-    "scrapNotToScale": "The scrap segment uses a minimum visible height; the exact figure is in the label and in the % line."
+  "scrapRate": {
+    "title": "Scrap Rate — Pieces",
+    "subtitle": "Weekly trend of produced pieces vs scrap. Source: COGP (Plex).",
+    "noData": "No data for the selected range.",
+    "loading": "Loading trend...",
+    "loadError": "Failed to load scrap rate.",
+    "target": "target",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit (Esc)",
+    "partialWeek": "week in progress",
+    "undefinedRate": "No input this week: the rate is undefined, not zero.",
+    "meta": "{{range}} · {{cache}} weeks cached, {{plex}} from Plex",
+    "kpis": {
+      "input": "Total input",
+      "produced": "Produced",
+      "scrap": "Scrap",
+      "rate": "Scrap Rate",
+      "weeks": "Weeks"
+    },
+    "legend": {
+      "produced": "Produced",
+      "scrap": "Scrap",
+      "rate": "Scrap Rate",
+      "scrapNotToScale": "The scrap segment uses a minimum visible height; the exact figure is in the label and in the % line."
+    },
+    "tooltip": {
+      "input": "Input",
+      "produced": "Produced",
+      "scrap": "Scrap",
+      "scrapFinished": "Finished-good scrap",
+      "rate": "Scrap Rate"
+    },
+    "presets": {
+      "ytd": "Year to date",
+      "w13": "13 wks",
+      "w26": "26 wks",
+      "w52": "52 wks"
+    },
+    "businessUnits": {
+      "global": "Global",
+      "volvo": "Volvo",
+      "cummins": "Cummins",
+      "tulc": "TULC"
+    }
   },
-  "tooltip": {
-    "input": "Input",
-    "produced": "Produced",
-    "scrap": "Scrap",
-    "scrapFinished": "Finished-good scrap",
-    "rate": "Scrap Rate"
-  },
-  "presets": {
-    "ytd": "Year to date",
-    "w13": "13 wks",
-    "w26": "26 wks",
-    "w52": "52 wks"
-  },
-  "businessUnits": {
-    "global": "Global",
-    "volvo": "Volvo",
-    "cummins": "Cummins",
-    "tulc": "TULC"
-  }
-}
- ,
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",
@@ -120,58 +113,60 @@
     "confirm": "Confirm"
   },
   "cogpPareto": {
-  "testIntegration": "Test Scrap integration",
-  "testHelp": "Enter a case that exceeds at least one target. This creates a CCS record and a real ActionTracker action labeled [PRUEBA]. Use a workcenter mapped to an area.",
-  "testPart": "Component number",
-  "testName": "Component name (optional)",
-  "testReason": "Scrap reason",
-  "testCost": "Scrap cost",
-  "testQty": "Scrapped components",
-  "testProductionCost": "Production cost",
-  "testProductionQty": "Produced components",
-  "testCreate": "Create test record and action",
-  "testAnother": "New test",
-  "testCreated": "Test action created",
-  "testError": "Could not create test. Check CCS and ActionTracker settings.",
-  "settings": "COGP settings",
-  "byCost": "Cost Pareto",
-  "byPieces": "Pieces Pareto",
-  "costTarget": "Cost target (%)",
-  "piecesTarget": "Pieces target (%)",
-  "totalPieces": "Scrapped pieces",
-  "pieceRate": "Scrap rate by pieces",
-  "offenders": "Red reasons are the leading contributors that push scrap above the target.",
-  "invalidTarget": "Targets must be between 0.01% and 100%.",
-  "saveError": "Could not save COGP settings.",
-  "title": "Scrap Pareto Breakdown",
-  "subtitle": "Top scrap reasons by workcenter for the selected period",
-  "totalScrap": "Total Scrap",
-  "scrapRate": "Scrap Rate",
-  "useMainRange": "Use main date range",
-  "periods": {
-    "day": "Day",
-    "week": "Week",
-    "month": "Month"
-    
-  }
-},
+    "testIntegration": "Send current offenders",
+    "testHelp": "Enter a case that exceeds at least one target. This creates a CCS record and a real ActionTracker action labeled [PRUEBA]. Use a workcenter mapped to an area.",
+    "testPart": "Component number",
+    "testName": "Component name (optional)",
+    "testReason": "Scrap reason",
+    "testCost": "Scrap cost",
+    "testQty": "Scrapped components",
+    "testProductionCost": "Production cost",
+    "testProductionQty": "Produced components",
+    "testCreate": "Create test record and action",
+    "testAnother": "New test",
+    "testCreated": "Test action created",
+    "testError": "Could not create test. Check CCS and ActionTracker settings.",
+    "settings": "COGP settings",
+    "byCost": "Cost Pareto",
+    "byPieces": "Pieces Pareto",
+    "costTarget": "Cost target (%)",
+    "piecesTarget": "Pieces target (%)",
+    "totalPieces": "Scrapped pieces",
+    "pieceRate": "Scrap rate by pieces",
+    "offenders": "Red reasons are the leading contributors that push scrap above the target.",
+    "invalidTarget": "Targets must be between 0.01% and 100%.",
+    "saveError": "Could not save COGP settings.",
+    "title": "Scrap Pareto Breakdown",
+    "subtitle": "Top scrap reasons by workcenter for the selected period",
+    "totalScrap": "Total Scrap",
+    "scrapRate": "Scrap Rate",
+    "useMainRange": "Use main date range",
+    "periods": {
+      "day": "Day",
+      "week": "Week",
+      "month": "Month"
+    },
+    "currentOffendersResult": "{{count}} offenders staged in CCS. Red BUs: {{bus}}.",
+    "currentOffendersError": "Could not stage the current offenders.",
+    "noRedBus": "none"
+  },
   "cogpMapping": {
-  "title": "COGP Part → Business Unit Mapping",
-  "subtitle": "Catalog of parts classified by business unit, with classification source",
-  "allBUs": "All BUs",
-  "searchPlaceholder": "Search by Part No or name...",
-  "search": "Search",
-  "results": "results",
-  "noData": "No records found.",
-  "columns": {
-    "partNo": "Part No",
-    "partName": "Part Name",
-    "customerNo": "Customer No",
-    "customerName": "Customer Name",
-    "businessUnit": "Business Unit",
-    "source": "Source"
-  }
-},
+    "title": "COGP Part → Business Unit Mapping",
+    "subtitle": "Catalog of parts classified by business unit, with classification source",
+    "allBUs": "All BUs",
+    "searchPlaceholder": "Search by Part No or name...",
+    "search": "Search",
+    "results": "results",
+    "noData": "No records found.",
+    "columns": {
+      "partNo": "Part No",
+      "partName": "Part Name",
+      "customerNo": "Customer No",
+      "customerName": "Customer Name",
+      "businessUnit": "Business Unit",
+      "source": "Source"
+    }
+  },
   "users": {
     "title": "User Management",
     "newUser": "New User",
@@ -207,13 +202,13 @@
       "save": "Save",
       "cancel": "Cancel",
       "jobTitle": "Job Title",
-"jobTitlePlaceholder": "e.g. Production Engineer",
-"rolesRequired": "You must assign at least one role.",
-"saveError": "Error saving.",
-"saving": "Saving...",
-"systemRoles": "System roles",
-"customRoles": "Custom roles",
-"rolesSelected": "selected"
+      "jobTitlePlaceholder": "e.g. Production Engineer",
+      "rolesRequired": "You must assign at least one role.",
+      "saveError": "Error saving.",
+      "saving": "Saving...",
+      "systemRoles": "System roles",
+      "customRoles": "Custom roles",
+      "rolesSelected": "selected"
     }
   },
   "profile": {
@@ -284,325 +279,362 @@
       "updateError": "Error updating profile.",
       "passwordSuccess": "Password updated successfully.",
       "passwordError": "Error changing password."
-    }},
-    "userMenu": {
-      "profile": "My Profile",
-      "settings": "Settings",
-      "noPlant": "No plant assigned",
-      "logout": "Sign Out"
-    },
-    "roles": {
-  "operator": "Operator",
-  "supervisor": "Supervisor",
-  "quality_engineer": "Quality",
-  "process_engineer": "Production",
-  "maintenance_engineer": "Maintenance",
-  "inventory_engineer": "Warehouse",
-  "admin": "Administrator",
-  "plant_manager": "Plant Manager"
-},
-"rolesPage": {
-  "title": "Role Management",
-  "subtitle": "Define base permissions per role in the system",
-  "discard": "Discard",
-  "saveChanges": "Save Changes",
-  "saving": "Saving...",
-  "unsavedChanges": "Unsaved changes",
-  "allowed": "Allowed",
-  "noAccess": "No access",
-  "systemRole": "System role",
-  "activePermissions": "active permissions",
-  "permissionsFor": "Permissions",
-  "errorLoad": "Error loading roles.",
-  "errorSave": "Error saving permissions.",
-  "successSave": "Permissions saved successfully.",
-  "columns": {
-    "module": "Module",
-    "all": "All"
-  }
-},
-"qwallDashboard": {
-  "partNumberSummary": {
-    "title": "Part Number Summary",
-    "columns": {
-      "inspections": "inspections",
-      "runs": "runs"
-    },
-    "kpi": {
-      "totalInspections": "Total Inspections",
-      "passRate": "Pass Rate"
-    },
-    "widgets": {
-      "distribution": "Inspection distribution by part",
-      "runsPerPart": "Runs per part number",
-      "passVsFail": "Pass vs Fail",
-      "lowestPassRate": "Lowest pass rate part",
-      "other": "Other"
-    },
-    "detail": {
-      "viewDetail": "View detail",
-      "title": "Part Number detail",
-      "columns": {
-        "partNumber": "Part Number",
-        "inspections": "Inspections",
-        "runs": "Runs",
-        "passRate": "Pass Rate"
-      }
-    },
-    "noData": "—",
-    "loading": "Loading...",
-    "error": "Failed to load data."
-  }
-},
-"qwallSettings": {
-  "title": "QWall Settings",
-  "subtitle": "Manage Q-Wall system configuration tables",
-  "tabs": {
-    "users": "Users",
-    "partNumbers": "Part Numbers",
-    "inspectionPoints": "Inspection Points",
-    "failModes": "Fail Modes",
-    "scanRules": "Scan Rules",
-    "general": "General",
-    "summary": "Summary",
-  "rejected": "Rejected Lots"
-  },
-  "rejected": {
-  "title": "Rejected Lots",
-  "comments": "Comments",
-  "noComments": "No comments yet.",
-  "commentPlaceholder": "Write a comment about this rejection...",
-  "addComment": "Add Comment",
-  "saving": "Saving..."
-},
-  "filter": {
-    "label": "BU:",
-    "allBUs": "All",
-    "allRoles": "All roles",
-    "allStatuses": "All",
-    "allPoints": "All points"
-  },
-  "columns": {
-    "name": "Name",
-    "pin": "PIN",
-    "role": "Role",
-    "active": "Status",
-    "partNumber": "Part Number (SSI)",
-    "volvoPN": "Client Part Number",
-    "serialClient": "Serial Client",
-    "bu": "Business Unit",
-    "order": "Order",
-    "pointName": "Point Name",
-    "failModes": "Fail Modes",
-    "failCode": "Fail Code",
-    "description": "Description",
-    "englishName": "English Name",
-    "assignedPoints": "Assigned Points",
-    "actions": "Actions"
-  },
-  "placeholders": {
-    "englishName": "English translation..."
-  },
-  "buttons": {
-    "new": "New",
-    "edit": "Edit",
-    "save": "Save",
-    "saving": "Saving...",
-    "cancel": "Cancel",
-    "deactivate": "Deactivate",
-    "activate": "Activate",
-    "search": "Search...",
-    "delete": "Delete"
-  },
-  "modal": {
-    "createUser": "Create User",
-    "editUser": "Edit User",
-    "createPN": "Create Part Number",
-    "editPN": "Edit Part Number",
-    "createPoint": "Create Inspection Point",
-    "editPoint": "Edit Inspection Point",
-    "createFailMode": "Create Fail Mode",
-    "editFailMode": "Edit Fail Mode",
-    "assignPoints": "Assigned Inspection Points",
-    "roleRequired": "You must select a role.",
-    "buRequired": "You must select a Business Unit.",
-    "changePassword": "Change Password",
-    "password": "Password",
-    "newPassword": "New password",
-    "passwordRequired": "Password is required."
-  },
-  "status": {
-    "active": "Active",
-    "inactive": "Inactive"
-  },
-  "messages": {
-    "saveSuccess": "Saved successfully.",
-    "saveError": "Error saving. Please try again.",
-    "deleteSuccess": "Deactivated successfully.",
-    "deleteError": "Error deactivating.",
-    "loading": "Loading...",
-    "noData": "No records found.",
-    "noPointsInBU": "No active inspection points for this BU.",
-    "duplicateName": "A record with that name already exists.",
-    "missingTranslation": "Missing English translation",
-    "englishNameRequired": "English name is required to create a fail mode."
-  },
-  "general": {
-    "camera_enabled": "Camera Enabled",
-    "scrap_enabled": "Scrap Enabled",
-    "pass_rate_target": "Pass Rate Target",
-    "saveConfig": "Save Changes",
-    "configSaved": "Configuration saved."
-  },
-  "scanRules": {
-    "configureRule": "Scan Rule",
-    "createTitle": "Create Scan Rule",
-    "editTitle": "Edit Scan Rule",
-    "sectionGeneral": "General Settings",
-    "sectionFields": "Scan Fields",
-    "scanCount": "Expected scans",
-    "requiresMatch": "Requires cross-match (Volvo)",
-    "notes": "Notes",
-    "scanGroup": "Scan",
-    "displayLabel": "Field label",
-    "fieldTarget": "Field maps to",
-    "fieldTargets": {
-      "frameSN": "Internal serial (frameSN)",
-      "volvoSerialNumber": "Customer serial (volvoSerialNumber)",
-      "descartado": "Ignore — validation only"
-    },
-    "extractionModes": {
-      "completo": "Full value",
-      "por_separador": "Split by separator",
-      "pegado_longitud": "Concatenated prefix",
-      "segmento": "Segment by position"
-    },
-    "separators": {
-      "espacio": "Space ( )",
-      "apostrofe": "Apostrophe (')",
-      "guion": "Hyphen (-)",
-      "guion_bajo": "Underscore (_)",
-      "pipe": "Pipe (|)",
-      "ninguno": "None",
-      "custom": "Custom"
-    },
-    "valuePositions": {
-      "completo": "Full value",
-      "antes": "Before separator",
-      "despues": "After separator",
-      "segmento": "Segment"
-    },
-    "fieldForm": {
-      "extractionMode": "Extraction mode",
-      "separator": "Separator",
-      "customSeparator": "Custom separator",
-      "valuePosition": "Extract value",
-      "segmentIndex": "Segment position",
-      "segmentIndexHint": "0=first, 1=second...",
-      "fixedLength": "Expected length",
-      "fixedLengthHint": "Serial length after prefix",
-      "knownPrefix": "Known prefix",
-      "prefixHint": "Serial starts right after this prefix",
-      "preview": "Preview",
-      "previewIncomplete": "— complete required fields —",
-      "addField": "+ Add field",
-      "removeField": "Remove field"
-    },
-    "saveError": "Error saving scan rule."
-  },
-  "scanRulesTab": {
-    "columns": {
-      "fieldCount": "Fields configured",
-      "lastEdited": "Last edited"
-    },
-    "badges": {
-      "configured": "✓ Configured",
-      "notConfigured": "+ No rule"
     }
-  }
-},
-"warehouse": {
-  "bom": {
-    "partNumber": "Part Number", "search": "Search", "revision": "Revision",
-    "loadBom": "Load BOM", "noPartFound": "Part not found in Plex",
-    "noBomFound": "Empty BOM for this part", "errorFetching": "Error querying Plex",
-    "components": "components", "colPartNo": "Part", "colPartName": "Name",
-    "colQty": "Quantity", "colUnit": "Unit", "colNote": "Note", "colPath": "BOM Path"
   },
-  "ctb": {
-    "partNumber": "Part Number", "search": "Search", "revision": "Revision",
-    "need": "Quantity to Build", "calculate": "Calculate CTB",
-    "noPartFound": "Part not found", "noBomFound": "Empty BOM",
-    "errorFetching": "Error querying Plex", "totalComponents": "Total Components",
-    "ready": "Ready", "notReady": "Missing", "needQty": "Need",
-    "ctbYes": "CLEAR TO BUILD", "ctbNo": "NOT CLEAR TO BUILD",
-    "colPartNo": "Part", "colPartName": "Name", "colNeed": "Need"
+  "userMenu": {
+    "profile": "My Profile",
+    "settings": "Settings",
+    "noPlant": "No plant assigned",
+    "logout": "Sign Out"
   },
-  "demand": {
-    "customer": "Customer", "status": "Status", "refresh": "Refresh",
-    "releases": "releases", "errorFetching": "Error querying Plex",
-    "colPart": "Part", "colCustPart": "Cust Part", "colQtyReady": "Ready",
-    "colShipDate": "Ship Date", "colDueDate": "Due Date", "colRelQty": "Rel Qty",
-    "colShipped": "Shipped", "colBalance": "Balance", "colRelStatus": "Rel Status",
-    "colRelType": "Rel Type"
-  }
+  "roles": {
+    "operator": "Operator",
+    "supervisor": "Supervisor",
+    "quality_engineer": "Quality",
+    "process_engineer": "Production",
+    "maintenance_engineer": "Maintenance",
+    "inventory_engineer": "Warehouse",
+    "admin": "Administrator",
+    "plant_manager": "Plant Manager"
+  },
+  "rolesPage": {
+    "title": "Role Management",
+    "subtitle": "Define base permissions per role in the system",
+    "discard": "Discard",
+    "saveChanges": "Save Changes",
+    "saving": "Saving...",
+    "unsavedChanges": "Unsaved changes",
+    "allowed": "Allowed",
+    "noAccess": "No access",
+    "systemRole": "System role",
+    "activePermissions": "active permissions",
+    "permissionsFor": "Permissions",
+    "errorLoad": "Error loading roles.",
+    "errorSave": "Error saving permissions.",
+    "successSave": "Permissions saved successfully.",
+    "columns": {
+      "module": "Module",
+      "all": "All"
+    }
+  },
+  "qwallDashboard": {
+    "partNumberSummary": {
+      "title": "Part Number Summary",
+      "columns": {
+        "inspections": "inspections",
+        "runs": "runs"
+      },
+      "kpi": {
+        "totalInspections": "Total Inspections",
+        "passRate": "Pass Rate"
+      },
+      "widgets": {
+        "distribution": "Inspection distribution by part",
+        "runsPerPart": "Runs per part number",
+        "passVsFail": "Pass vs Fail",
+        "lowestPassRate": "Lowest pass rate part",
+        "other": "Other"
+      },
+      "detail": {
+        "viewDetail": "View detail",
+        "title": "Part Number detail",
+        "columns": {
+          "partNumber": "Part Number",
+          "inspections": "Inspections",
+          "runs": "Runs",
+          "passRate": "Pass Rate"
+        }
+      },
+      "noData": "—",
+      "loading": "Loading...",
+      "error": "Failed to load data."
+    }
+  },
+  "qwallSettings": {
+    "title": "QWall Settings",
+    "subtitle": "Manage Q-Wall system configuration tables",
+    "tabs": {
+      "users": "Users",
+      "partNumbers": "Part Numbers",
+      "inspectionPoints": "Inspection Points",
+      "failModes": "Fail Modes",
+      "scanRules": "Scan Rules",
+      "general": "General",
+      "summary": "Summary",
+      "rejected": "Rejected Lots"
+    },
+    "rejected": {
+      "title": "Rejected Lots",
+      "comments": "Comments",
+      "noComments": "No comments yet.",
+      "commentPlaceholder": "Write a comment about this rejection...",
+      "addComment": "Add Comment",
+      "saving": "Saving..."
+    },
+    "filter": {
+      "label": "BU:",
+      "allBUs": "All",
+      "allRoles": "All roles",
+      "allStatuses": "All",
+      "allPoints": "All points"
+    },
+    "columns": {
+      "name": "Name",
+      "pin": "PIN",
+      "role": "Role",
+      "active": "Status",
+      "partNumber": "Part Number (SSI)",
+      "volvoPN": "Client Part Number",
+      "serialClient": "Serial Client",
+      "bu": "Business Unit",
+      "order": "Order",
+      "pointName": "Point Name",
+      "failModes": "Fail Modes",
+      "failCode": "Fail Code",
+      "description": "Description",
+      "englishName": "English Name",
+      "assignedPoints": "Assigned Points",
+      "actions": "Actions"
+    },
+    "placeholders": {
+      "englishName": "English translation..."
+    },
+    "buttons": {
+      "new": "New",
+      "edit": "Edit",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "search": "Search...",
+      "delete": "Delete"
+    },
+    "modal": {
+      "createUser": "Create User",
+      "editUser": "Edit User",
+      "createPN": "Create Part Number",
+      "editPN": "Edit Part Number",
+      "createPoint": "Create Inspection Point",
+      "editPoint": "Edit Inspection Point",
+      "createFailMode": "Create Fail Mode",
+      "editFailMode": "Edit Fail Mode",
+      "assignPoints": "Assigned Inspection Points",
+      "roleRequired": "You must select a role.",
+      "buRequired": "You must select a Business Unit.",
+      "changePassword": "Change Password",
+      "password": "Password",
+      "newPassword": "New password",
+      "passwordRequired": "Password is required."
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "messages": {
+      "saveSuccess": "Saved successfully.",
+      "saveError": "Error saving. Please try again.",
+      "deleteSuccess": "Deactivated successfully.",
+      "deleteError": "Error deactivating.",
+      "loading": "Loading...",
+      "noData": "No records found.",
+      "noPointsInBU": "No active inspection points for this BU.",
+      "duplicateName": "A record with that name already exists.",
+      "missingTranslation": "Missing English translation",
+      "englishNameRequired": "English name is required to create a fail mode."
+    },
+    "general": {
+      "camera_enabled": "Camera Enabled",
+      "scrap_enabled": "Scrap Enabled",
+      "pass_rate_target": "Pass Rate Target",
+      "saveConfig": "Save Changes",
+      "configSaved": "Configuration saved."
+    },
+    "scanRules": {
+      "configureRule": "Scan Rule",
+      "createTitle": "Create Scan Rule",
+      "editTitle": "Edit Scan Rule",
+      "sectionGeneral": "General Settings",
+      "sectionFields": "Scan Fields",
+      "scanCount": "Expected scans",
+      "requiresMatch": "Requires cross-match (Volvo)",
+      "notes": "Notes",
+      "scanGroup": "Scan",
+      "displayLabel": "Field label",
+      "fieldTarget": "Field maps to",
+      "fieldTargets": {
+        "frameSN": "Internal serial (frameSN)",
+        "volvoSerialNumber": "Customer serial (volvoSerialNumber)",
+        "descartado": "Ignore — validation only"
+      },
+      "extractionModes": {
+        "completo": "Full value",
+        "por_separador": "Split by separator",
+        "pegado_longitud": "Concatenated prefix",
+        "segmento": "Segment by position"
+      },
+      "separators": {
+        "espacio": "Space ( )",
+        "apostrofe": "Apostrophe (')",
+        "guion": "Hyphen (-)",
+        "guion_bajo": "Underscore (_)",
+        "pipe": "Pipe (|)",
+        "ninguno": "None",
+        "custom": "Custom"
+      },
+      "valuePositions": {
+        "completo": "Full value",
+        "antes": "Before separator",
+        "despues": "After separator",
+        "segmento": "Segment"
+      },
+      "fieldForm": {
+        "extractionMode": "Extraction mode",
+        "separator": "Separator",
+        "customSeparator": "Custom separator",
+        "valuePosition": "Extract value",
+        "segmentIndex": "Segment position",
+        "segmentIndexHint": "0=first, 1=second...",
+        "fixedLength": "Expected length",
+        "fixedLengthHint": "Serial length after prefix",
+        "knownPrefix": "Known prefix",
+        "prefixHint": "Serial starts right after this prefix",
+        "preview": "Preview",
+        "previewIncomplete": "— complete required fields —",
+        "addField": "+ Add field",
+        "removeField": "Remove field"
+      },
+      "saveError": "Error saving scan rule."
+    },
+    "scanRulesTab": {
+      "columns": {
+        "fieldCount": "Fields configured",
+        "lastEdited": "Last edited"
+      },
+      "badges": {
+        "configured": "✓ Configured",
+        "notConfigured": "+ No rule"
+      }
+    }
+  },
+  "warehouse": {
+    "bom": {
+      "partNumber": "Part Number",
+      "search": "Search",
+      "revision": "Revision",
+      "loadBom": "Load BOM",
+      "noPartFound": "Part not found in Plex",
+      "noBomFound": "Empty BOM for this part",
+      "errorFetching": "Error querying Plex",
+      "components": "components",
+      "colPartNo": "Part",
+      "colPartName": "Name",
+      "colQty": "Quantity",
+      "colUnit": "Unit",
+      "colNote": "Note",
+      "colPath": "BOM Path"
+    },
+    "ctb": {
+      "partNumber": "Part Number",
+      "search": "Search",
+      "revision": "Revision",
+      "need": "Quantity to Build",
+      "calculate": "Calculate CTB",
+      "noPartFound": "Part not found",
+      "noBomFound": "Empty BOM",
+      "errorFetching": "Error querying Plex",
+      "totalComponents": "Total Components",
+      "ready": "Ready",
+      "notReady": "Missing",
+      "needQty": "Need",
+      "ctbYes": "CLEAR TO BUILD",
+      "ctbNo": "NOT CLEAR TO BUILD",
+      "colPartNo": "Part",
+      "colPartName": "Name",
+      "colNeed": "Need"
+    },
+    "demand": {
+      "customer": "Customer",
+      "status": "Status",
+      "refresh": "Refresh",
+      "releases": "releases",
+      "errorFetching": "Error querying Plex",
+      "colPart": "Part",
+      "colCustPart": "Cust Part",
+      "colQtyReady": "Ready",
+      "colShipDate": "Ship Date",
+      "colDueDate": "Due Date",
+      "colRelQty": "Rel Qty",
+      "colShipped": "Shipped",
+      "colBalance": "Balance",
+      "colRelStatus": "Rel Status",
+      "colRelType": "Rel Type"
+    }
   },
   "incomingInspection": {
     "title": "Incoming Inspection",
     "subtitle": "Containers at TJ Incoming Inspection — status and SLA compliance",
     "tabs": {
-  "dashboard": "Dashboard",
-  "pending": "Pending (Op 10)",
-  "summary": "Summary",
-  "rejected": "Rejected Lots"
-},
-"dashboard": {
-  "dailyTrend": "Daily trend — accepted vs rejected",
-  "cycleTime": "Cycle time vs SLA threshold",
-  "topRejected": "Part numbers with most rejections",
-  "accepted": "Accepted",
-  "rejected": "Rejected",
-  "inspected": "Inspected",
-  "rejectionRate": "Rejection rate",
-  "range": "{{from}}–{{to}}h",
-  "over": "> {{value}}h",
-  "p50": "Median",
-  "p90": "P90",
-  "avg": "Average",
-  "noData": "No data in the selected range."
-},
-"pending": {
-  "title": "Lots pending inspection",
-  "total": "Total pending",
-  "onTime": "Within SLA",
-  "late": "SLA breached",
-  "oldest": "Oldest",
-  "avgWaiting": "Average wait",
-  "aging": "Backlog aging",
-  "columns": {
-    "serialNo": "Serial No",
-    "partNo": "Part No",
-    "receivedAt": "Received",
-    "waiting": "Waiting",
-    "location": "Location",
-    "changeBy": "Received by"
-  },
-  "reconciliation": {
-    "ok": "Reconciled against Plex snapshot ({{snapshot}} containers at Op 10).",
-    "drift": "Mismatch: history reports {{history}} pending lots, Plex snapshot reports {{snapshot}} containers at Op 10 (Δ {{delta}}). Review incremental sync.",
-    "noSnapshot": "No Plex snapshot available — backlog could not be reconciled.",
-    "syncedAt": "Snapshot: {{value}}"
-  },
-  "truncated": "Showing the first {{count}} records. Narrow the date range.",
-  "noData": "No pending lots in the selected range."
-},
+      "dashboard": "Dashboard",
+      "pending": "Pending (Op 10)",
+      "summary": "Summary",
+      "rejected": "Rejected Lots"
+    },
+    "dashboard": {
+      "dailyTrend": "Daily trend — accepted vs rejected",
+      "cycleTime": "Cycle time vs SLA threshold",
+      "topRejected": "Part numbers with most rejections",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "inspected": "Inspected",
+      "rejectionRate": "Rejection rate",
+      "range": "{{from}}–{{to}}h",
+      "over": "> {{value}}h",
+      "p50": "Median",
+      "p90": "P90",
+      "avg": "Average",
+      "noData": "No data in the selected range."
+    },
+    "pending": {
+      "title": "Lots pending inspection",
+      "total": "Total pending",
+      "onTime": "Within SLA",
+      "late": "SLA breached",
+      "oldest": "Oldest",
+      "avgWaiting": "Average wait",
+      "aging": "Backlog aging",
+      "columns": {
+        "serialNo": "Serial No",
+        "partNo": "Part No",
+        "receivedAt": "Received",
+        "waiting": "Waiting",
+        "location": "Location",
+        "changeBy": "Received by"
+      },
+      "reconciliation": {
+        "ok": "Reconciled against Plex snapshot ({{snapshot}} containers at Op 10).",
+        "drift": "Mismatch: history reports {{history}} pending lots, Plex snapshot reports {{snapshot}} containers at Op 10 (Δ {{delta}}). Review incremental sync.",
+        "noSnapshot": "No Plex snapshot available — backlog could not be reconciled.",
+        "syncedAt": "Snapshot: {{value}}"
+      },
+      "truncated": "Showing the first {{count}} records. Narrow the date range.",
+      "noData": "No pending lots in the selected range."
+    },
     "filters": {
-      "dateFrom": "From", "dateTo": "To", "partNo": "Part Number",
-      "operation": "Operation", "allOperations": "All operations",
-      "location": "Location", "containerStatus": "Container Status",
-      "defectType": "Defect Type", "slaStatus": "SLA Status",
-      "allSlaStatus": "All", "allStatus": "All Status",
-      "onTime": "On-time", "late": "Late", "refresh": "Refresh",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "partNo": "Part Number",
+      "operation": "Operation",
+      "allOperations": "All operations",
+      "location": "Location",
+      "containerStatus": "Container Status",
+      "defectType": "Defect Type",
+      "slaStatus": "SLA Status",
+      "allSlaStatus": "All",
+      "allStatus": "All Status",
+      "onTime": "On-time",
+      "late": "Late",
+      "refresh": "Refresh",
       "load": "Load"
     },
     "idle": "Select a date range and press Load.",
@@ -611,21 +643,37 @@
       "lotsInspected": "Lots Inspected",
       "acceptanceRate": "Acceptance Rate",
       "slaCompliance": "SLA Compliance",
-      "accepted": "Accepted", "rejected": "Rejected", "total": "Total",
-      "onTime": "On-time", "late": "Late", "threshold": "Threshold"
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "total": "Total",
+      "onTime": "On-time",
+      "late": "Late",
+      "threshold": "Threshold"
     },
     "detail": {
-      "title": "Detail", "columns": {
-        "serialNo": "Serial No", "partNo": "Part No", "operation": "Operation",
-        "changeDate": "Change Date", "location": "Location", "status": "Status",
-        "defectType": "Defect Type", "changeBy": "Changed By"
+      "title": "Detail",
+      "columns": {
+        "serialNo": "Serial No",
+        "partNo": "Part No",
+        "operation": "Operation",
+        "changeDate": "Change Date",
+        "location": "Location",
+        "status": "Status",
+        "defectType": "Defect Type",
+        "changeBy": "Changed By"
       },
-      "noData": "No records for the selected filters.", "loading": "Loading...", "error": "Failed to load data."
+      "noData": "No records for the selected filters.",
+      "loading": "Loading...",
+      "error": "Failed to load data."
     },
     "slaConfig": {
-      "button": "SLA Settings", "modalTitle": "Incoming Inspection SLA Threshold",
-      "thresholdHours": "Threshold (hours)", "save": "Save", "saving": "Saving...",
-      "saved": "Threshold updated.", "forbidden": "You don't have permission to change this setting.",
+      "button": "SLA Settings",
+      "modalTitle": "Incoming Inspection SLA Threshold",
+      "thresholdHours": "Threshold (hours)",
+      "save": "Save",
+      "saving": "Saving...",
+      "saved": "Threshold updated.",
+      "forbidden": "You don't have permission to change this setting.",
       "invalid": "Enter a value between 1 and 500."
     },
     "rejected": {
@@ -636,104 +684,104 @@
       "addComment": "Add Comment",
       "saving": "Saving..."
     }
-},
-"cogpDashboard": {
-  "title": "COGP — Scrap Cost over Production",
-  "tooltipScrap": "Scrap cost",
-  "tooltipProduction": "Production cost",
-  "subtitle": "Weekly trend by business unit — target: below 2%",
-  "latestWeek": "latest week",
-  "noData": "No data",
-  "loadError": "Failed to load COGP data.",
-  "week": "W",
-  "target": "target",
-  "presets": {
-    "month": "Month",
-    "quarter": "Quarter",
-    "year": "Year"
   },
-  "useMainRange": "Use main date range" ,
-  "businessUnits": {
-    "volvo": "Volvo",
-    "cummins": "Cummins",
-    "tulc": "TULC",
-    "johnDeere": "John Deere",
-    "eaton": "Eaton",
-    "global": "Global"
+  "cogpDashboard": {
+    "title": "COGP — Scrap Cost over Production",
+    "tooltipScrap": "Scrap cost",
+    "tooltipProduction": "Production cost",
+    "subtitle": "Weekly trend by business unit — target: below 2%",
+    "latestWeek": "latest week",
+    "noData": "No data",
+    "loadError": "Failed to load COGP data.",
+    "week": "W",
+    "target": "target",
+    "presets": {
+      "month": "Month",
+      "quarter": "Quarter",
+      "year": "Year"
+    },
+    "useMainRange": "Use main date range",
+    "businessUnits": {
+      "volvo": "Volvo",
+      "cummins": "Cummins",
+      "tulc": "TULC",
+      "johnDeere": "John Deere",
+      "eaton": "Eaton",
+      "global": "Global"
+    }
+  },
+  "pmp": {
+    "title": "Preventive Maintenance Program",
+    "subtitle": "Annual calendar of scheduled PMs by due date",
+    "loading": "Loading calendar...",
+    "loadError": "Could not load the program. Please try again.",
+    "noData": "No data",
+    "selectMonth": "Month",
+    "selectYear": "Year",
+    "fleets": {
+      "all": "All"
+    },
+    "status": {
+      "complete": "Complete",
+      "open": "Open",
+      "hold": "Hold",
+      "cancelled": "Cancelled"
+    },
+    "legend": {
+      "allDone": "All complete",
+      "hasHold": "Has PMs on hold",
+      "pending": "Work pending"
+    },
+    "kpis": {
+      "totalMonth": "PMs this month",
+      "totalYear": "Total {{year}}",
+      "byDueDate": "Scheduled by due date",
+      "fullYear": "Full-year plan",
+      "monthCompletion": "Month completion",
+      "yearCompletion": "Year completion",
+      "ytdCompliance": "Compliance to date",
+      "noDue": "No PMs due yet this year",
+      "overdue_one": "{{count}} overdue",
+      "overdue_other": "{{count}} overdue",
+      "activeBase": "of {{count}} active PMs (cancelled excluded)",
+      "byClient": "Fleet breakdown"
+    },
+    "calendar": {
+      "prev": "Previous month",
+      "next": "Next month",
+      "today": "Today",
+      "unit": "WR",
+      "dayLabel": "Day {{day}}, {{count}} work requests"
+    },
+    "panel": {
+      "title": "Work requests",
+      "estHours": "Est. hours",
+      "closed": "Closed",
+      "empty": "Select a day",
+      "noEvents": "No scheduled PMs for this day."
+    },
+    "bu": {
+      "volvo": "Volvo",
+      "cummins": "Cummins",
+      "tulc": "TULC",
+      "unclassified": "Unclassified"
+    },
+    "fields": {
+      "description": "Description",
+      "type": "Type",
+      "bu": "Business unit",
+      "equipmentId": "Equipment ID",
+      "equipmentDesc": "Equipment",
+      "equipmentGroup": "Equipment group",
+      "workcenter": "Workcenter",
+      "department": "Department",
+      "assignedTo": "Assigned to",
+      "requestDate": "Request date",
+      "dueDate": "Due date",
+      "completedDate": "Completed date",
+      "scheduledHours": "Scheduled hours",
+      "maintenanceHours": "Actual hours",
+      "failures": "Failures"
+    }
   }
-},
-"pmp": {
-  "title": "Preventive Maintenance Program",
-  "subtitle": "Annual calendar of scheduled PMs by due date",
-  "loading": "Loading calendar...",
-  "loadError": "Could not load the program. Please try again.",
-  "noData": "No data",
-  "selectMonth": "Month",
-  "selectYear": "Year",
-  "fleets": {
-    "all": "All"
-  },
-  "status": {
-    "complete": "Complete",
-    "open": "Open",
-    "hold": "Hold",
-    "cancelled": "Cancelled"
-  },
-  "legend": {
-    "allDone": "All complete",
-    "hasHold": "Has PMs on hold",
-    "pending": "Work pending"
-  },
-"kpis": {
-    "totalMonth": "PMs this month",
-    "totalYear": "Total {{year}}",
-    "byDueDate": "Scheduled by due date",
-    "fullYear": "Full-year plan",
-    "monthCompletion": "Month completion",
-    "yearCompletion": "Year completion",
-    "ytdCompliance": "Compliance to date",
-    "noDue": "No PMs due yet this year",
-    "overdue_one": "{{count}} overdue",
-    "overdue_other": "{{count}} overdue",
-    "activeBase": "of {{count}} active PMs (cancelled excluded)",
-    "byClient": "Fleet breakdown"
-  },
-  "calendar": {
-    "prev": "Previous month",
-    "next": "Next month",
-    "today": "Today",
-    "unit": "WR",
-    "dayLabel": "Day {{day}}, {{count}} work requests"
-  },
-  "panel": {
-    "title": "Work requests",
-    "estHours": "Est. hours",
-    "closed": "Closed",
-    "empty": "Select a day",
-    "noEvents": "No scheduled PMs for this day."
-  },
-  "bu": {
-    "volvo": "Volvo",
-    "cummins": "Cummins",
-    "tulc": "TULC",
-    "unclassified": "Unclassified"
-  },
-  "fields": {
-    "description": "Description",
-    "type": "Type",
-    "bu": "Business unit",
-    "equipmentId": "Equipment ID",
-    "equipmentDesc": "Equipment",
-    "equipmentGroup": "Equipment group",
-    "workcenter": "Workcenter",
-    "department": "Department",
-    "assignedTo": "Assigned to",
-    "requestDate": "Request date",
-    "dueDate": "Due date",
-    "completedDate": "Completed date",
-    "scheduledHours": "Scheduled hours",
-    "maintenanceHours": "Actual hours",
-    "failures": "Failures"
-  }
-}
 }
