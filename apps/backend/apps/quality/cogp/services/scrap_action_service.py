@@ -4,8 +4,11 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
+import logging
 import requests
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 from apps.quality.cogp.models import CogpSettings
 
@@ -30,15 +33,26 @@ def stage(payload):
     source_key = _source_key(payload)
     proxy_url = settings.QWALL_PROXY_URL.rstrip("/")
     token = settings.QWALL_PROXY_TOKEN
+    logger.info("COGP scrap staging via qwall-proxy url=%s token_configured=%s", proxy_url, bool(token))
     if not token:
         raise RuntimeError("QWALL_PROXY_TOKEN no está configurado.")
 
-    response = requests.post(
-        f"{proxy_url}/scrap-offenders/stage",
-        json={**payload, "source_key": source_key},
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=30,
-    )
+    request_kwargs = {
+        "json": {**payload, "source_key": source_key},
+        "headers": {"Authorization": f"Bearer {token}"},
+        "timeout": 30,
+    }
+
+    try:
+        response = requests.post(f"{proxy_url}/scrap-offenders/stage", **request_kwargs)
+    except requests.RequestException:
+        if "host.docker.internal" not in proxy_url:
+            raise
+        local_url = "http://127.0.0.1:8002"
+        logger.info("COGP qwall-proxy retry via local Windows url=%s", local_url)
+        response = requests.post(f"{local_url}/scrap-offenders/stage", **request_kwargs)
+
+    logger.info("COGP qwall-proxy response status=%s", response.status_code)
     response.raise_for_status()
     return response.json()
 
