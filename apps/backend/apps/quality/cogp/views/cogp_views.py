@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import serializers
 from decimal import Decimal
+import requests
 
 from apps.quality.cogp.serializers.cogp_serializers import CogpSummaryResponseSerializer
 from apps.quality.cogp.services.cogp_live_trend_service import CogpLiveTrendService
@@ -32,9 +33,28 @@ class CogpScrapIntegrationTestView(APIView):
             return Response(manual_test(serializer.validated_data), status=status.HTTP_201_CREATED)
         except (ValueError, KeyError, TypeError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception:
-            return Response({"detail": "No se pudo escribir la prueba en CCS mediante qwall-proxy. Revisa el proxy, token y la tabla ssi_ScrapOffenderActions."},
-                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except requests.HTTPError as exc:
+            response = exc.response
+            detail = None
+            if response is not None:
+                try:
+                    detail = response.json().get("detail")
+                except Exception:
+                    detail = response.text[:500]
+            return Response(
+                {"detail": f"qwall-proxy respondió con error: {detail or str(exc)}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except requests.RequestException as exc:
+            return Response(
+                {"detail": f"No se pudo contactar qwall-proxy: {type(exc).__name__}: {exc}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as exc:
+            return Response(
+                {"detail": f"Error de integración COGP: {type(exc).__name__}: {exc}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
 
 class CogpIntegrationTestSerializer(serializers.Serializer):
