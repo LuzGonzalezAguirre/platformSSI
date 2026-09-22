@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { CogpService, CogpWeeklyTrendResponse, CogpParetoResponse, CogpSettings } from "../services/cogp.service";
 import CogpTrendChart from "./CogpTrendChart";
@@ -10,7 +11,7 @@ import { DateRange } from "../../../components/common/date-presets";
 
 import FullscreenPanel from "../../../components/common/FullscreenPanel";
 import { useFullscreen } from "../../../components/common/useFullscreen";
-import { Maximize2, Settings, ChevronDown, ChevronRight } from "lucide-react";
+import { Maximize2, Settings, ChevronDown, ChevronRight, X } from "lucide-react";
 
 function fullscreenBtnStyle(): React.CSSProperties {
   return {
@@ -97,9 +98,9 @@ function CogpParetoCard({ title, bucket, costTarget, piecesTarget }: {
           </button>
         )}
       </div>
-      {bucket ? <div style={{ display: "grid", gap: "1.5rem" }}>
-        <section><h3 style={cardTitle}>{t("cogpPareto.byCost")}</h3><CogpParetoChart bucket={bucket} metric="cost" target={costTarget} /></section>
-        <section><h3 style={cardTitle}>{t("cogpPareto.byPieces")}</h3><CogpParetoChart bucket={bucket} metric="pieces" target={piecesTarget} /></section>
+      {bucket ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 390px), 1fr))", gap: "1.5rem" }}>
+        <section style={{ minWidth: 0 }}><h3 style={cardTitle}>{t("cogpPareto.byCost")}</h3><CogpParetoChart bucket={bucket} metric="cost" target={costTarget} /></section>
+        <section style={{ minWidth: 0 }}><h3 style={cardTitle}>{t("cogpPareto.byPieces")}</h3><CogpParetoChart bucket={bucket} metric="pieces" target={piecesTarget} /></section>
       </div> : (
         <div style={{ color: "var(--color-text-secondary)", fontSize: "0.8rem" }}>...</div>
       )}
@@ -143,7 +144,6 @@ export default function CogpDashboardPage() {
   const [piecesDraft, setPiecesDraft] = useState("10");
   const [settingsError, setSettingsError] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
-  const [openTrend, setOpenTrend] = useState<string[]>([]);
   const [openPareto, setOpenPareto] = useState<string[]>([]);
   const costTarget = Number(settings?.cost_target_pct ?? 2);
   const piecesTarget = Number(settings?.pieces_target_pct ?? 10);
@@ -155,6 +155,22 @@ export default function CogpDashboardPage() {
       setPiecesDraft(value.pieces_target_pct);
     }).catch(() => setSettingsError(t("cogpDashboard.loadError")));
   }, [t]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !settingsSaving) setSettingsOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [settingsOpen, settingsSaving]);
+
+  const openSettings = () => {
+    setCostDraft(settings?.cost_target_pct ?? "2");
+    setPiecesDraft(settings?.pieces_target_pct ?? "10");
+    if (settings) setSettingsError("");
+    setSettingsOpen(true);
+  };
 
   const saveSettings = async () => {
     const cost = Number(costDraft), pieces = Number(piecesDraft);
@@ -249,20 +265,40 @@ export default function CogpDashboardPage() {
           showBU={false}
           showShift={false}
           filterScope="cogp"
+          dateAddon={
+            <button type="button" onClick={openSettings} title={t("cogpPareto.settings")} aria-label={t("cogpPareto.settings")}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0.4rem", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", background: "var(--color-surface)", color: "var(--color-text-primary)", cursor: "pointer" }}>
+              <Settings size={17} />
+            </button>
+          }
         />
       </div>
 
-      <div style={card}>
-        <button type="button" onClick={() => setSettingsOpen(!settingsOpen)} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", color: "var(--color-text-primary)", background: "none", border: 0, cursor: "pointer", fontWeight: 700 }}>
-          <Settings size={18} /> {t("cogpPareto.settings")} · {t("cogpPareto.byCost")}: {costTarget}% · {t("cogpPareto.byPieces")}: {piecesTarget}%
-        </button>
-        {settingsOpen && <div style={{ display: "flex", alignItems: "end", gap: "1rem", flexWrap: "wrap", marginTop: "1rem" }}>
-          <label>{t("cogpPareto.costTarget")}<br /><input type="number" min="0.01" max="100" step="0.01" value={costDraft} disabled={!settings?.can_edit} onChange={event => setCostDraft(event.target.value)} /></label>
-          <label>{t("cogpPareto.piecesTarget")}<br /><input type="number" min="0.01" max="100" step="0.01" value={piecesDraft} disabled={!settings?.can_edit} onChange={event => setPiecesDraft(event.target.value)} /></label>
-          {settings?.can_edit && <button type="button" disabled={settingsSaving} onClick={saveSettings}>{t("common.save")}</button>}
-        </div>}
-        {settingsError && <p role="alert" style={{ color: "#ef4444" }}>{settingsError}</p>}
-      </div>
+      {settingsOpen && createPortal(
+        <div onMouseDown={event => { if (event.target === event.currentTarget && !settingsSaving) setSettingsOpen(false); }}
+          style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="cogp-settings-title" style={{ ...card, width: "min(100%, 430px)", boxShadow: "0 16px 48px rgba(0,0,0,0.25)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 id="cogp-settings-title" style={{ margin: 0, fontSize: "1.1rem" }}>{t("cogpPareto.settings")}</h2>
+              <button type="button" disabled={settingsSaving} onClick={() => setSettingsOpen(false)} aria-label={t("common.cancel")}
+                style={{ background: "none", border: 0, cursor: "pointer", color: "var(--color-text-primary)" }}><X size={20} /></button>
+            </div>
+            <div style={{ display: "grid", gap: "1rem" }}>
+              <label style={{ display: "grid", gap: "0.3rem" }}>{t("cogpPareto.costTarget")}
+                <input autoFocus type="number" min="0.01" max="100" step="0.01" value={costDraft} disabled={!settings?.can_edit || settingsSaving} onChange={event => setCostDraft(event.target.value)} style={{ padding: "0.5rem", border: "1px solid var(--color-border)", borderRadius: 6 }} />
+              </label>
+              <label style={{ display: "grid", gap: "0.3rem" }}>{t("cogpPareto.piecesTarget")}
+                <input type="number" min="0.01" max="100" step="0.01" value={piecesDraft} disabled={!settings?.can_edit || settingsSaving} onChange={event => setPiecesDraft(event.target.value)} style={{ padding: "0.5rem", border: "1px solid var(--color-border)", borderRadius: 6 }} />
+              </label>
+            </div>
+            {settingsError && <p role="alert" style={{ color: "#ef4444" }}>{settingsError}</p>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem", marginTop: "1.25rem" }}>
+              <button type="button" disabled={settingsSaving} onClick={() => setSettingsOpen(false)}>{t("common.cancel")}</button>
+              {settings?.can_edit && <button type="button" disabled={settingsSaving} onClick={saveSettings}>{t("common.save")}</button>}
+            </div>
+          </div>
+        </div>, document.body
+      )}
 
       {error && (
         <div style={{ padding: "0.75rem 1rem", background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: "8px", color: "#ef4444", fontSize: "0.85rem" }}>
@@ -276,12 +312,9 @@ export default function CogpDashboardPage() {
         </div>
       )}
 
-      {data && <div style={{ display: "grid", gap: "0.6rem" }}>{areas.map(area => <div key={area.key} style={card}>
-        <button type="button" aria-expanded={openTrend.includes(area.key)} onClick={() => toggle(area.key, setOpenTrend)} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", background: "none", border: 0, cursor: "pointer", color: "var(--color-text-primary)", fontWeight: 700 }}>
-          {openTrend.includes(area.key) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}{area.title}
-        </button>
-        {openTrend.includes(area.key) && <div style={{ marginTop: "0.75rem" }}><CogpCard title={area.title} points={data[area.key]} color={area.color} target={costTarget} /></div>}
-      </div>)}</div>}
+      {data && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: "1rem" }}>
+        {areas.map(area => <CogpCard key={area.key} title={area.title} points={data[area.key]} color={area.color} target={costTarget} />)}
+      </div>}
 
       {/* ── HEADER PARETO — rango propio, independiente del general ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem", marginTop: "0.5rem" }}>

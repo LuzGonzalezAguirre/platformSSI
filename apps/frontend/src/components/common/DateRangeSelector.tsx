@@ -17,6 +17,7 @@ interface Props {
    * Sin esta prop el componente se comporta exactamente igual que antes.
    */
   extraGroups?: PresetGroup[];
+  triggerAddon?: React.ReactNode;
 }
 
 const GROUPS: PresetGroup[] = [
@@ -63,7 +64,7 @@ function formatShort(dateStr: string): string {
   });
 }
 
-export default function DateRangeSelector({ value, onChange, defaultPreset = "custom", extraGroups }: Props) {
+export default function DateRangeSelector({ value, onChange, defaultPreset = "custom", extraGroups, triggerAddon }: Props) {
   const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("es") ? "es" : "en";
 
@@ -102,6 +103,7 @@ export default function DateRangeSelector({ value, onChange, defaultPreset = "cu
         <span>{currentLabel}</span>
         <span style={{ fontSize: "0.65rem", opacity: 0.6 }}>▾</span>
       </button>
+      {triggerAddon}
 
       {preset === "custom" ? (
         <>
