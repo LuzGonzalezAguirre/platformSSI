@@ -7,7 +7,7 @@ BEGIN
 
         EquipmentId NVARCHAR(100) NOT NULL,
         EquipmentDescription NVARCHAR(250) NULL,
-        LineName NVARCHAR(150) NOT NULL,
+        PhysicalArea NVARCHAR(150) NOT NULL,
         Department NVARCHAR(150) NULL,
 
         MaintenanceHours DECIMAL(18, 4) NOT NULL,
