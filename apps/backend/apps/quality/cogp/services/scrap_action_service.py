@@ -4,14 +4,10 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-import pyodbc
+import requests
+from django.conf import settings
 
 from apps.quality.cogp.models import CogpSettings
-
-
-TABLE = "dbo.ssi_ScrapOffenderActions"
-CCS_SERVER = "AAS-PAC-FTP01"
-CCS_DATABASE = "CCS"
 
 
 def last_workweek(now=None):
@@ -20,21 +16,6 @@ def last_workweek(now=None):
     if today.weekday() < 5:
         monday -= timedelta(days=7)
     return monday, monday + timedelta(days=4)
-
-
-def _ccs_connection():
-    installed = pyodbc.drivers()
-    driver = next(
-        (name for name in ("ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server") if name in installed),
-        None,
-    )
-    if not driver:
-        raise RuntimeError("No se encontró ODBC Driver 18/17 for SQL Server.")
-    connection_string = (
-        f"DRIVER={{{driver}}};SERVER={CCS_SERVER};DATABASE={CCS_DATABASE};"
-        "Trusted_Connection=yes;Encrypt=yes;TrustServerCertificate=yes;"
-    )
-    return pyodbc.connect(connection_string, timeout=15)
 
 
 def _source_key(payload):
@@ -47,48 +28,19 @@ def _source_key(payload):
 
 def stage(payload):
     source_key = _source_key(payload)
-    values = (
-        source_key,
-        payload["week_start"],
-        payload["week_end"],
-        payload["business_unit"],
-        payload["workcenter"],
-        payload["part_no"],
-        payload.get("part_name", ""),
-        payload["reason"],
-        payload["scrap_cost"],
-        payload["scrap_qty"],
-        payload["total_scrap_cost"],
-        payload["total_scrap_qty"],
-        payload["production_cost"],
-        payload["produced_qty"],
-        payload["cost_rate_pct"],
-        payload["pieces_rate_pct"],
-        payload["cost_target_pct"],
-        payload["pieces_target_pct"],
-        int(payload["cost_offender"]),
-        int(payload["pieces_offender"]),
-        int(payload.get("is_test", False)),
-    )
-    with _ccs_connection() as connection:
-        cursor = connection.cursor()
-        cursor.execute(
-            f"""
-            IF NOT EXISTS (SELECT 1 FROM {TABLE} WITH (UPDLOCK, HOLDLOCK) WHERE SourceKey=?)
-            INSERT INTO {TABLE} (
-                SourceKey, WeekStart, WeekEnd, BusinessUnit, Workcenter,
-                PartNo, PartName, ScrapReason, ScrapCost, ScrapQty,
-                TotalScrapCost, TotalScrapQty, ProductionCost, ProducedQty,
-                CostRatePct, PiecesRatePct, CostTargetPct, PiecesTargetPct,
-                CostOffender, PiecesOffender, IsTest
-            )
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            """,
-            (source_key, *values),
-        )
-        connection.commit()
-    return {"source_key": source_key, "processing_status": "pending"}
+    proxy_url = settings.QWALL_PROXY_URL.rstrip("/")
+    token = settings.QWALL_PROXY_TOKEN
+    if not token:
+        raise RuntimeError("QWALL_PROXY_TOKEN no está configurado.")
 
+    response = requests.post(
+        f"{proxy_url}/scrap-offenders/stage",
+        json={**payload, "source_key": source_key},
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
 
 def manual_test(data):
     start, end = last_workweek()

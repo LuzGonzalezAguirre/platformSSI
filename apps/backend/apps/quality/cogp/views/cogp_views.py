@@ -33,7 +33,7 @@ class CogpScrapIntegrationTestView(APIView):
         except (ValueError, KeyError, TypeError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception:
-            return Response({"detail": "No se pudo escribir la prueba en CCS. Revisa conexión ODBC y la tabla ssi_ScrapOffenderActions."},
+            return Response({"detail": "No se pudo escribir la prueba en CCS mediante qwall-proxy. Revisa el proxy, token y la tabla ssi_ScrapOffenderActions."},
                             status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
