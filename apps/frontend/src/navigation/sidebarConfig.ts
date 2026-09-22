@@ -108,13 +108,7 @@ export const sidebarConfig: NavSection[] = [
   path: "/quality/downtime",
   icon: "Clock",
   allowedRoles: ALL_ROLES,
-},{
-        id: "quality.scrap-rate",
-        labelKey: "nav.items.qualityScrapRate",
-        path: "/quality/scrap-rate",
-        icon: "BarChart3",
-        allowedRoles: SUPERVISORY_ROLES,
-      },
+},
       {
       id: "quality.cogp",
       labelKey: "nav.items.qualityCogp",
