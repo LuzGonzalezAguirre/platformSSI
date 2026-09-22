@@ -1,6 +1,7 @@
 import environ
 from pathlib import Path
 from datetime import timedelta
+from celery.schedules import crontab
 
 
 env = environ.Env()
@@ -132,3 +133,11 @@ ACTION_TRACKER_URL = env("ACTION_TRACKER_URL", default="")
 ACTION_TRACKER_BOT_USER = env("ACTION_TRACKER_BOT_USER", default="")
 ACTION_TRACKER_BOT_PASSWORD = env("ACTION_TRACKER_BOT_PASSWORD", default="")
 QWALL_PROXY_TOKEN = env("QWALL_PROXY_TOKEN", default="7a31cd3e242533dfc1b2962b1d84c47ddb3065e2752654c7f23b2e06f3dd988e")
+
+
+CELERY_BEAT_SCHEDULE = {
+    "cogp-weekly-offenders-saturday": {
+        "task": "apps.quality.cogp.tasks.stage_weekly_cogp_offenders",
+        "schedule": crontab(minute=0, hour=7, day_of_week="saturday"),
+    },
+}
