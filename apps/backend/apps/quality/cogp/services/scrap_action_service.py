@@ -37,12 +37,21 @@ def stage(payload):
     if not token:
         raise RuntimeError("QWALL_PROXY_TOKEN no está configurado.")
 
-    response = requests.post(
-        f"{proxy_url}/scrap-offenders/stage",
-        json={**payload, "source_key": source_key},
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=30,
-    )
+    request_kwargs = {
+        "json": {**payload, "source_key": source_key},
+        "headers": {"Authorization": f"Bearer {token}"},
+        "timeout": 30,
+    }
+
+    try:
+        response = requests.post(f"{proxy_url}/scrap-offenders/stage", **request_kwargs)
+    except requests.RequestException:
+        if "host.docker.internal" not in proxy_url:
+            raise
+        local_url = "http://127.0.0.1:8002"
+        logger.info("COGP qwall-proxy retry via local Windows url=%s", local_url)
+        response = requests.post(f"{local_url}/scrap-offenders/stage", **request_kwargs)
+
     logger.info("COGP qwall-proxy response status=%s", response.status_code)
     response.raise_for_status()
     return response.json()
