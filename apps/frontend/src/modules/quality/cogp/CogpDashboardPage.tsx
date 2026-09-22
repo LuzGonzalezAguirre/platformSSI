@@ -318,9 +318,9 @@ export default function CogpDashboardPage() {
               </label>
             </div>
             {settingsError && <p role="alert" style={{ color: "#ef4444" }}>{settingsError}</p>}
-            {settings?.can_edit && <button type="button" disabled={settingsSaving} onClick={() => {
+            <button type="button" disabled={settingsSaving} onClick={() => {
               setSettingsOpen(false); setTestError(""); setTestResult(""); setTestOpen(true);
-            }}>{t("cogpPareto.testIntegration")}</button>}
+            }}>{t("cogpPareto.testIntegration")}</button>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem", marginTop: "1.25rem" }}>
               <button type="button" disabled={settingsSaving} onClick={() => setSettingsOpen(false)}>{t("common.cancel")}</button>
               {settings?.can_edit && <button type="button" disabled={settingsSaving} onClick={saveSettings}>{t("common.save")}</button>}
