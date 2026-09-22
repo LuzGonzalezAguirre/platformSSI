@@ -209,7 +209,7 @@ export default function CogpDashboardPage() {
     setTestResult("");
     try {
       const result = await CogpService.createScrapTest(testDraft);
-      setTestResult(`${t("cogpPareto.testCreated")}: ${result.tracker_code} · CCS ${result.source_key}`);
+      setTestResult(`${t("cogpPareto.testCreated")}: CCS ${result.source_key} · ${result.processing_status ?? "pending"}`);
     } catch (error: any) {
       setTestError(error?.response?.data?.detail || t("cogpPareto.testError"));
     } finally {
