@@ -31,6 +31,13 @@ def last_workweek(now=None):
     return monday, monday + timedelta(days=4)
 
 
+def last_completed_workweek(reference_date: date):
+    monday = reference_date - timedelta(days=reference_date.weekday())
+    if reference_date.weekday() < 5:
+        monday -= timedelta(days=7)
+    return monday, monday + timedelta(days=4)
+
+
 def _source_key(payload):
     required = ("week_start", "week_end", "business_unit", "workcenter", "part_no", "reason")
     identity = [str(payload[key]).strip().casefold() for key in required]
@@ -128,11 +135,10 @@ def stage_current_offenders(
     if end_date < start_date:
         raise ValueError("end_date debe ser mayor o igual a start_date.")
 
-    span_days = (end_date - start_date).days + 1
-    max_span_days = CogpParetoService.CHUNK_DAYS * CogpParetoService.MAX_FETCH_CHUNKS
-    if span_days > max_span_days:
+    report_start, report_end = last_completed_workweek(end_date)
+    if report_start < start_date:
         raise ValueError(
-            f"El rango cubre {span_days} dias y el maximo es {max_span_days}. Reduce el periodo."
+            "El rango seleccionado no contiene una semana laboral completa para generar ofensores."
         )
 
     cfg = CogpSettings.get_solo()
@@ -146,7 +152,7 @@ def stage_current_offenders(
     production_rows: list[dict] = []
     quantity_production_rows: list[dict] = []
     for window_start, window_end in _date_windows(
-        start_date, end_date, CogpParetoService.CHUNK_DAYS
+        report_start, report_end, CogpParetoService.CHUNK_DAYS
     ):
         scrap_rows.extend(
             client.get_cogp_scrap_range(window_start.isoformat(), window_end.isoformat())
@@ -192,6 +198,7 @@ def stage_current_offenders(
             continue
 
         part_no = str(row.get("Part_No") or "").strip()
+        part_type = str(row.get("Part_Type") or "").strip()
         reason = str(row.get("Scrap_Reason") or "Sin Razon").strip()
         cost = Decimal(str(row.get("Extended_Cost") or 0))
         qty = _to_int_qty(row.get("Quantity"))
@@ -209,12 +216,15 @@ def stage_current_offenders(
                 "scrap_cost": Decimal("0"),
                 "scrap_qty": 0,
                 "part_nos": set(),
+                "part_types": set(),
             },
         )
         item["scrap_cost"] += cost
         item["scrap_qty"] += qty
         if part_no:
             item["part_nos"].add(part_no)
+        if part_type:
+            item["part_types"].add(part_type)
 
     for row in production_rows:
         wc = row.get("Workcenter") or ""
@@ -336,16 +346,18 @@ def stage_current_offenders(
 
         part_nos = sorted(item["part_nos"])
         part_no = part_nos[0] if len(part_nos) == 1 else "MULTIPLE"
+        part_types = sorted(item["part_types"])
+        part_type = part_types[0] if len(part_types) == 1 else ""
 
         staged.append(
             stage(
                 {
-                    "week_start": start_date.isoformat(),
-                    "week_end": end_date.isoformat(),
+                    "week_start": report_start.isoformat(),
+                    "week_end": report_end.isoformat(),
                     "business_unit": bu,
                     "workcenter": item["workcenter"],
                     "part_no": part_no,
-                    "part_name": "",
+                    "part_name": part_type,
                     "reason": item["reason"],
                     "scrap_cost": str(item["scrap_cost"]),
                     "scrap_qty": item["scrap_qty"],
@@ -365,8 +377,8 @@ def stage_current_offenders(
         )
 
     return {
-        "start_date": start_date.isoformat(),
-        "end_date": end_date.isoformat(),
+        "start_date": report_start.isoformat(),
+        "end_date": report_end.isoformat(),
         "red_business_units": list(red_bus.keys()),
         "offenders_detected": len(staged),
         "staged": len(staged),
