@@ -13,6 +13,7 @@ interface Props {
   onApply: () => void;
   loading?: boolean;
   extra?: React.ReactNode;
+  dateAddon?: React.ReactNode;
   showBU?: boolean;
   showWorkcenter?: boolean;
   showShift?: boolean;
@@ -21,7 +22,7 @@ interface Props {
 }
 
 export default function FilterBar({
-  draft, setDraft, onApply, loading, extra,
+  draft, setDraft, onApply, loading, extra, dateAddon,
   showBU = true, showWorkcenter = true, showShift = true,
   filterScope = "default",
   dateExtraGroups,
@@ -37,6 +38,7 @@ export default function FilterBar({
         onChange={(range) => setDraft({ ...draft, ...range })}
         defaultPreset="today"
         extraGroups={dateExtraGroups}
+        triggerAddon={dateAddon}
       />
       {showBU && (
         <BUSelect value={draft.bu} onChange={(bu) => setDraft({ ...draft, bu })} options={choices.bu} />
