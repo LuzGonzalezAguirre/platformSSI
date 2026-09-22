@@ -1458,3 +1458,89 @@ def settings_part_numbers_lookup():
         return {"data": rows}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ══════════════════════════════════════════════════════════════════════════════
+# COGP SCRAP OUTBOX — staging directo en CCS
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ScrapOffenderStageBody(BaseModel):
+    source_key: str
+    week_start: str
+    week_end: str
+    business_unit: str
+    workcenter: str
+    part_no: str
+    part_name: str = ""
+    reason: str
+    scrap_cost: str
+    scrap_qty: int
+    total_scrap_cost: str
+    total_scrap_qty: int
+    production_cost: str
+    produced_qty: int
+    cost_rate_pct: str
+    pieces_rate_pct: str
+    cost_target_pct: str
+    pieces_target_pct: str
+    cost_offender: bool
+    pieces_offender: bool
+    is_test: bool = False
+    test_run_id: str | None = None
+
+
+@app.post("/scrap-offenders/stage", dependencies=[Depends(verify)])
+def stage_scrap_offender(body: ScrapOffenderStageBody):
+    if len(body.source_key) != 64 or any(c not in "0123456789abcdef" for c in body.source_key):
+        raise HTTPException(status_code=400, detail="source_key inválido")
+
+    sql = """
+        IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.ssi_ScrapOffenderActions WITH (UPDLOCK, HOLDLOCK)
+            WHERE SourceKey=?
+        )
+        INSERT INTO dbo.ssi_ScrapOffenderActions (
+            SourceKey, WeekStart, WeekEnd, BusinessUnit, Workcenter,
+            PartNo, PartName, ScrapReason, ScrapCost, ScrapQty,
+            TotalScrapCost, TotalScrapQty, ProductionCost, ProducedQty,
+            CostRatePct, PiecesRatePct, CostTargetPct, PiecesTargetPct,
+            CostOffender, PiecesOffender, IsTest
+        )
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """
+
+    values = (
+        body.source_key,
+        body.week_start,
+        body.week_end,
+        body.business_unit,
+        body.workcenter,
+        body.part_no,
+        body.part_name,
+        body.reason,
+        body.scrap_cost,
+        body.scrap_qty,
+        body.total_scrap_cost,
+        body.total_scrap_qty,
+        body.production_cost,
+        body.produced_qty,
+        body.cost_rate_pct,
+        body.pieces_rate_pct,
+        body.cost_target_pct,
+        body.pieces_target_pct,
+        int(body.cost_offender),
+        int(body.pieces_offender),
+        int(body.is_test),
+    )
+
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+        cursor.execute(sql, (body.source_key, *values))
+        conn.commit()
+        conn.close()
+        return {"source_key": body.source_key, "processing_status": "pending"}
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(tb)
+        raise HTTPException(status_code=500, detail=str(e))
