@@ -63,7 +63,7 @@ def stage_weekly_maintenance_offenders(reference_date: date) -> dict:
             {
                 "equipment_id": equipment_id,
                 "equipment_description": str(row.get("equipment_description") or "").strip(),
-                "line_name": str(row.get("equipment_group") or "").strip() or "SIN_LINEA",
+                "physical_area": str(row.get("workcenter") or "").strip() or "SIN_AREA",
                 "department": str(row.get("department") or "").strip(),
                 "maintenance_hours": Decimal("0"),
                 "work_request_count": 0,
@@ -89,7 +89,7 @@ def stage_weekly_maintenance_offenders(reference_date: date) -> dict:
                     "week_end": week_end.isoformat(),
                     "equipment_id": item["equipment_id"],
                     "equipment_description": item["equipment_description"],
-                    "line_name": item["line_name"],
+                    "physical_area": item["physical_area"],
                     "department": item["department"],
                     "maintenance_hours": str(item["maintenance_hours"]),
                     "work_request_count": item["work_request_count"],
