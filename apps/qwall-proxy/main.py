@@ -1556,7 +1556,7 @@ class MaintenanceOffenderStageBody(BaseModel):
     week_end: str
     equipment_id: str
     equipment_description: str = ""
-    line_name: str
+    physical_area: str
     department: str = ""
     maintenance_hours: str
     work_request_count: int
@@ -1578,7 +1578,7 @@ def stage_maintenance_offender(body: MaintenanceOffenderStageBody):
         )
         INSERT INTO dbo.ssi_MaintenanceOffenderActions (
             SourceKey, WeekStart, WeekEnd, EquipmentId, EquipmentDescription,
-            LineName, Department, MaintenanceHours, WorkRequestCount, RankNo
+            PhysicalArea, Department, MaintenanceHours, WorkRequestCount, RankNo
         )
         VALUES (?,?,?,?,?,?,?,?,?,?)
     """
@@ -1589,7 +1589,7 @@ def stage_maintenance_offender(body: MaintenanceOffenderStageBody):
         body.week_end,
         body.equipment_id,
         body.equipment_description,
-        body.line_name,
+        body.physical_area,
         body.department,
         body.maintenance_hours,
         body.work_request_count,
