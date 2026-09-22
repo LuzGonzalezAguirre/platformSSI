@@ -1544,3 +1544,66 @@ def stage_scrap_offender(body: ScrapOffenderStageBody):
         tb = traceback.format_exc()
         print(tb)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MAINTENANCE OFFENDER OUTBOX — staging directo en CCS
+# ══════════════════════════════════════════════════════════════════════════════
+
+class MaintenanceOffenderStageBody(BaseModel):
+    source_key: str
+    week_start: str
+    week_end: str
+    equipment_id: str
+    equipment_description: str = ""
+    line_name: str
+    department: str = ""
+    maintenance_hours: str
+    work_request_count: int
+    rank_no: int
+
+
+@app.post("/maintenance-offenders/stage", dependencies=[Depends(verify)])
+def stage_maintenance_offender(body: MaintenanceOffenderStageBody):
+    if len(body.source_key) != 64 or any(c not in "0123456789abcdef" for c in body.source_key):
+        raise HTTPException(status_code=400, detail="source_key inválido")
+    if body.rank_no < 1 or body.rank_no > 3:
+        raise HTTPException(status_code=400, detail="rank_no inválido")
+
+    sql = """
+        IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.ssi_MaintenanceOffenderActions WITH (UPDLOCK, HOLDLOCK)
+            WHERE SourceKey=?
+        )
+        INSERT INTO dbo.ssi_MaintenanceOffenderActions (
+            SourceKey, WeekStart, WeekEnd, EquipmentId, EquipmentDescription,
+            LineName, Department, MaintenanceHours, WorkRequestCount, RankNo
+        )
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+    """
+
+    values = (
+        body.source_key,
+        body.week_start,
+        body.week_end,
+        body.equipment_id,
+        body.equipment_description,
+        body.line_name,
+        body.department,
+        body.maintenance_hours,
+        body.work_request_count,
+        body.rank_no,
+    )
+
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+        cursor.execute(sql, (body.source_key, *values))
+        conn.commit()
+        conn.close()
+        return {"source_key": body.source_key, "processing_status": "pending"}
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(tb)
+        raise HTTPException(status_code=500, detail=str(e))
