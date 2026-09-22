@@ -9,6 +9,7 @@ from apps.ssi_common.bu_classification import (
     resolve_bu_for_production,
 )
 from apps.quality.cogp.services.speed_customer_classification import resolve_speed_scrap_bu
+from apps.quality.cogp.services.scrap_rate_service import _to_int_qty
 
 
 def _date_windows(start_date: date, end_date: date, chunk_days: int) -> list[tuple[date, date]]:
@@ -100,6 +101,7 @@ class CogpParetoService:
 
         scrap_rows: list[dict] = []
         production_rows: list[dict] = []
+        quantity_production_rows: list[dict] = []
         for window_start, window_end in _date_windows(start_date, end_date, self.CHUNK_DAYS):
             scrap_rows.extend(
                 self.client.get_cogp_scrap_range(
@@ -111,9 +113,19 @@ class CogpParetoService:
                     window_start.isoformat(), window_end.isoformat(), cost_model_key
                 )
             )
+            quantity_production_rows.extend(
+                self.client.get_cogp_production_quantity_range(
+                    window_start.isoformat(), window_end.isoformat()
+                )
+            )
+
+        if scrap_rows and "Quantity" not in scrap_rows[0]:
+            raise ValueError("El proxy de Plex no devuelve Quantity para calcular el Pareto por piezas.")
 
         by_bu_items: dict[str, dict[tuple, Decimal]] = {bu: {} for bu in self.ALL_BUS}
+        by_bu_piece_items: dict[str, dict[tuple, int]] = {bu: {} for bu in self.ALL_BUS}
         by_bu_total_scrap: dict[str, Decimal] = {bu: Decimal("0") for bu in self.ALL_BUS}
+        by_bu_scrap_qty: dict[str, int] = {bu: 0 for bu in self.ALL_BUS}
 
         for row in scrap_rows:
             wc_name = row.get("Workcenter")
@@ -129,8 +141,12 @@ class CogpParetoService:
             key = (row.get("Scrap_Reason") or "Sin Razon", wc_name or "")
             by_bu_items[bu][key] = by_bu_items[bu].get(key, Decimal("0")) + cost
             by_bu_total_scrap[bu] += cost
+            qty = _to_int_qty(row.get("Quantity"))
+            by_bu_piece_items[bu][key] = by_bu_piece_items[bu].get(key, 0) + qty
+            by_bu_scrap_qty[bu] += qty
 
         by_bu_extended: dict[str, Decimal] = {bu: Decimal("0") for bu in self.ALL_BUS}
+        by_bu_produced_qty: dict[str, int] = {bu: 0 for bu in self.ALL_BUS}
         for row in production_rows:
             wc_name = row.get("Workcenter")
             if wc_filter_set is not None and wc_name not in wc_filter_set:
@@ -142,15 +158,32 @@ class CogpParetoService:
             if bu in by_bu_extended:
                 by_bu_extended[bu] += Decimal(str(row.get("Extended_Cost") or 0))
 
+        for row in quantity_production_rows:
+            wc_name = row.get("Workcenter")
+            if wc_filter_set is not None and wc_name not in wc_filter_set:
+                continue
+            bu = _resolve_bu_for_pareto_scrap(
+                row.get("Workcenter_Group"), wc_name, row.get("Part_No"), part_to_bu,
+            )
+            if bu in by_bu_produced_qty:
+                by_bu_produced_qty[bu] += _to_int_qty(row.get("Quantity"))
+
         def build_bucket(bu_keys: list[str]) -> dict:
             merged_items: dict[tuple, Decimal] = {}
+            merged_piece_items: dict[tuple, int] = {}
             total_scrap = Decimal("0")
             total_extended = Decimal("0")
+            total_scrap_qty = 0
+            total_produced_qty = 0
             for bu in bu_keys:
                 for key, cost in by_bu_items[bu].items():
                     merged_items[key] = merged_items.get(key, Decimal("0")) + cost
+                for key, qty in by_bu_piece_items[bu].items():
+                    merged_piece_items[key] = merged_piece_items.get(key, 0) + qty
                 total_scrap += by_bu_total_scrap[bu]
                 total_extended += by_bu_extended[bu]
+                total_scrap_qty += by_bu_scrap_qty[bu]
+                total_produced_qty += by_bu_produced_qty[bu]
 
             items_sorted = sorted(merged_items.items(), key=lambda kv: kv[1], reverse=True)
             items = [
@@ -163,12 +196,31 @@ class CogpParetoService:
                 for (reason, workcenter), cost in items_sorted
             ]
             scrap_rate_pct = (total_scrap / total_extended * 100) if total_extended > 0 else None
+            piece_items = [
+                {
+                    "reason": reason,
+                    "workcenter": workcenter,
+                    "quantity": qty,
+                    "pct_of_total": (Decimal(qty) / Decimal(total_scrap_qty) * 100)
+                    if total_scrap_qty > 0 else Decimal("0"),
+                }
+                for (reason, workcenter), qty in sorted(
+                    merged_piece_items.items(), key=lambda kv: kv[1], reverse=True
+                )
+            ]
 
             return {
                 "total_scrap": total_scrap,
                 "total_extended_cost": total_extended,
                 "scrap_rate_pct": scrap_rate_pct,
                 "items": items,
+                "total_scrap_qty": total_scrap_qty,
+                "total_produced_qty": total_produced_qty,
+                "piece_rate_pct": (
+                    Decimal(total_scrap_qty) / Decimal(total_scrap_qty + total_produced_qty) * 100
+                    if total_scrap_qty + total_produced_qty > 0 else None
+                ),
+                "piece_items": piece_items,
             }
 
         return {

@@ -10,4 +10,6 @@ __all__ = [
     "ScrapRecord",
     "ProductionRecord",
     "COGPDailySummary",
+    "CogpSettings",
 ]
+from .cogp_settings import CogpSettings

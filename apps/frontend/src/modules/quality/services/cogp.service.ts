@@ -40,11 +40,28 @@ export interface CogpParetoItem {
   pct_of_total: string;
 }
 
+export interface CogpPieceItem {
+  reason: string;
+  workcenter: string;
+  quantity: number;
+  pct_of_total: string;
+}
+
+export interface CogpSettings {
+  cost_target_pct: string;
+  pieces_target_pct: string;
+  can_edit: boolean;
+}
+
 export interface CogpParetoBucket {
   total_scrap: string;
   total_extended_cost: string;
   scrap_rate_pct: string | null;
   items: CogpParetoItem[];
+  total_scrap_qty: number;
+  total_produced_qty: number;
+  piece_rate_pct: string | null;
+  piece_items: CogpPieceItem[];
 }
 
 export interface CogpParetoResponse {
@@ -117,6 +134,11 @@ export interface ScrapRateResponse {
 }
 
 export const CogpService = {
+  getSettings: (): Promise<CogpSettings> =>
+    apiClient.get(`${BASE}/settings/`).then((r: any) => r.data),
+
+  updateSettings: (targets: Pick<CogpSettings, "cost_target_pct" | "pieces_target_pct">): Promise<CogpSettings> =>
+    apiClient.put(`${BASE}/settings/`, targets).then((r: any) => r.data),
   getWeeklyTrend: (
     startDate: string, endDate: string, workcenter: string[] = []
   ): Promise<CogpWeeklyTrendResponse> =>

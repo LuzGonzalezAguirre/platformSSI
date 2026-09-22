@@ -6,9 +6,8 @@ interface CogpTrendChartProps {
   points: CogpWeekPoint[];
   color?: string;
   height?: number;
+  target?: number;
 }
-
-const THRESHOLD = 2;
 
 function useContainerWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -29,7 +28,7 @@ function useContainerWidth<T extends HTMLElement>() {
   return { ref, width };
 }
 
-export default function CogpTrendChart({ points, color = "#3b82f6", height }: CogpTrendChartProps) {
+export default function CogpTrendChart({ points, color = "#3b82f6", height, target = 2 }: CogpTrendChartProps) {
   const { t } = useTranslation();
   const [tooltip, setTooltip] = useState<{ idx: number } | null>(null);
   const { ref: containerRef, width: measuredWidth } = useContainerWidth<HTMLDivElement>();
@@ -43,7 +42,7 @@ export default function CogpTrendChart({ points, color = "#3b82f6", height }: Co
   }
 
   const values = points.map(p => (p.cogp_pct !== null ? parseFloat(p.cogp_pct) : 0));
-  const maxVal = Math.max(...values, THRESHOLD * 1.5, 1);
+  const maxVal = Math.max(...values, target * 1.5, 1);
 
   // viewBox W = ancho real medido del contenedor -> escala X e Y por igual,
   // sin deformar circulos/texto. H sigue el prop (fullscreen la agranda).
@@ -58,7 +57,7 @@ export default function CogpTrendChart({ points, color = "#3b82f6", height }: Co
   const toY = (v: number) => padT + chartH * (1 - v / maxVal);
 
   const linePoints = points.map((_, i) => `${toX(i).toFixed(1)},${toY(values[i]).toFixed(1)}`).join(" ");
-  const thresholdY = toY(THRESHOLD);
+  const thresholdY = toY(target);
   const weekLabel = t("cogpDashboard.week");
 
   return (
@@ -86,7 +85,7 @@ export default function CogpTrendChart({ points, color = "#3b82f6", height }: Co
 
         <line x1={padL} x2={W - padR} y1={thresholdY} y2={thresholdY} stroke="#ef4444" strokeWidth={1} strokeDasharray="4 3" />
         <text x={W - padR} y={thresholdY - 3} textAnchor="end" fontSize={8} fontWeight={700} fill="#ef4444">
-          {THRESHOLD}% {t("cogpDashboard.target")}
+          {target}% {t("cogpDashboard.target")}
         </text>
 
         <polyline points={linePoints} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
@@ -94,7 +93,7 @@ export default function CogpTrendChart({ points, color = "#3b82f6", height }: Co
         {points.map((p, i) => {
           const v = values[i];
           const isHov = tooltip?.idx === i;
-          const dotColor = v <= THRESHOLD ? "#10b981" : "#ef4444";
+          const dotColor = v <= target ? "#10b981" : "#ef4444";
           return (
             <circle
               key={`${p.iso_year}-${p.iso_week}`}
@@ -139,7 +138,7 @@ export default function CogpTrendChart({ points, color = "#3b82f6", height }: Co
     </div>
     <div>
       COGP:{" "}
-      <strong style={{ color: values[tooltip.idx] <= THRESHOLD ? "#10b981" : "#ef4444" }}>
+      <strong style={{ color: values[tooltip.idx] <= target ? "#10b981" : "#ef4444" }}>
         {values[tooltip.idx].toFixed(2)}%
       </strong>
     </div>

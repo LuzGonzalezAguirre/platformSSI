@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { CogpService, CogpWeeklyTrendResponse, CogpParetoResponse } from "../services/cogp.service";
+import { CogpService, CogpWeeklyTrendResponse, CogpParetoResponse, CogpSettings } from "../services/cogp.service";
 import CogpTrendChart from "./CogpTrendChart";
 import CogpParetoChart from "./CogpParetoChart";
 import FilterBar from "../../../components/common/FilterBar";
@@ -10,7 +10,7 @@ import { DateRange } from "../../../components/common/date-presets";
 
 import FullscreenPanel from "../../../components/common/FullscreenPanel";
 import { useFullscreen } from "../../../components/common/useFullscreen";
-import { Maximize2 } from "lucide-react";
+import { Maximize2, Settings, ChevronDown, ChevronRight } from "lucide-react";
 
 function fullscreenBtnStyle(): React.CSSProperties {
   return {
@@ -38,13 +38,13 @@ function latestPct(points: { cogp_pct: string | null }[]): number | null {
   return last !== null ? parseFloat(last) : null;
 }
 
-function CogpCard({ title, points, color }: {
-  title: string; points: CogpWeeklyTrendResponse["volvo"]; color: string;
+function CogpCard({ title, points, color, target }: {
+  title: string; points: CogpWeeklyTrendResponse["volvo"]; color: string; target: number;
 }) {
   const { t } = useTranslation();
   const { fullscreen, enterFullscreen, exitFullscreen } = useFullscreen();
   const pct = latestPct(points);
-  const pctColor = pct === null ? "var(--color-text-secondary)" : pct <= 2 ? "#10b981" : "#ef4444";
+  const pctColor = pct === null ? "var(--color-text-secondary)" : pct <= target ? "#10b981" : "#ef4444";
 
   const chartHeight = fullscreen ? Math.max(window.innerHeight - 260, 420) : undefined;
 
@@ -66,7 +66,7 @@ function CogpCard({ title, points, color }: {
           )}
         </div>
       </div>
-      <CogpTrendChart points={points} color={color} height={chartHeight} />
+      <CogpTrendChart points={points} color={color} height={chartHeight} target={target} />
     </>
   );
 
@@ -81,7 +81,9 @@ function CogpCard({ title, points, color }: {
   return <div style={card}>{body}</div>;
 }
 
-function CogpParetoCard({ title, bucket }: { title: string; bucket: CogpParetoResponse["volvo"] | null }) {
+function CogpParetoCard({ title, bucket, costTarget, piecesTarget }: {
+  title: string; bucket: CogpParetoResponse["volvo"] | null; costTarget: number; piecesTarget: number;
+}) {
   const { t } = useTranslation();
   const { fullscreen, enterFullscreen, exitFullscreen } = useFullscreen();
 
@@ -95,7 +97,10 @@ function CogpParetoCard({ title, bucket }: { title: string; bucket: CogpParetoRe
           </button>
         )}
       </div>
-      {bucket ? <CogpParetoChart bucket={bucket} /> : (
+      {bucket ? <div style={{ display: "grid", gap: "1.5rem" }}>
+        <section><h3 style={cardTitle}>{t("cogpPareto.byCost")}</h3><CogpParetoChart bucket={bucket} metric="cost" target={costTarget} /></section>
+        <section><h3 style={cardTitle}>{t("cogpPareto.byPieces")}</h3><CogpParetoChart bucket={bucket} metric="pieces" target={piecesTarget} /></section>
+      </div> : (
         <div style={{ color: "var(--color-text-secondary)", fontSize: "0.8rem" }}>...</div>
       )}
     </>
@@ -132,6 +137,51 @@ export default function CogpDashboardPage() {
   const [paretoData,    setParetoData]    = useState<CogpParetoResponse | null>(null);
   const [paretoLoading, setParetoLoading] = useState(false);
   const [paretoError,   setParetoError]   = useState<string | null>(null);
+  const [settings, setSettings] = useState<CogpSettings | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [costDraft, setCostDraft] = useState("2");
+  const [piecesDraft, setPiecesDraft] = useState("10");
+  const [settingsError, setSettingsError] = useState("");
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [openTrend, setOpenTrend] = useState<string[]>([]);
+  const [openPareto, setOpenPareto] = useState<string[]>([]);
+  const costTarget = Number(settings?.cost_target_pct ?? 2);
+  const piecesTarget = Number(settings?.pieces_target_pct ?? 10);
+
+  useEffect(() => {
+    CogpService.getSettings().then(value => {
+      setSettings(value);
+      setCostDraft(value.cost_target_pct);
+      setPiecesDraft(value.pieces_target_pct);
+    }).catch(() => setSettingsError(t("cogpDashboard.loadError")));
+  }, [t]);
+
+  const saveSettings = async () => {
+    const cost = Number(costDraft), pieces = Number(piecesDraft);
+    if (!Number.isFinite(cost) || !Number.isFinite(pieces) || cost <= 0 || pieces <= 0 || cost > 100 || pieces > 100) {
+      setSettingsError(t("cogpPareto.invalidTarget"));
+      return;
+    }
+    setSettingsSaving(true);
+    setSettingsError("");
+    try {
+      const value = await CogpService.updateSettings({ cost_target_pct: costDraft, pieces_target_pct: piecesDraft });
+      setSettings(value);
+      setSettingsOpen(false);
+    } catch {
+      setSettingsError(t("cogpPareto.saveError"));
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const toggle = (key: string, setter: React.Dispatch<React.SetStateAction<string[]>>) =>
+    setter(previous => previous.includes(key) ? [] : [key]);
+
+  const areas = (["volvo", "cummins", "tulc", "john_deere", "eaton", "global"] as const).map(key => ({
+    key, title: t(`cogpDashboard.businessUnits.${key === "john_deere" ? "johnDeere" : key}`),
+    color: ({ volvo: "#3b82f6", cummins: "#f59e0b", tulc: "#8b5cf6", john_deere: "#22c55e", eaton: "#ec4899", global: "#10b981" })[key],
+  }));
 
   const loadTrend = useCallback(async () => {
     setLoading(true);
@@ -202,6 +252,18 @@ export default function CogpDashboardPage() {
         />
       </div>
 
+      <div style={card}>
+        <button type="button" onClick={() => setSettingsOpen(!settingsOpen)} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", color: "var(--color-text-primary)", background: "none", border: 0, cursor: "pointer", fontWeight: 700 }}>
+          <Settings size={18} /> {t("cogpPareto.settings")} · {t("cogpPareto.byCost")}: {costTarget}% · {t("cogpPareto.byPieces")}: {piecesTarget}%
+        </button>
+        {settingsOpen && <div style={{ display: "flex", alignItems: "end", gap: "1rem", flexWrap: "wrap", marginTop: "1rem" }}>
+          <label>{t("cogpPareto.costTarget")}<br /><input type="number" min="0.01" max="100" step="0.01" value={costDraft} disabled={!settings?.can_edit} onChange={event => setCostDraft(event.target.value)} /></label>
+          <label>{t("cogpPareto.piecesTarget")}<br /><input type="number" min="0.01" max="100" step="0.01" value={piecesDraft} disabled={!settings?.can_edit} onChange={event => setPiecesDraft(event.target.value)} /></label>
+          {settings?.can_edit && <button type="button" disabled={settingsSaving} onClick={saveSettings}>{t("common.save")}</button>}
+        </div>}
+        {settingsError && <p role="alert" style={{ color: "#ef4444" }}>{settingsError}</p>}
+      </div>
+
       {error && (
         <div style={{ padding: "0.75rem 1rem", background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: "8px", color: "#ef4444", fontSize: "0.85rem" }}>
           {error}
@@ -214,16 +276,12 @@ export default function CogpDashboardPage() {
         </div>
       )}
 
-      {data && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "1rem" }}>
-          <CogpCard title={t("cogpDashboard.businessUnits.volvo")}      points={data.volvo}      color="#3b82f6" />
-          <CogpCard title={t("cogpDashboard.businessUnits.cummins")}    points={data.cummins}    color="#f59e0b" />
-          <CogpCard title={t("cogpDashboard.businessUnits.tulc")}       points={data.tulc}       color="#8b5cf6" />
-          <CogpCard title={t("cogpDashboard.businessUnits.johnDeere")}  points={data.john_deere} color="#22c55e" />
-          <CogpCard title={t("cogpDashboard.businessUnits.eaton")}      points={data.eaton}      color="#ec4899" />
-          <CogpCard title={t("cogpDashboard.businessUnits.global")}     points={data.global}     color="#10b981" />
-        </div>
-      )}
+      {data && <div style={{ display: "grid", gap: "0.6rem" }}>{areas.map(area => <div key={area.key} style={card}>
+        <button type="button" aria-expanded={openTrend.includes(area.key)} onClick={() => toggle(area.key, setOpenTrend)} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", background: "none", border: 0, cursor: "pointer", color: "var(--color-text-primary)", fontWeight: 700 }}>
+          {openTrend.includes(area.key) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}{area.title}
+        </button>
+        {openTrend.includes(area.key) && <div style={{ marginTop: "0.75rem" }}><CogpCard title={area.title} points={data[area.key]} color={area.color} target={costTarget} /></div>}
+      </div>)}</div>}
 
       {/* ── HEADER PARETO — rango propio, independiente del general ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem", marginTop: "0.5rem" }}>
@@ -269,13 +327,13 @@ export default function CogpDashboardPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(480px, 1fr))", gap: "1rem" }}>
-        <CogpParetoCard title={t("cogpDashboard.businessUnits.volvo")}      bucket={paretoData?.volvo ?? null} />
-        <CogpParetoCard title={t("cogpDashboard.businessUnits.cummins")}    bucket={paretoData?.cummins ?? null} />
-        <CogpParetoCard title={t("cogpDashboard.businessUnits.tulc")}       bucket={paretoData?.tulc ?? null} />
-        <CogpParetoCard title={t("cogpDashboard.businessUnits.johnDeere")}  bucket={paretoData?.john_deere ?? null} />
-        <CogpParetoCard title={t("cogpDashboard.businessUnits.eaton")}      bucket={paretoData?.eaton ?? null} />
-        <CogpParetoCard title={t("cogpDashboard.businessUnits.global")}     bucket={paretoData?.global ?? null} />
+      <div style={{ display: "grid", gap: "0.6rem" }}>
+        {areas.map(area => <div key={area.key} style={card}>
+          <button type="button" aria-expanded={openPareto.includes(area.key)} onClick={() => toggle(area.key, setOpenPareto)} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", background: "none", border: 0, cursor: "pointer", color: "var(--color-text-primary)", fontWeight: 700 }}>
+            {openPareto.includes(area.key) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}{area.title}
+          </button>
+          {openPareto.includes(area.key) && <div style={{ marginTop: "0.75rem" }}><CogpParetoCard title={area.title} bucket={paretoData?.[area.key] ?? null} costTarget={costTarget} piecesTarget={piecesTarget} /></div>}
+        </div>)}
       </div>
     </div>
   );

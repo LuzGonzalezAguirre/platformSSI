@@ -50,3 +50,8 @@ class QualityPlexClient(PlexClient):
         return self._post("cogp/production-range", {
             "start_date": start_date, "end_date": end_date, "cost_model_key": cost_model_key,
         })
+
+    def get_cogp_production_quantity_range(self, start_date: str, end_date: str) -> list:
+        return self._post("cogp/production-quantity-range", {
+            "start_date": start_date, "end_date": end_date,
+        })
