@@ -33,7 +33,7 @@ class CogpScrapIntegrationTestView(APIView):
         except (ValueError, KeyError, TypeError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception:
-            return Response({"detail": "No se pudo conectar a ActionTracker. Revisa configuración y servicio."},
+            return Response({"detail": "No se pudo escribir la prueba en CCS. Revisa conexión ODBC y la tabla ssi_ScrapOffenderActions."},
                             status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
