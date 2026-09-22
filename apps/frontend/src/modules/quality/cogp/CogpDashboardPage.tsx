@@ -202,6 +202,30 @@ export default function CogpDashboardPage() {
     }
   };
 
+  const stageCurrentOffenders = async () => {
+    setTestSaving(true);
+    setTestError("");
+    setTestResult("");
+    try {
+      const result = await CogpService.stageCurrentOffenders({
+        start_date: paretoRange.start,
+        end_date: paretoRange.end,
+        workcenter: applied.workcenter,
+      });
+      const bus = result.red_business_units.length ? result.red_business_units.join(", ") : t("cogpPareto.noRedBus");
+      setTestResult(
+        t("cogpPareto.currentOffendersResult", {
+          count: result.staged,
+          bus,
+        })
+      );
+    } catch (error: any) {
+      setTestError(error?.response?.data?.detail || t("cogpPareto.currentOffendersError"));
+    } finally {
+      setTestSaving(false);
+    }
+  };
+
   const submitScrapTest = async (event: React.FormEvent) => {
     event.preventDefault();
     setTestSaving(true);
@@ -318,9 +342,11 @@ export default function CogpDashboardPage() {
               </label>
             </div>
             {settingsError && <p role="alert" style={{ color: "#ef4444" }}>{settingsError}</p>}
-            <button type="button" disabled={settingsSaving} onClick={() => {
-              setSettingsOpen(false); setTestError(""); setTestResult(""); setTestOpen(true);
-            }}>{t("cogpPareto.testIntegration")}</button>
+            <button type="button" disabled={settingsSaving || testSaving} onClick={stageCurrentOffenders}>
+              {testSaving ? t("common.loading") : t("cogpPareto.testIntegration")}
+            </button>
+            {testError && <p role="alert" style={{ color: "#ef4444" }}>{testError}</p>}
+            {testResult && <p role="status" style={{ color: "#059669" }}>{testResult}</p>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem", marginTop: "1.25rem" }}>
               <button type="button" disabled={settingsSaving} onClick={() => setSettingsOpen(false)}>{t("common.cancel")}</button>
               {settings?.can_edit && <button type="button" disabled={settingsSaving} onClick={saveSettings}>{t("common.save")}</button>}
