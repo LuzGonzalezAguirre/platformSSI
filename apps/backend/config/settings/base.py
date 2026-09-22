@@ -140,4 +140,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.quality.cogp.tasks.stage_weekly_cogp_offenders",
         "schedule": crontab(minute=0, hour=7, day_of_week="saturday"),
     },
+    "maintenance-weekly-offenders-saturday": {
+        "task": "apps.maintenance.tasks.stage_weekly_maintenance_offenders_task",
+        "schedule": crontab(minute=15, hour=7, day_of_week="saturday"),
+    },
 }
