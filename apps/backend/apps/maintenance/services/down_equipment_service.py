@@ -132,6 +132,13 @@ def _build_trends(rows: list[dict]) -> dict:
             by_day[row["date"]]["events"] += 1
         by_bu[row["bu"]]["hours"] += row["hours"]
         by_bu[row["bu"]]["events"] += 1
+
+        # "Most recurrent equipment" solo representa eventos de equipo.
+        # Otros Reason siguen contando en tendencias generales, pero no
+        # forman parte de recurrencia, número de eventos ni horas recurrentes.
+        if str(row.get("reason") or "").strip().casefold() != "equipment":
+            continue
+
         item = recurrent[row["equipment_id"]]
         item["description"] = row["equipment_description"]
         item["hours"] += row["hours"]
