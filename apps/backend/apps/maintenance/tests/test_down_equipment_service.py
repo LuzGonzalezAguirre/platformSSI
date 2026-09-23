@@ -31,13 +31,24 @@ class DownEquipmentServiceTests(SimpleTestCase):
         self.assertEqual(_severity(120), "high")
         self.assertEqual(_severity(240), "critical")
 
-    def test_trends_aggregate_hours_and_recurrence(self):
+    def test_trends_recurrence_uses_only_equipment_reason(self):
         trends = _build_trends([
-            {"date": "2026-09-14", "bu": "VOLVO", "equipment_id": "A", "equipment_description": "A", "reason": "Sensor", "hours": 1.5},
-            {"date": "2026-09-13", "bu": "VOLVO", "equipment_id": "A", "equipment_description": "A", "reason": "Mechanical", "hours": 0.5},
+            {"date": "2026-09-14", "bu": "VOLVO", "equipment_id": "A", "equipment_description": "A", "reason": "Equipment", "hours": 1.5},
+            {"date": "2026-09-13", "bu": "VOLVO", "equipment_id": "A", "equipment_description": "A", "reason": "Mechanical", "hours": 4.0},
+            {"date": "2026-09-12", "bu": "VOLVO", "equipment_id": "A", "equipment_description": "A", "reason": " equipment ", "hours": 0.5},
+            {"date": "2026-09-11", "bu": "VOLVO", "equipment_id": "B", "equipment_description": "B", "reason": "Idle", "hours": 8.0},
         ])
-        self.assertEqual(sum(item["hours"] for item in trends["by_day"]), 2.0)
+
+        # Las tendencias generales conservan todo el historial.
+        self.assertEqual(sum(item["hours"] for item in trends["by_day"]), 14.0)
+
+        # Most recurrent equipment solo cuenta Reason=Equipment.
+        self.assertEqual(len(trends["recurrent"]), 1)
+        self.assertEqual(trends["recurrent"][0]["equipment_id"], "A")
         self.assertEqual(trends["recurrent"][0]["events"], 2)
+        self.assertEqual(trends["recurrent"][0]["hours"], 2.0)
         self.assertEqual(len(trends["recurrent"][0]["event_items"]), 2)
-        self.assertEqual(trends["recurrent"][0]["event_items"][0]["date"], "2026-09-14")
-        self.assertEqual(trends["recurrent"][0]["event_items"][0]["reason"], "Sensor")
+        self.assertTrue(all(
+            event["reason"].strip().casefold() == "equipment"
+            for event in trends["recurrent"][0]["event_items"]
+        ))
