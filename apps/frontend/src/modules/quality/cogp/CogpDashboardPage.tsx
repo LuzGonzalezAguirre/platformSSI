@@ -37,7 +37,7 @@ const emptyScrapTest: CogpScrapTest = {
 
 function createTestRunId(): string {
   if (typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.randomUUID === "function") {
-    return globalThis.createTestRunId();
+    return globalThis.crypto.randomUUID();
   }
 
   // randomUUID puede no existir al abrir PlatformSSI por HTTP desde otra PC.
