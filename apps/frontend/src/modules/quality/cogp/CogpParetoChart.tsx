@@ -51,6 +51,22 @@ export default function CogpParetoChart({ bucket, metric, target }: Props) {
                 <div style={{ overflowWrap: "anywhere", lineHeight: 1.25, fontSize: "0.76rem" }}>
                   <strong>{item.reason}</strong><br />
                   <span style={{ color: "var(--color-text-secondary)", fontSize: "0.68rem" }}>{item.workcenter}</span>
+                  {item.actions?.length > 0 && (
+                    <div style={{ marginTop: "0.25rem", display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
+                      <span style={{ color: "var(--color-text-secondary)", fontSize: "0.64rem" }}>Acciones:</span>
+                      {item.actions.map(action => (
+                        <a
+                          key={action.item_id}
+                          href={action.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "var(--color-primary)", fontSize: "0.66rem", fontWeight: 800, textDecoration: "none" }}
+                        >
+                          {action.code}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ height: 18, background: "var(--color-border)", borderRadius: 4, overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${Math.min(100, Math.max(0, pct))}%`, background: offender ? "#ef4444" : "#3b82f6", minWidth: 2 }} />

@@ -12,6 +12,7 @@ import OEETrendChart from "./OEETrendChart";
 import DashboardTargetsPanel from "./DashboardTargetsPanel";
 import { useWorkRequestsData } from "../work-requests/useWorkRequestsData";
 import TopEquipmentPareto from "../work-requests/TopEquipmentPareto";
+import ActionTrackerActionsButton from "../../../components/common/ActionTrackerActionsButton";
 
 const TARGETS_EDIT_ROLES = ["admin", "plant_manager", "maintenance_engineer"];
 const CHARTS_BREAKPOINT = 900;
@@ -47,6 +48,7 @@ export default function OverviewPage() {
           <h1 style={s.title}>{lang === "es" ? "Mantenimiento — Overview" : "Maintenance Overview"}</h1>
         </div>
         <div style={s.controlsRow}>
+          <ActionTrackerActionsButton actions={workRequestData?.actions ?? []} lang={lang} />
           <FilterBar draft={draft} setDraft={setDraft} onApply={apply} loading={loading || wrLoading} />
           {canEditTargets && (
             <button
