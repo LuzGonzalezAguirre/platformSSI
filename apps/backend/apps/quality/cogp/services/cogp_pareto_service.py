@@ -10,6 +10,7 @@ from apps.ssi_common.bu_classification import (
 )
 from apps.quality.cogp.services.speed_customer_classification import resolve_speed_scrap_bu
 from apps.quality.cogp.services.scrap_rate_service import _to_int_qty
+from apps.ssi_common.action_tracker_actions import get_open_actions, dedupe_actions
 
 
 def _date_windows(start_date: date, end_date: date, chunk_days: int) -> list[tuple[date, date]]:
@@ -168,6 +169,40 @@ class CogpParetoService:
             if bu in by_bu_produced_qty:
                 by_bu_produced_qty[bu] += _to_int_qty(row.get("Quantity"))
 
+        open_actions = get_open_actions("scrap")
+
+        action_index: dict[tuple[str, str, str], list[dict]] = {}
+        for action in open_actions:
+            key = (
+                str(action.get("business_unit") or "").strip().upper(),
+                str(action.get("reason") or "").strip().casefold(),
+                str(action.get("workcenter") or "").strip().casefold(),
+            )
+            action_index.setdefault(key, []).append(action)
+
+        current_keys = {
+            (
+                str(bu).strip().upper(),
+                str(reason or "").strip().casefold(),
+                str(workcenter or "").strip().casefold(),
+            )
+            for bu, items_by_reason in by_bu_items.items()
+            for (reason, workcenter) in items_by_reason.keys()
+        }
+
+        def actions_for(reason: str, workcenter: str, bu_keys: list[str]) -> list[dict]:
+            result: list[dict] = []
+            reason_key = str(reason or "").strip().casefold()
+            workcenter_key = str(workcenter or "").strip().casefold()
+            for bu in bu_keys:
+                result.extend(
+                    action_index.get(
+                        (str(bu).strip().upper(), reason_key, workcenter_key),
+                        [],
+                    )
+                )
+            return dedupe_actions(result)
+
         def build_bucket(bu_keys: list[str]) -> dict:
             merged_items: dict[tuple, Decimal] = {}
             merged_piece_items: dict[tuple, int] = {}
@@ -192,6 +227,7 @@ class CogpParetoService:
                     "workcenter": workcenter,
                     "cost": cost,
                     "pct_of_total": (cost / total_scrap * 100) if total_scrap > 0 else Decimal("0"),
+                    "actions": actions_for(reason, workcenter, bu_keys),
                 }
                 for (reason, workcenter), cost in items_sorted
             ]
@@ -203,6 +239,7 @@ class CogpParetoService:
                     "quantity": qty,
                     "pct_of_total": (Decimal(qty) / Decimal(total_scrap_qty) * 100)
                     if total_scrap_qty > 0 else Decimal("0"),
+                    "actions": actions_for(reason, workcenter, bu_keys),
                 }
                 for (reason, workcenter), qty in sorted(
                     merged_piece_items.items(), key=lambda kv: kv[1], reverse=True
@@ -223,9 +260,30 @@ class CogpParetoService:
                 "piece_items": piece_items,
             }
 
+        relevant_actions = []
+        start_iso = start_date.isoformat()
+        end_iso = end_date.isoformat()
+        for action in open_actions:
+            key = (
+                str(action.get("business_unit") or "").strip().upper(),
+                str(action.get("reason") or "").strip().casefold(),
+                str(action.get("workcenter") or "").strip().casefold(),
+            )
+            first_week = str(action.get("first_week_start") or "")
+            last_week = str(action.get("last_week_end") or "")
+            overlaps_range = bool(
+                first_week and last_week
+                and first_week <= end_iso
+                and last_week >= start_iso
+            )
+            if key in current_keys or overlaps_range:
+                relevant_actions.append(action)
+        relevant_actions = dedupe_actions(relevant_actions)
+
         return {
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
+            "actions": relevant_actions,
             "volvo": build_bucket([BusinessUnit.VOLVO]),
             "cummins": build_bucket([BusinessUnit.CUMMINS]),
             "tulc": build_bucket([BusinessUnit.TULC]),
