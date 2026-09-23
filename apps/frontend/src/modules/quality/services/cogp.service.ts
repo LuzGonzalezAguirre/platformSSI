@@ -1,3 +1,4 @@
+import { ActionTrackerAction } from "../../../components/common/actionTracker.types";
 import apiClient from "../../../services/api.client";
 
 const BASE = "/quality/cogp";
@@ -38,6 +39,7 @@ export interface CogpParetoItem {
   workcenter: string;
   cost: string;
   pct_of_total: string;
+  actions: ActionTrackerAction[];
 }
 
 export interface CogpPieceItem {
@@ -45,6 +47,7 @@ export interface CogpPieceItem {
   workcenter: string;
   quantity: number;
   pct_of_total: string;
+  actions: ActionTrackerAction[];
 }
 
 export interface CogpCurrentOffendersResult {
@@ -89,6 +92,7 @@ export interface CogpParetoBucket {
 export interface CogpParetoResponse {
   start_date: string;
   end_date: string;
+  actions: ActionTrackerAction[];
   volvo: CogpParetoBucket;
   cummins: CogpParetoBucket;
   tulc: CogpParetoBucket;
