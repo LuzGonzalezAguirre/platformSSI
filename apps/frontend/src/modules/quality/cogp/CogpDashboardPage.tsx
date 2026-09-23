@@ -10,6 +10,7 @@ import DateRangeSelector from "../../../components/common/DateRangeSelector";
 import { DateRange } from "../../../components/common/date-presets";
 
 import FullscreenPanel from "../../../components/common/FullscreenPanel";
+import ActionTrackerActionsButton from "../../../components/common/ActionTrackerActionsButton";
 import { useFullscreen } from "../../../components/common/useFullscreen";
 import { Maximize2, Settings, ChevronDown, ChevronRight, X } from "lucide-react";
 
@@ -48,7 +49,7 @@ function latestPct(points: { cogp_pct: string | null }[]): number | null {
 function CogpCard({ title, points, color, target }: {
   title: string; points: CogpWeeklyTrendResponse["volvo"]; color: string; target: number;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { fullscreen, enterFullscreen, exitFullscreen } = useFullscreen();
   const pct = latestPct(points);
   const pctColor = pct === null ? "var(--color-text-secondary)" : pct <= target ? "#10b981" : "#ef4444";
@@ -316,10 +317,16 @@ export default function CogpDashboardPage() {
           showShift={false}
           filterScope="cogp"
           dateAddon={
-            <button type="button" onClick={openSettings} title={t("cogpPareto.settings")} aria-label={t("cogpPareto.settings")}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0.4rem", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", background: "var(--color-surface)", color: "var(--color-text-primary)", cursor: "pointer" }}>
-              <Settings size={17} />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+              <ActionTrackerActionsButton
+                actions={paretoData?.actions ?? []}
+                lang={i18n.language}
+              />
+              <button type="button" onClick={openSettings} title={t("cogpPareto.settings")} aria-label={t("cogpPareto.settings")}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0.4rem", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", background: "var(--color-surface)", color: "var(--color-text-primary)", cursor: "pointer" }}>
+                <Settings size={17} />
+              </button>
+            </div>
           }
         />
       </div>
