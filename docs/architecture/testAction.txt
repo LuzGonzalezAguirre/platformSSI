@@ -1,0 +1,3 @@
+docker compose exec backend python manage.py shell -c "from apps.quality.cogp.tasks import stage_weekly_cogp_offenders; r=stage_weekly_cogp_offenders.delay('2026-09-19'); print(r.id)"
+
+PS C:\Users\Luz.Aguirre\platformSSI> docker compose exec backend python manage.py shell -c "from apps.maintenance.tasks import stage_weekly_maintenance_offenders_task; r=stage_weekly_maintenance_offenders_task.delay('2026-09-19'); print(r.id)"
