@@ -1,95 +1,3 @@
-# apps/qwall-proxy/main.py
-
-# ══════════════════════════════════════════════════════════════════════════════
-# ACTION TRACKER — referencias abiertas para PlatformSSI
-# ══════════════════════════════════════════════════════════════════════════════
-
-@app.get("/action-tracker/open-actions", dependencies=[Depends(verify)])
-def action_tracker_open_actions(source: str = Query(...)):
-    source = (source or "").strip().lower()
-    if source not in {"scrap", "maintenance"}:
-        raise HTTPException(status_code=400, detail="source debe ser scrap o maintenance")
-
-    if source == "scrap":
-        sql = """
-            SELECT
-                i.id AS item_id,
-                i.codigo AS code,
-                i.titulo AS title,
-                e.nombre AS state,
-                i.avance AS progress,
-                i.fecha_fin AS due_date,
-                o.BusinessUnit AS business_unit,
-                o.Workcenter AS workcenter,
-                o.ScrapReason AS reason,
-                MIN(o.WeekStart) AS first_week_start,
-                MAX(o.WeekEnd) AS last_week_end
-            FROM dbo.ssi_ScrapOffenderActions o
-            INNER JOIN dbo.ssi_AT_items i
-                ON i.codigo = o.TrackerCode
-            INNER JOIN dbo.ssi_AT_estados e
-                ON e.id = i.estado_id
-            WHERE o.ProcessingStatus = 'created'
-              AND o.TrackerCode IS NOT NULL
-              AND ISNULL(o.IsTest, 0) = 0
-              AND ISNULL(e.es_cerrado, 0) = 0
-              AND ISNULL(e.es_cancelado, 0) = 0
-            GROUP BY
-                i.id, i.codigo, i.titulo, e.nombre, i.avance, i.fecha_fin,
-                o.BusinessUnit, o.Workcenter, o.ScrapReason
-            ORDER BY MAX(o.WeekEnd) DESC, i.codigo
-        """
-    else:
-        sql = """
-            SELECT
-                i.id AS item_id,
-                i.codigo AS code,
-                i.titulo AS title,
-                e.nombre AS state,
-                i.avance AS progress,
-                i.fecha_fin AS due_date,
-                o.EquipmentId AS equipment_id,
-                MAX(o.EquipmentDescription) AS equipment_description,
-                MAX(o.PhysicalArea) AS physical_area,
-                MIN(o.WeekStart) AS first_week_start,
-                MAX(o.WeekEnd) AS last_week_end
-            FROM dbo.ssi_MaintenanceOffenderActions o
-            INNER JOIN dbo.ssi_AT_items i
-                ON i.codigo = o.TrackerCode
-            INNER JOIN dbo.ssi_AT_estados e
-                ON e.id = i.estado_id
-            WHERE o.ProcessingStatus = 'created'
-              AND o.TrackerCode IS NOT NULL
-              AND ISNULL(e.es_cerrado, 0) = 0
-              AND ISNULL(e.es_cancelado, 0) = 0
-            GROUP BY
-                i.id, i.codigo, i.titulo, e.nombre, i.avance, i.fecha_fin,
-                o.EquipmentId
-            ORDER BY MAX(o.WeekEnd) DESC, i.codigo
-        """
-
-    try:
-        conn = get_conn()
-        cursor = conn.cursor()
-        cursor.execute(sql)
-        columns = [col[0] for col in cursor.description]
-        rows = []
-        for raw in cursor.fetchall():
-            row = dict(zip(columns, raw))
-            for key, value in list(row.items()):
-                if hasattr(value, "isoformat"):
-                    row[key] = value.isoformat()
-            row["source"] = source
-            row["url"] = f"http://pac-kingdel10:8000/items/{row['item_id']}"
-            rows.append(row)
-        conn.close()
-        return {"data": rows}
-    except Exception as e:
-        tb = traceback.format_exc()
-        print(tb)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 import os
 import base64
 import pyodbc
@@ -1697,3 +1605,95 @@ def stage_maintenance_offender(body: MaintenanceOffenderStageBody):
         tb = traceback.format_exc()
         print(tb)
         raise HTTPException(status_code=500, detail=str(e))
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ACTION TRACKER — referencias abiertas para PlatformSSI
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/action-tracker/open-actions", dependencies=[Depends(verify)])
+def action_tracker_open_actions(source: str = Query(...)):
+    source = (source or "").strip().lower()
+    if source not in {"scrap", "maintenance"}:
+        raise HTTPException(status_code=400, detail="source debe ser scrap o maintenance")
+
+    if source == "scrap":
+        sql = """
+            SELECT
+                i.id AS item_id,
+                i.codigo AS code,
+                i.titulo AS title,
+                e.nombre AS state,
+                i.avance AS progress,
+                i.fecha_fin AS due_date,
+                o.BusinessUnit AS business_unit,
+                o.Workcenter AS workcenter,
+                o.ScrapReason AS reason,
+                MIN(o.WeekStart) AS first_week_start,
+                MAX(o.WeekEnd) AS last_week_end
+            FROM dbo.ssi_ScrapOffenderActions o
+            INNER JOIN dbo.ssi_AT_items i
+                ON i.codigo = o.TrackerCode
+            INNER JOIN dbo.ssi_AT_estados e
+                ON e.id = i.estado_id
+            WHERE o.ProcessingStatus = 'created'
+              AND o.TrackerCode IS NOT NULL
+              AND ISNULL(o.IsTest, 0) = 0
+              AND ISNULL(e.es_cerrado, 0) = 0
+              AND ISNULL(e.es_cancelado, 0) = 0
+            GROUP BY
+                i.id, i.codigo, i.titulo, e.nombre, i.avance, i.fecha_fin,
+                o.BusinessUnit, o.Workcenter, o.ScrapReason
+            ORDER BY MAX(o.WeekEnd) DESC, i.codigo
+        """
+    else:
+        sql = """
+            SELECT
+                i.id AS item_id,
+                i.codigo AS code,
+                i.titulo AS title,
+                e.nombre AS state,
+                i.avance AS progress,
+                i.fecha_fin AS due_date,
+                o.EquipmentId AS equipment_id,
+                MAX(o.EquipmentDescription) AS equipment_description,
+                MAX(o.PhysicalArea) AS physical_area,
+                MIN(o.WeekStart) AS first_week_start,
+                MAX(o.WeekEnd) AS last_week_end
+            FROM dbo.ssi_MaintenanceOffenderActions o
+            INNER JOIN dbo.ssi_AT_items i
+                ON i.codigo = o.TrackerCode
+            INNER JOIN dbo.ssi_AT_estados e
+                ON e.id = i.estado_id
+            WHERE o.ProcessingStatus = 'created'
+              AND o.TrackerCode IS NOT NULL
+              AND ISNULL(e.es_cerrado, 0) = 0
+              AND ISNULL(e.es_cancelado, 0) = 0
+            GROUP BY
+                i.id, i.codigo, i.titulo, e.nombre, i.avance, i.fecha_fin,
+                o.EquipmentId
+            ORDER BY MAX(o.WeekEnd) DESC, i.codigo
+        """
+
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        columns = [col[0] for col in cursor.description]
+        rows = []
+        for raw in cursor.fetchall():
+            row = dict(zip(columns, raw))
+            for key, value in list(row.items()):
+                if hasattr(value, "isoformat"):
+                    row[key] = value.isoformat()
+            row["source"] = source
+            row["url"] = f"http://pac-kingdel10:8000/items/{row['item_id']}"
+            rows.append(row)
+        conn.close()
+        return {"data": rows}
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(tb)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
