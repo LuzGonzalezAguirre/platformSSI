@@ -1,3 +1,5 @@
+import { ActionTrackerAction } from "../../../components/common/actionTracker.types";
+
 export interface WorkRequest {
   work_request_no:       string;
   description:           string;
@@ -36,6 +38,7 @@ export interface GroupedItem {
   label: string;
   count: number;
   hours: number;
+  actions?: ActionTrackerAction[];
 }
 
 export interface DayItem {
@@ -66,6 +69,7 @@ export interface WRDashboard {
   by_day:         DayItem[];
   by_department:  GroupedItem[];
   equipment_grid: EquipmentGridItem[];
+  actions: ActionTrackerAction[];
 }
 
 export interface DateRange {
