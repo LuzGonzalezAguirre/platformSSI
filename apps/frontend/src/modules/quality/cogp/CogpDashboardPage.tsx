@@ -49,7 +49,7 @@ function latestPct(points: { cogp_pct: string | null }[]): number | null {
 function CogpCard({ title, points, color, target }: {
   title: string; points: CogpWeeklyTrendResponse["volvo"]; color: string; target: number;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { fullscreen, enterFullscreen, exitFullscreen } = useFullscreen();
   const pct = latestPct(points);
   const pctColor = pct === null ? "var(--color-text-secondary)" : pct <= target ? "#10b981" : "#ef4444";
@@ -126,7 +126,7 @@ function CogpParetoCard({ title, bucket, costTarget, piecesTarget }: {
 }
 
 export default function CogpDashboardPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const { draft, setDraft, applied, apply } = useStandardFilters("month_to_date");
 
