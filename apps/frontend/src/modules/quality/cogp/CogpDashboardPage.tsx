@@ -35,6 +35,20 @@ const emptyScrapTest: CogpScrapTest = {
   scrap_cost: "3", scrap_qty: "12", production_cost: "100", produced_qty: "88",
 };
 
+function createTestRunId(): string {
+  if (typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+
+  // randomUUID puede no existir al abrir PlatformSSI por HTTP desde otra PC.
+  // Este UUID solo identifica una corrida de prueba; no se usa como secreto.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const value = Math.floor(Math.random() * 16);
+    const nibble = char === "x" ? value : (value & 0x3) | 0x8;
+    return nibble.toString(16);
+  });
+}
+
 const cardTitle: React.CSSProperties = {
   fontSize: "0.8125rem", fontWeight: 700,
   color: "var(--color-text-primary)", marginBottom: "0.875rem",
@@ -152,7 +166,7 @@ export default function CogpDashboardPage() {
   const [settingsError, setSettingsError] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [testOpen, setTestOpen] = useState(false);
-  const [testDraft, setTestDraft] = useState<CogpScrapTest>(() => ({ ...emptyScrapTest, test_run_id: crypto.randomUUID() }));
+  const [testDraft, setTestDraft] = useState<CogpScrapTest>(() => ({ ...emptyScrapTest, test_run_id: createTestRunId() }));
   const [testSaving, setTestSaving] = useState(false);
   const [testResult, setTestResult] = useState("");
   const [testError, setTestError] = useState("");
@@ -387,7 +401,7 @@ export default function CogpDashboardPage() {
               {testError && <p role="alert" style={{ color: "#ef4444" }}>{testError}</p>}
               {testResult && <p role="status" style={{ color: "#059669", overflowWrap: "anywhere" }}>{testResult}</p>}
               {testResult && <button type="button" onClick={() => {
-                setTestDraft({ ...emptyScrapTest, test_run_id: crypto.randomUUID() }); setTestResult("");
+                setTestDraft({ ...emptyScrapTest, test_run_id: createTestRunId() }); setTestResult("");
               }}>{t("cogpPareto.testAnother")}</button>}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem" }}>
                 <button type="button" disabled={testSaving} onClick={() => setTestOpen(false)}>{t("common.cancel")}</button>
