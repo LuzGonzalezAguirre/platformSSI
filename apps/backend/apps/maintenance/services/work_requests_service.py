@@ -9,6 +9,7 @@ from apps.ssi_common.bu_classification import (
     resolve_customer_from_workcenter,
     CUSTOMER_JOHN_DEERE,
 )
+from apps.ssi_common.action_tracker_actions import get_open_actions, dedupe_actions
 
 PROXY_URL    = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
 PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
@@ -57,11 +58,52 @@ def _apply_filters(rows: list, filter_ctx: FilterContext) -> list:
 class WorkRequestsService:
 
     @staticmethod
+    def _with_action_refs(result: dict, filter_ctx: FilterContext) -> dict:
+        """Attach live open ActionTracker links without storing them in the 5-minute Plex cache."""
+        open_actions = get_open_actions("maintenance")
+        equipment_ids = {
+            str(row.get("equipment_id") or "").strip().casefold()
+            for row in result.get("rows", [])
+            if str(row.get("equipment_id") or "").strip()
+        }
+
+        start_iso = filter_ctx.start_date.isoformat()
+        end_iso = filter_ctx.end_date.isoformat()
+        relevant = []
+        for action in open_actions:
+            equipment_key = str(action.get("equipment_id") or "").strip().casefold()
+            first_week = str(action.get("first_week_start") or "")
+            last_week = str(action.get("last_week_end") or "")
+            overlaps_range = bool(
+                first_week and last_week
+                and first_week <= end_iso
+                and last_week >= start_iso
+            )
+            if equipment_key in equipment_ids or overlaps_range:
+                relevant.append(action)
+        relevant = dedupe_actions(relevant)
+
+        by_equipment = []
+        for item in result.get("by_equipment", []):
+            equipment_key = str(item.get("label") or "").strip().casefold()
+            item_actions = dedupe_actions([
+                action for action in open_actions
+                if str(action.get("equipment_id") or "").strip().casefold() == equipment_key
+            ])
+            by_equipment.append({**item, "actions": item_actions})
+
+        return {
+            **result,
+            "by_equipment": by_equipment,
+            "actions": relevant,
+        }
+
+    @staticmethod
     def get_dashboard(filter_ctx: FilterContext) -> dict:
         cache_key = filter_ctx.cache_key("maint:wr_dashboard:v2")
         cached = cache.get(cache_key)
         if cached:
-            return cached
+            return WorkRequestsService._with_action_refs(cached, filter_ctx)
 
         by_number: dict = {}
         for chunk_start, chunk_end in date_chunks(filter_ctx.start_date, filter_ctx.end_date):
@@ -81,7 +123,7 @@ class WorkRequestsService:
                 "by_day": [], "by_department": [], "equipment_grid": [],
             }
             cache.set(cache_key, result, CACHE_TTL)
-            return result
+            return WorkRequestsService._with_action_refs(result, filter_ctx)
 
         # ── KPIs ──────────────────────────────────────────────────────────────
         total_wr          = len(rows)
@@ -209,4 +251,4 @@ class WorkRequestsService:
         }
 
         cache.set(cache_key, result, CACHE_TTL)
-        return result
+        return WorkRequestsService._with_action_refs(result, filter_ctx)
