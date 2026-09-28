@@ -72,7 +72,7 @@ class QWallRepository:
                 **({"bu_ids": normalized} if normalized else {}),
             },
             headers=HEADERS,
-            timeout=30,
+            timeout=120,
         )
         resp.raise_for_status()
         count = resp.json().get("flag_count", 0)
@@ -95,7 +95,7 @@ class QWallRepository:
                 **({"bu_ids": normalized} if normalized else {}),
             },
             headers=HEADERS,
-            timeout=30,
+            timeout=120,
         )
         resp.raise_for_status()
         rows = resp.json().get("data", [])
@@ -112,7 +112,7 @@ class QWallRepository:
         resp = requests.get(
             f"{PROXY_URL}/settings/business-units",
             headers=HEADERS,
-            timeout=15,
+            timeout=120,
         )
         resp.raise_for_status()
         rows = resp.json().get("data", [])
@@ -130,7 +130,7 @@ class QWallRepository:
         resp = requests.get(
             f"{PROXY_URL}/part-numbers",
             headers=HEADERS,
-            timeout=15,
+            timeout=120,
         )
         resp.raise_for_status()
         rows = resp.json().get("data", [])
@@ -152,7 +152,7 @@ class QWallRepository:
                 **({"bu_id": bu_id} if bu_id else {}),
             },
             headers=HEADERS,
-            timeout=30,
+            timeout=120,
         )
         resp.raise_for_status()
         rows = resp.json().get("data", [])
@@ -170,7 +170,7 @@ class QWallRepository:
         resp = requests.get(
             f"{PROXY_URL}/part-numbers",
             headers=HEADERS,
-            timeout=15,
+            timeout=120,
         )
         resp.raise_for_status()
         rows = resp.json().get("data", [])
