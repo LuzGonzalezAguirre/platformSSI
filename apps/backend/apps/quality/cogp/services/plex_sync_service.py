@@ -8,6 +8,7 @@ from apps.quality.models import BusinessUnit, ClassificationSource
 from apps.quality.cogp.services.speed_customer_classification import (
     resolve_speed_scrap_bu,
     resolve_speed_production_bu,
+    EATON_SPEED_WORKCENTERS,
 )
 
 logger = logging.getLogger(__name__)
@@ -233,10 +234,11 @@ class PlexSyncService:
             part_no = row["Part_No"]
             workcenter = row.get("Workcenter") or ""
             mapped_bu = part_to_bu.get(part_no, BusinessUnit.SPEED)
-            if mapped_bu == BusinessUnit.EATON:
-                business_unit = resolve_speed_production_bu(
-                    workcenter, part_no, {str(part_no).split(".")[0]: mapped_bu}
-                )
+            if workcenter.strip() in EATON_SPEED_WORKCENTERS:
+                business_unit = BusinessUnit.EATON
+            elif mapped_bu == BusinessUnit.EATON:
+                # Eaton fuera de sus tres WCs no se contabiliza como Eaton.
+                business_unit = BusinessUnit.SPEED
             else:
                 business_unit = mapped_bu
 
