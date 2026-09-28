@@ -8,6 +8,7 @@ from apps.quality.models import Problem, ProblemNote, ProblemControlSettings
 
 
 APPROVAL_NOTE_PREFIX = "[8D_APPROVAL:{role}] "
+REJECTION_NOTE_PREFIX = "[8D_REJECTION:{role}] "
 
 
 def _user_data(user):
@@ -51,6 +52,39 @@ def _save_department_comment(problem, role, comment, user):
             text=f"{prefix}{comment}",
             created_by=user,
         )
+
+
+def _get_rejection(problem, role):
+    prefix = REJECTION_NOTE_PREFIX.format(role=role)
+    note = (
+        ProblemNote.objects.filter(problem=problem, step="step8", text__startswith=prefix)
+        .order_by("-created_at")
+        .first()
+    )
+    if not note:
+        return None
+    return {
+        "comments": note.text[len(prefix):],
+        "rejected_at": note.created_at,
+        "rejected_by": _user_data(note.created_by),
+    }
+
+
+def _save_rejection(problem, role, comment, user):
+    ProblemNote.objects.create(
+        problem=problem,
+        step="step8",
+        text=f"{REJECTION_NOTE_PREFIX.format(role=role)}{comment}",
+        created_by=user,
+    )
+
+
+def _clear_rejections(problem):
+    ProblemNote.objects.filter(
+        problem=problem,
+        step="step8",
+        text__startswith="[8D_REJECTION:",
+    ).delete()
 
 
 def _all_approved(problem):
@@ -128,6 +162,13 @@ def _payload(problem, request_user):
             ),
         },
     ]
+    for item in roles:
+        rejection = _get_rejection(problem, item["role"])
+        item["rejected_at"] = rejection["rejected_at"] if rejection else None
+        item["rejected_by"] = rejection["rejected_by"] if rejection else None
+        item["rejection_comments"] = rejection["comments"] if rejection else ""
+        item["can_reject"] = item["can_approve"]
+
     approved_count = sum(1 for item in roles if item["approved_at"])
     return {
         "problem_id": problem.id,
@@ -173,11 +214,42 @@ class ProblemFinalApprovalView(APIView):
             )
 
         role = request.data.get("role")
+        decision = (request.data.get("decision") or "approve").strip().lower()
         comments = (request.data.get("comments") or "").strip()
         if role not in {"quality", "manufacturing", "production", "maintenance"}:
             return Response({"detail": "Invalid approval role."}, status=status.HTTP_400_BAD_REQUEST)
+        if decision not in {"approve", "reject"}:
+            return Response({"detail": "decision must be approve or reject."}, status=status.HTTP_400_BAD_REQUEST)
         if not comments:
-            return Response({"detail": "Approval comments are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Approval comments are required." if decision == "approve" else "Rejection reason is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # A rejection immediately reopens the 8D for editing. Existing approvals
+        # remain recorded until the 8D is edited or explicitly withdrawn.
+        if decision == "reject":
+            authorized = False
+            if role == "quality":
+                configured_manager = ProblemControlSettings.load().quality_manager
+                authorized = configured_manager is not None and configured_manager.id == request.user.id
+            else:
+                approver_field = {
+                    "manufacturing": "manufacturing_approver",
+                    "production": "production_approver",
+                    "maintenance": "maintenance_approver",
+                }[role]
+                approver = getattr(problem, approver_field)
+                authorized = approver is not None and approver.id == request.user.id
+
+            if not authorized:
+                return Response({"detail": "Only the assigned approver can reject this section."}, status=status.HTTP_403_FORBIDDEN)
+
+            _save_rejection(problem, role, comments, request.user)
+            problem.status = "approved"
+            problem.save(update_fields=["status", "updated_at"])
+            problem = self._get_problem(pk)
+            return Response(_payload(problem, request.user))
 
         now = timezone.now()
 
