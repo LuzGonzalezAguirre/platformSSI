@@ -9,7 +9,8 @@ from apps.quality.cogp.services.speed_customer_classification import (
     resolve_speed_scrap_bu,
     resolve_speed_production_bu,
     EATON_SPEED_WORKCENTERS,
-    SHARED_FINISHED_GOOD_WORKCENTER,
+    EATON_FINISHED_GOOD_WORKCENTER,
+    JOHN_DEERE_FINISHED_GOOD_WORKCENTER,
 )
 
 logger = logging.getLogger(__name__)
@@ -242,7 +243,8 @@ class PlexSyncService:
             )
             if (
                 workcenter.strip() in EATON_SPEED_WORKCENTERS
-                or workcenter.strip() == SHARED_FINISHED_GOOD_WORKCENTER
+                or workcenter.strip() == EATON_FINISHED_GOOD_WORKCENTER
+                or workcenter.strip() == JOHN_DEERE_FINISHED_GOOD_WORKCENTER
                 or mapped_bu in (BusinessUnit.JOHN_DEERE, BusinessUnit.EATON)
             ):
                 business_unit = resolve_speed_production_bu(
