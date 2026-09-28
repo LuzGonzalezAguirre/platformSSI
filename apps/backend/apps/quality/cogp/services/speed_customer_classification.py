@@ -55,6 +55,16 @@ def resolve_speed_scrap_bu(
     """
     wc = (workcenter or "").strip()
 
+    if wc == SHARED_FINISHED_GOOD_WORKCENTER:
+        base_part_no = str(part_no or "").strip().split(".")[0]
+        mapped_bu = (
+            part_to_bu.get(str(part_no or "").strip())
+            or part_to_bu.get(base_part_no)
+        )
+        if mapped_bu in (BusinessUnit.JOHN_DEERE, BusinessUnit.EATON):
+            return mapped_bu
+        return None
+
     if wc in JOHN_DEERE_SPEED_WORKCENTERS:
         return BusinessUnit.JOHN_DEERE
     if wc in EATON_SPEED_WORKCENTERS:
