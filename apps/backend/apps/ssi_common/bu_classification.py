@@ -76,9 +76,12 @@ def resolve_bu_for_production(workcenter: str) -> str:
 
 
 SCRAP_RATE_WORKCENTER_TO_BU = {
-    "HM Ensamble Final 2":      BusinessUnit.VOLVO,
-    "HM Ensamble de Servicio":  BusinessUnit.CUMMINS,
-    "TULC Ensamble Final":      BusinessUnit.TULC,
+    "HM Ensamble Final 2":                    BusinessUnit.VOLVO,
+    "HM Ensamble de Servicio":                BusinessUnit.CUMMINS,
+    "TULC Ensamble Final":                    BusinessUnit.TULC,
+    "Velocidad - Prueba Final":               BusinessUnit.EATON,
+    "Velocidad - Moldeadora - Arburg R5":     BusinessUnit.EATON,
+    "Velocidad - Bobinadora de 12 Niveles":   BusinessUnit.EATON,
 }
 
 TERMINAL_WORKCENTERS = frozenset(SCRAP_RATE_WORKCENTER_TO_BU)
