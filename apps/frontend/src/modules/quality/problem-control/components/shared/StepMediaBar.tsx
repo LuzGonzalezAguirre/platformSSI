@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { problemApi } from '../../api/problemApi';
+import apiClient from '../../../../../services/api.client';
 import type { ProblemAttachment, ProblemNote, AttachmentStep } from '../../types/problem.types';
 
 const IconDoc = () => (
@@ -36,6 +37,14 @@ const IconFile = () => (
 );
 
 const IS_IMAGE = /\.(png|jpe?g|gif|bmp|webp)$/i;
+
+const resolveMediaUrl = (fileUrl: string) => {
+  if (!fileUrl) return '#';
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+  const apiBase = apiClient.defaults.baseURL || window.location.origin;
+  const apiOrigin = new URL(apiBase, window.location.origin).origin;
+  return new URL(fileUrl, apiOrigin).toString();
+};
 
 const fmtSize = (b: number) =>
   b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1048576).toFixed(1)} MB`;
@@ -186,7 +195,7 @@ export const StepMediaBar: React.FC<Props> = ({ problemId, step, readOnly = fals
                       <div key={a.id} style={s.item}>
                         <span style={s.icon}><IconFile /></span>
                         <div style={s.info}>
-                          <a href={a.file} target="_blank" rel="noopener noreferrer" style={s.link}>{a.filename}</a>
+                          <a href={resolveMediaUrl(a.file)} target="_blank" rel="noopener noreferrer" style={s.link}>{a.filename}</a>
                           <div style={s.meta}>{fmtSize(a.file_size)} · {fmtDate(a.uploaded_at)}{a.uploaded_by ? ` · ${a.uploaded_by.first_name} ${a.uploaded_by.last_name}` : ''}</div>
                         </div>
                         {!readOnly && (
@@ -219,8 +228,8 @@ export const StepMediaBar: React.FC<Props> = ({ problemId, step, readOnly = fals
                 : <div style={s.imgGrid}>
                     {imgs.map(a => (
                       <div key={a.id} style={s.imgCard}>
-                        <a href={a.file} target="_blank" rel="noopener noreferrer">
-                          <img src={a.file} alt={a.filename} style={s.thumb} />
+                        <a href={resolveMediaUrl(a.file)} target="_blank" rel="noopener noreferrer">
+                          <img src={resolveMediaUrl(a.file)} alt={a.filename} style={s.thumb} />
                         </a>
                         <div style={s.imgMeta}>
                           <div style={s.imgName} title={a.filename}>{a.filename}</div>
