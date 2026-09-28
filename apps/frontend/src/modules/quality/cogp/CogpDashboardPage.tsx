@@ -330,17 +330,17 @@ export default function CogpDashboardPage() {
           showBU={false}
           showShift={false}
           filterScope="cogp"
-          dateAddon={
-            <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
-              <ActionTrackerActionsButton
-                actions={paretoData?.actions ?? []}
-                lang={i18n.language}
-              />
-              <button type="button" onClick={openSettings} title={t("cogpPareto.settings")} aria-label={t("cogpPareto.settings")}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0.4rem", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", background: "var(--color-surface)", color: "var(--color-text-primary)", cursor: "pointer" }}>
-                <Settings size={17} />
-              </button>
-            </div>
+          before={
+            <ActionTrackerActionsButton
+              actions={paretoData?.actions ?? []}
+              lang={i18n.language}
+            />
+          }
+          after={
+            <button type="button" onClick={openSettings} title={t("cogpPareto.settings")} aria-label={t("cogpPareto.settings")}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0.4rem", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", background: "var(--color-surface)", color: "var(--color-text-primary)", cursor: "pointer" }}>
+              <Settings size={17} />
+            </button>
           }
         />
       </div>
