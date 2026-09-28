@@ -145,8 +145,32 @@ class ProblemService:
             'brief_description': problem.brief_description,
         }
 
+        # Si el 8D fue reabierto por rechazo, cualquier modificación invalida
+        # las aprobaciones previas. Se conservan en el audit/notas, pero deben
+        # volver a aprobar la versión modificada antes del cierre.
+        had_final_approval = bool(
+            problem.approved_at
+            or problem.manufacturing_approved_at
+            or problem.production_approved_at
+            or problem.maintenance_approved_at
+        )
+
         # Actualizar
         problem = ProblemRepository.update_problem(problem, data)
+
+        if had_final_approval and problem.status == 'approved':
+            problem.approved_by = None
+            problem.approved_at = None
+            problem.approval_comments = ''
+            problem.manufacturing_approved_at = None
+            problem.production_approved_at = None
+            problem.maintenance_approved_at = None
+            problem.status = 'draft'
+            problem.save(update_fields=[
+                'approved_by', 'approved_at', 'approval_comments',
+                'manufacturing_approved_at', 'production_approved_at',
+                'maintenance_approved_at', 'status', 'updated_at',
+            ])
 
         new_team_member_ids = set(problem.team_members.values_list('id', flat=True))
         NotificationService.notify_team_members(
