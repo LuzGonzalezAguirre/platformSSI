@@ -23,11 +23,9 @@ el resto del sistema.
 from apps.quality.models import BusinessUnit
 
 EATON_SPEED_WORKCENTERS = frozenset({
-    "Velocidad - Moldeadora - Arburg R5",
-    "Velocidad - Moldeadora - Arburg R1",
-    "Velocidad - Moldeadora - Arburg R4",
     "Velocidad - Prueba Final",
-    "Velocidad - Prueba Final 2",
+    "Velocidad - Moldeadora - Arburg R5",
+    "Velocidad - Bobinadora de 12 Niveles",
 })
 
 JOHN_DEERE_SPEED_WORKCENTERS = frozenset({
