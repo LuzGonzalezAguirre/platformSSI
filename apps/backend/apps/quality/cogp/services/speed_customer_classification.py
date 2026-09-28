@@ -37,8 +37,7 @@ JOHN_DEERE_SPEED_WORKCENTERS = frozenset({
     "Velocidad - Corte y Formado de IC",
 })
 
-# Finished Good compartido entre John Deere y Eaton. En produccion no se
-# puede resolver por WC: se clasifica por Part_No/modelo.
+# Finished Good terminales exclusivos por cliente.
 EATON_FINISHED_GOOD_WORKCENTER = "Velocidad - Prueba Final"
 JOHN_DEERE_FINISHED_GOOD_WORKCENTER = "Velocidad - Prueba Final 3"
 
@@ -74,11 +73,11 @@ def resolve_speed_production_bu(
     part_to_bu: dict[str, str],
 ) -> str:
     """
-    Clasifica PRODUCCION/Finished Good de Speed.
+    Clasifica PRODUCCION/Finished Good de Speed por terminal exclusivo.
 
-    John Deere solo toma Finished Good de Velocidad - Prueba Final.
-    Ese WC tambien pertenece a Eaton, por lo que ahi la BU se decide por
-    Part_No/modelo. Los otros WCs exclusivos de Eaton siguen entrando a Eaton.
+    Eaton: Velocidad - Prueba Final.
+    John Deere: Velocidad - Prueba Final 3.
+    Los terminales no se comparten y no dependen del Part_No.
     """
     wc = (workcenter or "").strip()
     base_part_no = str(part_no or "").strip().split(".")[0]
@@ -88,15 +87,14 @@ def resolve_speed_production_bu(
         or BusinessUnit.SPEED
     )
 
-    if wc == SHARED_FINISHED_GOOD_WORKCENTER:
-        if mapped_bu in (BusinessUnit.JOHN_DEERE, BusinessUnit.EATON):
-            return mapped_bu
-        return BusinessUnit.SPEED
+    if wc == EATON_FINISHED_GOOD_WORKCENTER:
+        return BusinessUnit.EATON
+    if wc == JOHN_DEERE_FINISHED_GOOD_WORKCENTER:
+        return BusinessUnit.JOHN_DEERE
 
     if wc in EATON_SPEED_WORKCENTERS:
         return BusinessUnit.EATON
 
-    # Ningun otro WC Speed cuenta como Finished Good de John Deere/Eaton.
     if mapped_bu in (BusinessUnit.JOHN_DEERE, BusinessUnit.EATON):
         return BusinessUnit.SPEED
     return mapped_bu
