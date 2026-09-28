@@ -232,9 +232,13 @@ class PlexSyncService:
         for row in raw_rows:
             part_no = row["Part_No"]
             workcenter = row.get("Workcenter") or ""
-            business_unit = resolve_speed_production_bu(
-                workcenter, part_no, part_to_bu
-            )
+            mapped_bu = part_to_bu.get(part_no, BusinessUnit.SPEED)
+            if mapped_bu == BusinessUnit.EATON:
+                business_unit = resolve_speed_production_bu(
+                    workcenter, part_no, {str(part_no).split(".")[0]: mapped_bu}
+                )
+            else:
+                business_unit = mapped_bu
 
             if business_unit == BusinessUnit.SPEED:
                 logger.warning(
