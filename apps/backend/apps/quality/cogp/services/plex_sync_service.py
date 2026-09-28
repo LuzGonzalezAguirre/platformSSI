@@ -5,7 +5,10 @@ from apps.quality.services.plex_client_quality import QualityPlexClient
 from apps.quality.repositories.qwall_repository import QWallRepository
 from apps.quality.cogp.repositories.cogp_repository import CogpRepository
 from apps.quality.models import BusinessUnit, ClassificationSource
-from apps.quality.cogp.services.speed_customer_classification import resolve_speed_scrap_bu
+from apps.quality.cogp.services.speed_customer_classification import (
+    resolve_speed_scrap_bu,
+    resolve_speed_production_bu,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -228,7 +231,10 @@ class PlexSyncService:
 
         for row in raw_rows:
             part_no = row["Part_No"]
-            business_unit = part_to_bu.get(part_no, BusinessUnit.SPEED)
+            workcenter = row.get("Workcenter") or ""
+            business_unit = resolve_speed_production_bu(
+                workcenter, part_no, part_to_bu
+            )
 
             if business_unit == BusinessUnit.SPEED:
                 logger.warning(
