@@ -246,8 +246,28 @@ class ProblemFinalApprovalView(APIView):
                 return Response({"detail": "Only the assigned approver can reject this section."}, status=status.HTTP_403_FORBIDDEN)
 
             _save_rejection(problem, role, comments, request.user)
-            problem.status = "approved"
-            problem.save(update_fields=["status", "updated_at"])
+
+            # Un solo rechazo cancela inmediatamente el ciclo completo de
+            # aprobación. El 8D vuelve a Draft para que pueda editarse sin
+            # esperar decisiones de los demás aprobadores.
+            problem.approved_by = None
+            problem.approved_at = None
+            problem.approval_comments = ""
+            problem.manufacturing_approved_at = None
+            problem.production_approved_at = None
+            problem.maintenance_approved_at = None
+            problem.status = "draft"
+            problem.save(update_fields=[
+                "approved_by",
+                "approved_at",
+                "approval_comments",
+                "manufacturing_approved_at",
+                "production_approved_at",
+                "maintenance_approved_at",
+                "status",
+                "updated_at",
+            ])
+
             problem = self._get_problem(pk)
             return Response(_payload(problem, request.user))
 
