@@ -49,7 +49,7 @@ class QWallRepository:
                 "bu_ids":     normalized,
             },
             headers=HEADERS,
-            timeout=30,
+            timeout=120,
         )
         resp.raise_for_status()
         rows = resp.json().get("data", [])
