@@ -174,7 +174,7 @@ export const ProblemWizardPage: React.FC = () => {
       return;
     }
 
-    if (!window.confirm('Submit this problem for final approval? The 8D will become read-only while the four approvals are collected.')) return;
+
 
     try {
       await updateMutation.mutateAsync({ id: Number(id), data: buildUpdatePayload() });
@@ -187,7 +187,7 @@ export const ProblemWizardPage: React.FC = () => {
   };
 
   const handleBack = () => {
-    if (window.confirm('Are you sure you want to leave? Unsaved changes will be lost.')) navigate('/quality/problems');
+    navigate('/quality/problems');
   };
 
   const isSaving = createMutation.isPending || updateMutation.isPending || submitMutation.isPending;
