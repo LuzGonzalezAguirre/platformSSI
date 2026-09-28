@@ -165,8 +165,8 @@ class CogpParetoService:
             wc_name = row.get("Workcenter")
             if wc_filter_set is not None and wc_name not in wc_filter_set:
                 continue
-            bu = _resolve_bu_for_pareto_scrap(
-                row.get("Workcenter_Group"), wc_name, row.get("Part_No"), part_to_bu,
+            bu = _resolve_bu_for_pareto_production(
+                wc_name, row.get("Workcenter_Group"), row.get("Part_No"), part_to_bu,
             )
             if bu in by_bu_produced_qty:
                 by_bu_produced_qty[bu] += _to_int_qty(row.get("Quantity"))
