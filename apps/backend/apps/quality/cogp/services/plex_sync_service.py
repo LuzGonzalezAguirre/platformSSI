@@ -9,6 +9,7 @@ from apps.quality.cogp.services.speed_customer_classification import (
     resolve_speed_scrap_bu,
     resolve_speed_production_bu,
     EATON_SPEED_WORKCENTERS,
+    SHARED_FINISHED_GOOD_WORKCENTER,
 )
 
 logger = logging.getLogger(__name__)
@@ -233,12 +234,20 @@ class PlexSyncService:
         for row in raw_rows:
             part_no = row["Part_No"]
             workcenter = row.get("Workcenter") or ""
-            mapped_bu = part_to_bu.get(part_no, BusinessUnit.SPEED)
-            if workcenter.strip() in EATON_SPEED_WORKCENTERS:
-                business_unit = BusinessUnit.EATON
-            elif mapped_bu == BusinessUnit.EATON:
-                # Eaton fuera de sus tres WCs no se contabiliza como Eaton.
-                business_unit = BusinessUnit.SPEED
+            base_part_no = str(part_no or "").strip().split(".")[0]
+            mapped_bu = (
+                part_to_bu.get(str(part_no or "").strip())
+                or part_to_bu.get(base_part_no)
+                or BusinessUnit.SPEED
+            )
+            if (
+                workcenter.strip() in EATON_SPEED_WORKCENTERS
+                or workcenter.strip() == SHARED_FINISHED_GOOD_WORKCENTER
+                or mapped_bu in (BusinessUnit.JOHN_DEERE, BusinessUnit.EATON)
+            ):
+                business_unit = resolve_speed_production_bu(
+                    workcenter, part_no, part_to_bu
+                )
             else:
                 business_unit = mapped_bu
 
