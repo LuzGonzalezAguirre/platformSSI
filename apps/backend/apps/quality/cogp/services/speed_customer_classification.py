@@ -29,16 +29,17 @@ EATON_SPEED_WORKCENTERS = frozenset({
 })
 
 JOHN_DEERE_SPEED_WORKCENTERS = frozenset({
-    "Velocidad Ensamble de Transportador",
-    "Velocidad QC Inspección",
+    "Velocidad Corte y Formado de IC",
     "Velocidad Ensamble de Copa",
-    "Velocidad Prueba Final",
+    "Velocidad Ensamble de Transportador",
+    "Velocidad Moldeo AS1",
+    "Velocidad QC Inspección",
+    "Velocidad - Corte y Formado de IC",
 })
 
-# Unico workcenter Speed compartido fisicamente entre John Deere y Eaton
-# (Workcenter_Key=78740, un solo registro en Plex). Resuelto por Part_No,
-# no por nombre de workcenter.
-SHARED_SPEED_WORKCENTER = "Velocidad Moldeo AS1"
+# Finished Good compartido entre John Deere y Eaton. En produccion no se
+# puede resolver por WC: se clasifica por Part_No/modelo.
+SHARED_FINISHED_GOOD_WORKCENTER = "Velocidad - Prueba Final"
 
 
 def resolve_speed_scrap_bu(
@@ -54,13 +55,10 @@ def resolve_speed_scrap_bu(
     """
     wc = (workcenter or "").strip()
 
-    if wc in EATON_SPEED_WORKCENTERS:
-        return BusinessUnit.EATON
     if wc in JOHN_DEERE_SPEED_WORKCENTERS:
         return BusinessUnit.JOHN_DEERE
-    if wc == SHARED_SPEED_WORKCENTER:
-        base_part_no = str(part_no or "").strip().split(".")[0]
-        return part_to_bu.get(base_part_no)
+    if wc in EATON_SPEED_WORKCENTERS:
+        return BusinessUnit.EATON
     return None
 
 
@@ -70,19 +68,29 @@ def resolve_speed_production_bu(
     part_to_bu: dict[str, str],
 ) -> str:
     """
-    Regla de PRODUCCION/Finished Good para Speed.
+    Clasifica PRODUCCION/Finished Good de Speed.
 
-    Eaton es estrictamente fisico: solo los tres workcenters declarados en
-    EATON_SPEED_WORKCENTERS pueden alimentar sus piezas producidas, costo
-    extendido y denominadores. Un Part_No mapeado a Eaton fuera de esos WCs
-    NO se atribuye a Eaton.
+    John Deere solo toma Finished Good de Velocidad - Prueba Final.
+    Ese WC tambien pertenece a Eaton, por lo que ahi la BU se decide por
+    Part_No/modelo. Los otros WCs exclusivos de Eaton siguen entrando a Eaton.
     """
     wc = (workcenter or "").strip()
+    base_part_no = str(part_no or "").strip().split(".")[0]
+    mapped_bu = (
+        part_to_bu.get(str(part_no or "").strip())
+        or part_to_bu.get(base_part_no)
+        or BusinessUnit.SPEED
+    )
+
+    if wc == SHARED_FINISHED_GOOD_WORKCENTER:
+        if mapped_bu in (BusinessUnit.JOHN_DEERE, BusinessUnit.EATON):
+            return mapped_bu
+        return BusinessUnit.SPEED
+
     if wc in EATON_SPEED_WORKCENTERS:
         return BusinessUnit.EATON
 
-    base_part_no = str(part_no or "").strip().split(".")[0]
-    mapped_bu = part_to_bu.get(base_part_no, BusinessUnit.SPEED)
-    if mapped_bu == BusinessUnit.EATON:
+    # Ningun otro WC Speed cuenta como Finished Good de John Deere/Eaton.
+    if mapped_bu in (BusinessUnit.JOHN_DEERE, BusinessUnit.EATON):
         return BusinessUnit.SPEED
     return mapped_bu
