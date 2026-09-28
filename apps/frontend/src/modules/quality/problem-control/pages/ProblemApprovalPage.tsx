@@ -102,7 +102,10 @@ export const ProblemApprovalPage: React.FC = () => {
       qc.invalidateQueries({ queryKey: ['problem', problemId] });
       qc.invalidateQueries({ queryKey: ['problems'] });
       setComments((prev) => ({ ...prev, [variables.role]: '' }));
-      setMessage({ type: 'error', text: '8D rejected. The problem has been reopened for editing.' });
+      navigate(`/quality/problems/${problemId}/edit`, {
+        replace: true,
+        state: { reopenedByRejection: true },
+      });
     },
     onError: (err: any) => {
       setMessage({
