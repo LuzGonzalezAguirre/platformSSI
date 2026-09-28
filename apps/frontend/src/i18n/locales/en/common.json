@@ -361,7 +361,8 @@
       "scanRules": "Scan Rules",
       "general": "General",
       "summary": "Summary",
-      "rejected": "Rejected Lots"
+      "rejected": "Rejected Lots",
+      "lots": "Lot inspection"
     },
     "rejected": {
       "title": "Rejected Lots",
@@ -515,6 +516,37 @@
         "configured": "✓ Configured",
         "notConfigured": "+ No rule"
       }
+    },
+    "lots": {
+      "configuration": "Lot configuration",
+      "perBu": "Each BU has its own setting. A general size applies to all its models, or you can set a size per model.",
+      "selectBu": "Select a BU using the filter above.",
+      "loading": "Loading…",
+      "loadError": "Could not load data.",
+      "mode": "Configuration mode",
+      "general": "General per BU",
+      "byModel": "By model",
+      "generalSize": "BU lot size",
+      "index": "Inspection index",
+      "enabled": "Enable configuration",
+      "noModels": "This BU has no available models in CCS.",
+      "lotSize": "Lot size",
+      "saved": "Configuration saved.",
+      "saveError": "Could not save.",
+      "saving": "Saving…",
+      "save": "Save configuration",
+      "matrix": "Military sampling table",
+      "source": "GL-QA 02, Rev. 00 · Grouped AQL · C=0",
+      "previewLot": "Lot quantity to look up",
+      "previewIndex": "Index to look up",
+      "unavailable": "No verified sample for this range",
+      "required": "Required sample",
+      "pieces": "pieces",
+      "lotRange": "Lot quantity",
+      "selected": "Selected sample",
+      "entireLot": "inspect the entire lot",
+      "star": "* Means inspect the entire lot.",
+      "missingRow": "The document does not cover 500,001–500,999; verify the source before configuring lots of that size."
     }
   },
   "warehouse": {

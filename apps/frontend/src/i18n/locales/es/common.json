@@ -434,7 +434,8 @@
       "inspectionPoints": "Puntos de Inspección",
       "failModes": "Modos de Falla",
       "scanRules": "Reglas de Escaneo",
-      "general": "General"
+      "general": "General",
+      "lots": "Inspección por lote"
     },
     "filter": {
       "label": "BU:",
@@ -580,6 +581,37 @@
         "configured": "✓ Configurada",
         "notConfigured": "+ Sin regla"
       }
+    },
+    "lots": {
+      "configuration": "Configuración del lote",
+      "perBu": "Cada BU tiene su propia configuración. El tamaño general aplica a todos sus modelos; también puedes definir uno por modelo.",
+      "selectBu": "Selecciona un BU en el filtro superior.",
+      "loading": "Cargando…",
+      "loadError": "No se pudieron cargar los datos.",
+      "mode": "Tipo de configuración",
+      "general": "General por BU",
+      "byModel": "Por modelo",
+      "generalSize": "Cantidad por lote del BU",
+      "index": "Índice de inspección",
+      "enabled": "Activar configuración",
+      "noModels": "Este BU no tiene modelos disponibles en CCS.",
+      "lotSize": "Cantidad por lote",
+      "saved": "Configuración guardada.",
+      "saveError": "No se pudo guardar.",
+      "saving": "Guardando…",
+      "save": "Guardar configuración",
+      "matrix": "Tabla de muestreo militar",
+      "source": "GL-QA 02, Rev. 00 · AQL agrupados · C=0",
+      "previewLot": "Cantidad de lote para consulta",
+      "previewIndex": "Índice para consulta",
+      "unavailable": "Sin muestra verificada para este rango",
+      "required": "Muestra requerida",
+      "pieces": "piezas",
+      "lotRange": "Cantidad de lote",
+      "selected": "Muestra seleccionada",
+      "entireLot": "inspeccionar todo el lote",
+      "star": "* Indica inspeccionar todo el lote.",
+      "missingRow": "El documento deja sin rango 500,001–500,999; verifica la fuente antes de configurar lotes de ese tamaño."
     }
   },
   "warehouse": {

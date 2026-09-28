@@ -174,3 +174,13 @@ export const fetchPartNumberLookup = (bu_id?: number) => {
     .get<{ data: PartNumberLookup[] }>(`${SCAN_BASE}/pn-lookup/`, { params })
     .then(r => r.data.data);
 };
+
+// ── Lot sampling (PostgreSQL) ────────────────────────────────────────────────
+export const fetchSamplingMatrix = () =>
+  apiClient.get<{ data: import('../types').SamplingCell[] }>(`${BASE}/lot-sampling/matrix/`).then(r => r.data.data);
+
+export const fetchLotConfiguration = (buId: number) =>
+  apiClient.get<{ data: import('../types').LotConfiguration | null }>(`${BASE}/lot-sampling/${buId}/`).then(r => r.data.data);
+
+export const saveLotConfiguration = (buId: number, config: Omit<import('../types').LotConfiguration, 'bu_id'>) =>
+  apiClient.put<{ data: import('../types').LotConfiguration }>(`${BASE}/lot-sampling/${buId}/`, config).then(r => r.data.data);

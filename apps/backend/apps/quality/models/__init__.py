@@ -16,6 +16,7 @@ from .audit import ProblemAudit
 from .failure_catalog import FailureModeImage
 from .fail_mode_translation import FailModeTranslation
 from .qwall_settings import QWallSettings
+from .lot_sampling import QWallLotSetting, QWallLotModelSetting, QWallSamplingCell
 from .problem_control_settings import ProblemControlSettings
 from .incoming_inspection import (
     IncomingContainerSnapshot,
@@ -69,6 +70,9 @@ __all__ = [
     'FailureModeImage',
     'FailModeTranslation',
     'QWallSettings',
+    'QWallLotSetting',
+    'QWallLotModelSetting',
+    'QWallSamplingCell',
     'ProblemControlSettings',
     'IncomingContainerSnapshot',
     'IncomingContainerHistory',

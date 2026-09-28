@@ -8,11 +8,12 @@ import PartNumbersTab from "./components/PartNumbersTab";
 import InspectionPointsTab from "./components/InspectionPointsTab";
 import FailModesTab from "./components/FailModesTab";
 import GeneralSettingsTab from "./components/GeneralSettingsTab";
+import LotSamplingTab from "./components/LotSamplingTab";
 import PartNumberRulesTab from "./components/PartNumberRulesTab";
 
-type TabId = "users" | "partNumbers" | "inspectionPoints" | "failModes" | "scanRules" | "general";
+type TabId = "users" | "partNumbers" | "inspectionPoints" | "failModes" | "scanRules" | "general" | "lots";
 
-const TABS: TabId[] = ["users", "partNumbers", "inspectionPoints", "failModes", "scanRules", "general"];
+const TABS: TabId[] = ["users", "partNumbers", "inspectionPoints", "failModes", "scanRules", "general", "lots"];
 const NO_BU_TABS: TabId[] = ["users", "general"];
 
 export default function QWallSettingsPage() {
@@ -68,6 +69,7 @@ export default function QWallSettingsPage() {
         {activeTab === "failModes"        && <FailModesTab buId={buId} />}
         {activeTab === "scanRules"        && <PartNumberRulesTab buId={buId} />}
         {activeTab === "general"          && <GeneralSettingsTab />}
+        {activeTab === "lots"             && <LotSamplingTab buId={buId} />}
       </div>
     </div>
   );

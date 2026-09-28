@@ -108,3 +108,19 @@ export interface PartNumberLookup {
   bu_id: number
   bu_name: string
 }
+
+export interface SamplingCell {
+  lot_min: number;
+  lot_max: number | null;
+  inspection_index: string;
+  sample_size: number | null; // null means inspect the whole lot (*)
+}
+
+export interface LotConfiguration {
+  bu_id: number;
+  mode: 'GENERAL' | 'BY_MODEL';
+  general_lot_size: number | null;
+  inspection_index: string;
+  enabled: boolean;
+  models: { pn_id: number; lot_size: number }[];
+}

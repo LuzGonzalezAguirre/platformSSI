@@ -19,7 +19,11 @@ from apps.quality.views.qwall_settings_views import (
     QWallPassRateTargetView,
 )
 
+from apps.quality.views.lot_sampling_views import QWallSamplingMatrixView, QWallLotConfigurationView
+
 urlpatterns = [
+    path("lot-sampling/matrix/", QWallSamplingMatrixView.as_view()),
+    path("lot-sampling/<int:bu_id>/", QWallLotConfigurationView.as_view()),
     path("business-units/",                              QWallBusinessUnitsView.as_view()),
     path("qwall-roles/",                                 QWallRolesView.as_view()),
     path("users/",                                       QWallUsersView.as_view()),
