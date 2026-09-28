@@ -14,6 +14,8 @@ from apps.ssi_common.bu_classification import (
 from apps.quality.cogp.services.speed_customer_classification import (
     resolve_speed_scrap_bu,
     resolve_speed_production_bu,
+    EATON_FINISHED_GOOD_WORKCENTER,
+    JOHN_DEERE_FINISHED_GOOD_WORKCENTER,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,7 +48,12 @@ def _resolve_bu_for_live_production(
     part_no: str | None,
     part_to_bu: dict[str, str],
 ) -> str:
-    if workcenter_group == "Speed":
+    wc = (workcenter or "").strip()
+    if (
+        workcenter_group == "Speed"
+        or wc == EATON_FINISHED_GOOD_WORKCENTER
+        or wc == JOHN_DEERE_FINISHED_GOOD_WORKCENTER
+    ):
         return resolve_speed_production_bu(workcenter, part_no, part_to_bu)
     return resolve_bu_for_production(workcenter)
 
