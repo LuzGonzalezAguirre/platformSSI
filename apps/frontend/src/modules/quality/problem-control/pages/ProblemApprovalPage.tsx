@@ -230,11 +230,7 @@ export const ProblemApprovalPage: React.FC = () => {
                           type="button"
                           style={{ ...s.rejectBtn, ...(!typedComment.trim() || rejectMutation.isPending ? s.disabled : {}) }}
                           disabled={!typedComment.trim() || rejectMutation.isPending}
-                          onClick={() => {
-                            if (window.confirm('Reject this 8D and reopen it for editing?')) {
-                              rejectMutation.mutate({ role: item.role, comment: typedComment.trim() });
-                            }
-                          }}
+                          onClick={() => rejectMutation.mutate({ role: item.role, comment: typedComment.trim() })}
                         >
                           {rejectMutation.isPending ? 'Rejecting...' : 'Reject'}
                         </button>
@@ -275,11 +271,7 @@ export const ProblemApprovalPage: React.FC = () => {
           type="button"
           style={{ ...s.closeBtn, ...(!data.ready_to_close || closeMutation.isPending ? s.disabled : {}) }}
           disabled={!data.ready_to_close || closeMutation.isPending}
-          onClick={() => {
-            if (window.confirm('Close this problem? The four final approvals are complete.')) {
-              closeMutation.mutate();
-            }
-          }}
+          onClick={() => closeMutation.mutate()}
         >
           {closeMutation.isPending ? 'Closing...' : 'Close Problem'}
         </button>
