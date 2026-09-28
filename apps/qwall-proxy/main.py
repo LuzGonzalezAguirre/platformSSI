@@ -1697,3 +1697,147 @@ def action_tracker_open_actions(source: str = Query(...)):
 
 
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Q-WALL LOT SAMPLING — all settings and the GL-QA 02 matrix live in CCS.
+# ══════════════════════════════════════════════════════════════════════════════
+
+class LotModelBody(BaseModel):
+    pn_id: int
+    lot_size: int
+
+
+class LotConfigurationBody(BaseModel):
+    mode: str
+    general_lot_size: int | None = None
+    inspection_index: str
+    enabled: bool
+    models: list[LotModelBody] = []
+
+
+def _lot_config_row(c, bu_id: int):
+    c.execute("""
+        SELECT setting_id, bu_id, mode, general_lot_size, inspection_index, enabled
+        FROM dbo.ssi_QWallLotSettings WHERE bu_id = ?
+    """, bu_id)
+    rows = _rows_to_dicts(c)
+    if not rows:
+        return None
+    row = rows[0]
+    c.execute("""
+        SELECT pn_id, lot_size FROM dbo.ssi_QWallLotModelSettings
+        WHERE setting_id = ? ORDER BY pn_id
+    """, row['setting_id'])
+    row['models'] = _rows_to_dicts(c)
+    row['enabled'] = bool(row['enabled'])
+    del row['setting_id']
+    return row
+
+
+@app.get('/settings/lot-sampling/matrix', dependencies=[Depends(verify)])
+def settings_lot_sampling_matrix():
+    try:
+        conn = get_conn()
+        try:
+            c = conn.cursor()
+            c.execute("""
+                SELECT lot_min, lot_max, inspection_index, sample_size
+                FROM dbo.ssi_QWallSamplingMatrix ORDER BY lot_min, matrix_id
+            """)
+            return {'data': _rows_to_dicts(c)}
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get('/settings/lot-sampling/{bu_id}', dependencies=[Depends(verify)])
+def settings_lot_configuration(bu_id: int):
+    try:
+        conn = get_conn()
+        try:
+            return {'data': _lot_config_row(conn.cursor(), bu_id)}
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.put('/settings/lot-sampling/{bu_id}', dependencies=[Depends(verify)])
+def settings_save_lot_configuration(bu_id: int, body: LotConfigurationBody):
+    if bu_id <= 0 or body.mode not in ('GENERAL', 'BY_MODEL'):
+        raise HTTPException(status_code=400, detail='BU o modo inválido.')
+    models = {model.pn_id: model.lot_size for model in body.models}
+    if body.mode == 'BY_MODEL' and len(models) != len(body.models):
+        raise HTTPException(status_code=400, detail='Hay modelos duplicados.')
+    if body.mode == 'GENERAL':
+        if body.general_lot_size is None or body.general_lot_size < 2:
+            raise HTTPException(status_code=400, detail='Cantidad general de lote inválida.')
+        sizes = [body.general_lot_size]
+        models = {}
+    else:
+        if not models or any(pn_id <= 0 or size < 2 for pn_id, size in models.items()):
+            raise HTTPException(status_code=400, detail='Configura tamaños válidos por modelo.')
+        sizes = list(models.values())
+
+    conn = None
+    try:
+        conn = get_conn()
+        c = conn.cursor()
+        c.execute('SELECT 1 FROM dbo.ssi_BusinessUnits WHERE bu_id = ?', bu_id)
+        if not c.fetchone():
+            raise HTTPException(status_code=400, detail='Business Unit desconocida.')
+        c.execute('SELECT 1 FROM dbo.ssi_QWallSamplingMatrix WHERE inspection_index = ?', body.inspection_index)
+        if not c.fetchone():
+            raise HTTPException(status_code=400, detail='Índice de inspección inválido.')
+        for size in sizes:
+            c.execute("""
+                SELECT 1 FROM dbo.ssi_QWallSamplingMatrix
+                WHERE inspection_index = ? AND lot_min <= ?
+                AND (lot_max >= ? OR lot_max IS NULL)
+            """, body.inspection_index, size, size)
+            if not c.fetchone():
+                raise HTTPException(status_code=400, detail=f'Lote {size} fuera de la matriz GL-QA 02.')
+        if body.mode == 'BY_MODEL':
+            c.execute('SELECT pn_id FROM dbo.ssi_PartNumbers WHERE bu_id = ?', bu_id)
+            valid_ids = {int(row[0]) for row in c.fetchall()}
+            if not set(models).issubset(valid_ids) or (body.enabled and set(models) != valid_ids):
+                raise HTTPException(status_code=400, detail='Configura todos los modelos del BU antes de activar.')
+
+        c.execute('SELECT setting_id FROM dbo.ssi_QWallLotSettings WITH (UPDLOCK, HOLDLOCK) WHERE bu_id = ?', bu_id)
+        existing = c.fetchone()
+        if existing:
+            setting_id = int(existing[0])
+            c.execute("""
+                UPDATE dbo.ssi_QWallLotSettings
+                SET mode = ?, general_lot_size = ?, inspection_index = ?, enabled = ?, updated_at = SYSUTCDATETIME()
+                WHERE setting_id = ?
+            """, body.mode, body.general_lot_size if body.mode == 'GENERAL' else None,
+                body.inspection_index, body.enabled, setting_id)
+        else:
+            c.execute("""
+                INSERT INTO dbo.ssi_QWallLotSettings
+                    (bu_id, mode, general_lot_size, inspection_index, enabled)
+                OUTPUT INSERTED.setting_id VALUES (?, ?, ?, ?, ?)
+            """, bu_id, body.mode, body.general_lot_size if body.mode == 'GENERAL' else None,
+                body.inspection_index, body.enabled)
+            setting_id = int(c.fetchone()[0])
+        c.execute('DELETE FROM dbo.ssi_QWallLotModelSettings WHERE setting_id = ?', setting_id)
+        for pn_id, size in models.items():
+            c.execute("""
+                INSERT INTO dbo.ssi_QWallLotModelSettings (setting_id, pn_id, lot_size)
+                VALUES (?, ?, ?)
+            """, setting_id, pn_id, size)
+        conn.commit()
+        return {'data': _lot_config_row(c, bu_id)}
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as exc:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(exc))
+    finally:
+        if conn:
+            conn.close()

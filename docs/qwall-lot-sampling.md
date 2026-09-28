@@ -1,23 +1,14 @@
 # Q-Wall: configuración de inspección por lote
 
-El tab **Inspección por lote** guarda el tamaño general de cada BU de forma independiente (por ejemplo Eaton 120 y CPS 90) o uno por cada modelo del BU. CCS sólo se consulta para validar BU y modelos. Las tres tablas nuevas viven en **PostgreSQL de platformSSI**, no en CCS/SQL Server.
+La configuración **General por BU** permite, por ejemplo, Eaton = 120 y CPS = 90 para todos los modelos respectivos. **Por modelo** guarda un tamaño individual para cada PN. La configuración, las elecciones guardadas y la matriz GL-QA 02 Rev. 00 están en **CCS / SQL Server** (`dbo.ssi_QWallLotSettings`, `dbo.ssi_QWallLotModelSettings`, `dbo.ssi_QWallSamplingMatrix`). El backend Django verifica los roles y envía las peticiones al `qwall-proxy`; no escribe estas elecciones en PostgreSQL.
 
-La matriz se transcribió de GL-QA 02 Rev. 00. Una celda `*` significa inspeccionar el lote completo. La nueva foto deja leer completa la fila **151–280**. El documento aún deja sin rango **500,001–500,999**. Esas cantidades no calculan muestras ni se pueden guardar como tamaño configurado hasta contrastarlas con un original legible. La pantalla resalta la intersección del lote y el índice (120 con 2.5 = 11).
+## Instalación en el servidor
 
-## Instalación recomendada (Django crea y llena las tablas)
+1. `git pull origin main` en platformSSI.
+2. Ejecuta [`../scripts/sql/ssi_QWallLotSampling.sql`](../scripts/sql/ssi_QWallLotSampling.sql) en **CCS**, por ejemplo con SSMS. El script es repetible y conserva las elecciones existentes. **No** lo ejecutes en PostgreSQL.
+3. Ejecuta `docker compose exec backend python manage.py migrate`. La migración `quality.0009` retira las tablas PostgreSQL que había agregado el cambio anterior. En instalaciones nuevas, `0008` crea esas tablas y `0009` las elimina; el estado final no incluye tablas de lotes en PostgreSQL. Si alguien llegó a guardar elecciones allí, `0009` se detiene para que se copien a CCS antes de eliminarlas.
+4. Reinicia backend, qwall-proxy y frontend después de actualizar el código. El proxy corre en Windows por separado; reinicia su proceso `start_qwall_proxy.bat` o el servicio que lo aloja.
 
-```bash
-git pull origin main
-docker compose exec backend python manage.py showmigrations quality
-docker compose exec backend python manage.py migrate
-# Si el frontend se sirve desde un build de Docker:
-docker compose up -d --build backend frontend
-```
+En la pantalla, 120 piezas con índice 2.5 corresponden a 11 inspecciones y 200 con índice 2.5 a 13. El original deja sin rango 500,001–500,999; esas cantidades no se pueden configurar hasta verificar el criterio correcto.
 
-El comando `migrate` aplica `quality.0008_qwall_lot_sampling` y los demás cambios pendientes. Reiniciar el backend y publicar el frontend es necesario para servir los endpoints y el tab nuevo. Ajusta los nombres de servicios si tu compose de producción los cambia.
-
-## Instalación manual por SQL (alternativa)
-
-Ejecuta [`sql/qwall_lot_sampling_postgres.sql`](sql/qwall_lot_sampling_postgres.sql) **una sola vez en PostgreSQL de platformSSI**, después de tener aplicada `quality.0007_cogpsettings`. Este script crea y llena las tres tablas y registra `0008` en `django_migrations` en la misma transacción. No ejecutes además la migración `0008` para crear esas mismas tablas: al estar registrada, Django la omite. Luego ejecuta `python manage.py migrate` normalmente para otras migraciones pendientes.
-
-Este cambio prepara el setup y la consulta de muestras. La apertura automática de una inspección al completar un lote y el escaneo del inspector requieren definir el identificador y el inicio/cierre real de cada lote; todavía no se conectan con el flujo de producción.
+Este cambio entrega el setup y la consulta de muestras. La apertura automática de una inspección al completar un lote requiere definir el identificador y el inicio/cierre real de cada lote; todavía no se conecta con el flujo de producción.
