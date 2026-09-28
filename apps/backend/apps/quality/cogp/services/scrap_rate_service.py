@@ -18,7 +18,12 @@ logger = logging.getLogger(__name__)
 
 GLOBAL_KEY = "GLOBAL"
 
-TRACKED_BUS = (BusinessUnit.VOLVO, BusinessUnit.CUMMINS, BusinessUnit.TULC)
+TRACKED_BUS = (
+    BusinessUnit.VOLVO,
+    BusinessUnit.CUMMINS,
+    BusinessUnit.TULC,
+    BusinessUnit.EATON,
+)
 
 # Set de BUs que el usuario puede PEDIR (query param `bu`). GLOBAL no esta
 # aqui a proposito: dejo de ser un valor seleccionable y paso a ser el
@@ -188,7 +193,7 @@ class ScrapRateService:
     # suma dinamica) NO sube la version. La forma del bucket cacheado por
     # semana no cambio -- solo cambio como se ensambla la respuesta al
     # final, y eso pasa fuera del cache en cada request.
-    CACHE_VERSION = "v3"
+    CACHE_VERSION = "v4"
 
     def __init__(self, client: QualityPlexClient | None = None):
         self.client = client or QualityPlexClient()
