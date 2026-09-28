@@ -13,6 +13,10 @@ interface ApprovalItem {
   approved_at: string | null;
   comments: string;
   can_approve: boolean;
+  can_reject: boolean;
+  rejected_at: string | null;
+  rejection_comments: string;
+  rejected_by: UserBasic | null;
 }
 
 interface ApprovalStatus {
@@ -64,6 +68,7 @@ export const ProblemApprovalPage: React.FC = () => {
     mutationFn: async ({ role, comment }: { role: ApprovalRole; comment: string }) => {
       const response = await apiClient.post(`/quality/problems/${problemId}/final-approvals/`, {
         role,
+        decision: 'approve',
         comments: comment,
       });
       return response.data as ApprovalStatus;
@@ -79,6 +84,30 @@ export const ProblemApprovalPage: React.FC = () => {
       setMessage({
         type: 'error',
         text: err.response?.data?.detail || err.message || 'Unable to record approval.',
+      });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async ({ role, comment }: { role: ApprovalRole; comment: string }) => {
+      const response = await apiClient.post(`/quality/problems/${problemId}/final-approvals/`, {
+        role,
+        decision: 'reject',
+        comments: comment,
+      });
+      return response.data as ApprovalStatus;
+    },
+    onSuccess: (updated, variables) => {
+      qc.setQueryData(['problem-final-approvals', problemId], updated);
+      qc.invalidateQueries({ queryKey: ['problem', problemId] });
+      qc.invalidateQueries({ queryKey: ['problems'] });
+      setComments((prev) => ({ ...prev, [variables.role]: '' }));
+      setMessage({ type: 'error', text: '8D rejected. The problem has been reopened for editing.' });
+    },
+    onError: (err: any) => {
+      setMessage({
+        type: 'error',
+        text: err.response?.data?.detail || err.message || 'Unable to reject the 8D.',
       });
     },
   });
@@ -193,14 +222,28 @@ export const ProblemApprovalPage: React.FC = () => {
                         placeholder={`Add ${item.label} approval comments...`}
                         style={s.textarea}
                       />
-                      <button
-                        type="button"
-                        style={{ ...s.approveBtn, ...(!typedComment.trim() || approveMutation.isPending ? s.disabled : {}) }}
-                        disabled={!typedComment.trim() || approveMutation.isPending}
-                        onClick={() => approveMutation.mutate({ role: item.role, comment: typedComment.trim() })}
-                      >
-                        {approveMutation.isPending ? 'Saving approval...' : `Approve as ${item.label}`}
-                      </button>
+                      <div style={s.decisionRow}>
+                        <button
+                          type="button"
+                          style={{ ...s.rejectBtn, ...(!typedComment.trim() || rejectMutation.isPending ? s.disabled : {}) }}
+                          disabled={!typedComment.trim() || rejectMutation.isPending}
+                          onClick={() => {
+                            if (window.confirm('Reject this 8D and reopen it for editing?')) {
+                              rejectMutation.mutate({ role: item.role, comment: typedComment.trim() });
+                            }
+                          }}
+                        >
+                          {rejectMutation.isPending ? 'Rejecting...' : 'Reject'}
+                        </button>
+                        <button
+                          type="button"
+                          style={{ ...s.approveBtn, ...(!typedComment.trim() || approveMutation.isPending ? s.disabled : {}) }}
+                          disabled={!typedComment.trim() || approveMutation.isPending}
+                          onClick={() => approveMutation.mutate({ role: item.role, comment: typedComment.trim() })}
+                        >
+                          {approveMutation.isPending ? 'Saving approval...' : `Approve as ${item.label}`}
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <div style={s.waitingBox}>
@@ -276,7 +319,9 @@ const s: Record<string, React.CSSProperties> = {
   commentLabel: { display: 'block', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, color: 'var(--color-text-secondary)', marginBottom: '0.35rem' },
   savedComment: { whiteSpace: 'pre-wrap', color: 'var(--color-text-primary)', fontSize: '0.85rem', lineHeight: 1.45 },
   textarea: { width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--color-border)', borderRadius: '0.5rem', background: 'var(--color-bg)', color: 'var(--color-text-primary)', padding: '0.65rem', fontFamily: 'inherit', fontSize: '0.85rem' },
-  approveBtn: { width: '100%', marginTop: '0.75rem', padding: '0.6rem 0.8rem', border: 'none', borderRadius: '0.5rem', background: '#16a34a', color: '#fff', fontWeight: 800, cursor: 'pointer' },
+  decisionRow: { display: 'flex', gap: '0.5rem', marginTop: '0.75rem' },
+  rejectBtn: { flex: 1, padding: '0.6rem 0.8rem', border: 'none', borderRadius: '0.5rem', background: '#dc2626', color: '#fff', fontWeight: 800, cursor: 'pointer' },
+  approveBtn: { flex: 2, padding: '0.6rem 0.8rem', border: 'none', borderRadius: '0.5rem', background: '#16a34a', color: '#fff', fontWeight: 800, cursor: 'pointer' },
   waitingBox: { padding: '0.8rem', borderRadius: '0.5rem', background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontSize: '0.82rem' },
   closeReady: { marginTop: '1.25rem', padding: '1.1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', border: '1px solid #86efac', borderRadius: '0.75rem', background: '#f0fdf4' },
   closePending: { marginTop: '1.25rem', padding: '1.1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', border: '1px solid #fde68a', borderRadius: '0.75rem', background: '#fffbeb' },
