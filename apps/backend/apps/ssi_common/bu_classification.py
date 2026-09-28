@@ -36,8 +36,8 @@ PRODUCTION_WORKCENTER_TO_BU = {
     "TULC Ensamble Final":      BusinessUnit.TULC,
     "HM Empaque":               BusinessUnit.CUMMINS,
     "HM Ensamble Final 3":      BusinessUnit.CUMMINS,
-    "Velocidad - Prueba Final":     BusinessUnit.EATON,
-    "Velocidad - Prueba Final 3":   BusinessUnit.JOHN_DEERE,
+    "Speed - Final Test":     BusinessUnit.EATON,
+    "Speed - Final Test 3":   BusinessUnit.JOHN_DEERE,
 }
 
 TERMINAL_WORKCENTERS = frozenset(PRODUCTION_WORKCENTER_TO_BU)
@@ -80,10 +80,10 @@ SCRAP_RATE_WORKCENTER_TO_BU = {
     "HM Ensamble Final 2":                    BusinessUnit.VOLVO,
     "HM Ensamble de Servicio":                BusinessUnit.CUMMINS,
     "TULC Ensamble Final":                    BusinessUnit.TULC,
-    "Velocidad - Prueba Final":               BusinessUnit.EATON,
-    "Velocidad - Prueba Final 3":             BusinessUnit.JOHN_DEERE,
-    "Velocidad - Moldeadora - Arburg R5":     BusinessUnit.EATON,
-    "Velocidad - Bobinadora de 12 Niveles":   BusinessUnit.EATON,
+    "Speed - Final Test":               BusinessUnit.EATON,
+    "Speed - Final Test 3":             BusinessUnit.JOHN_DEERE,
+    "Arburg Rotary # 5":     BusinessUnit.EATON,
+    "Speed - 12 Level Winder":   BusinessUnit.EATON,
 }
 
 TERMINAL_WORKCENTERS = frozenset(SCRAP_RATE_WORKCENTER_TO_BU)
