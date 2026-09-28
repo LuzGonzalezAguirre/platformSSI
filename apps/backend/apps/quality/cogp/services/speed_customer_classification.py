@@ -23,9 +23,9 @@ el resto del sistema.
 from apps.quality.models import BusinessUnit
 
 EATON_SPEED_WORKCENTERS = frozenset({
-    "Velocidad - Prueba Final",
-    "Velocidad - Moldeadora - Arburg R5",
-    "Velocidad - Bobinadora de 12 Niveles",
+    "Speed - Final Test",
+    "Arburg Rotary # 5",
+    "Speed - 12 Level Winder",
 })
 
 JOHN_DEERE_SPEED_WORKCENTERS = frozenset({
@@ -38,8 +38,8 @@ JOHN_DEERE_SPEED_WORKCENTERS = frozenset({
 })
 
 # Finished Good terminales exclusivos por cliente.
-EATON_FINISHED_GOOD_WORKCENTER = "Velocidad - Prueba Final"
-JOHN_DEERE_FINISHED_GOOD_WORKCENTER = "Velocidad - Prueba Final 3"
+EATON_FINISHED_GOOD_WORKCENTER = "Speed - Final Test"
+JOHN_DEERE_FINISHED_GOOD_WORKCENTER = "Speed - Final Test 3"
 
 
 def resolve_speed_scrap_bu(
@@ -75,8 +75,8 @@ def resolve_speed_production_bu(
     """
     Clasifica PRODUCCION/Finished Good de Speed por terminal exclusivo.
 
-    Eaton: Velocidad - Prueba Final.
-    John Deere: Velocidad - Prueba Final 3.
+    Eaton: Speed - Final Test.
+    John Deere: Speed - Final Test 3.
     Los terminales no se comparten y no dependen del Part_No.
     """
     wc = (workcenter or "").strip()
