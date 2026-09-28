@@ -18,6 +18,15 @@ class QWallSamplingMatrixView(APIView):
         return _proxy_get('/settings/lot-sampling/matrix')
 
 
+class QWallLotConfigurationsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not _has_access(request):
+            return _forbidden()
+        return _proxy_get('/settings/lot-sampling/configurations')
+
+
 class QWallLotConfigurationView(APIView):
     permission_classes = [IsAuthenticated]
 

@@ -611,7 +611,19 @@
       "selected": "Muestra seleccionada",
       "entireLot": "inspeccionar todo el lote",
       "star": "* Indica inspeccionar todo el lote.",
-      "missingRow": "El documento deja sin rango 500,001–500,999; verifica la fuente antes de configurar lotes de ese tamaño."
+      "missingRow": "El documento deja sin rango 500,001–500,999; verifica la fuente antes de configurar lotes de ese tamaño.",
+      "overview": "Configuración de lotes por modelo",
+      "overviewHint": "Todos los modelos juntos. La cantidad general de un BU aparece en cada uno de sus modelos. Usa Configurar para editar y Guardar configuración abajo para registrar el cambio en CCS.",
+      "searchModel": "Buscar BU o modelo",
+      "businessUnit": "BU",
+      "model": "Modelo",
+      "status": "Estado",
+      "action": "Acción",
+      "configure": "Configurar",
+      "notConfigured": "Sin configurar",
+      "missingSize": "Falta cantidad",
+      "active": "Activa",
+      "inactive": "Inactiva"
     }
   },
   "warehouse": {

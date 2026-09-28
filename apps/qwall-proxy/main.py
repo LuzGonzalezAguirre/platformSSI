@@ -1751,6 +1751,40 @@ def settings_lot_sampling_matrix():
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@app.get('/settings/lot-sampling/configurations', dependencies=[Depends(verify)])
+def settings_all_lot_configurations():
+    """One read for the all-BU model table in Q-Wall Settings."""
+    conn = None
+    try:
+        conn = get_conn()
+        c = conn.cursor()
+        c.execute("""
+            SELECT s.setting_id, s.bu_id, s.mode, s.general_lot_size,
+                   s.inspection_index, s.enabled, m.pn_id, m.lot_size
+            FROM dbo.ssi_QWallLotSettings AS s
+            LEFT JOIN dbo.ssi_QWallLotModelSettings AS m ON m.setting_id = s.setting_id
+            ORDER BY s.bu_id, m.pn_id
+        """)
+        result = {}
+        for row in _rows_to_dicts(c):
+            bu_id = row['bu_id']
+            if bu_id not in result:
+                result[bu_id] = {
+                    'bu_id': bu_id, 'mode': row['mode'],
+                    'general_lot_size': row['general_lot_size'],
+                    'inspection_index': row['inspection_index'],
+                    'enabled': bool(row['enabled']), 'models': [],
+                }
+            if row['pn_id'] is not None:
+                result[bu_id]['models'].append({'pn_id': row['pn_id'], 'lot_size': row['lot_size']})
+        return {'data': list(result.values())}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get('/settings/lot-sampling/{bu_id}', dependencies=[Depends(verify)])
 def settings_lot_configuration(bu_id: int):
     try:

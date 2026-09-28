@@ -50,6 +50,12 @@ class Cursor:
         elif 'select pn_id, lot_size from dbo.ssi_qwalllotmodelsettings' in q:
             self.description = [('pn_id',), ('lot_size',)]
             self.result = self.store.setdefault('models', {}).get(params[0], [])
+        elif 'left join dbo.ssi_qwalllotmodelsettings' in q:
+            keys = ('setting_id', 'bu_id', 'mode', 'general_lot_size',
+                    'inspection_index', 'enabled', 'pn_id', 'lot_size')
+            self.description = [(key,) for key in keys]
+            self.result = [tuple(row[key] for key in keys[:6]) + (None, None)
+                           for bu_id, row in self.store.items() if isinstance(bu_id, int)]
         return self
 
     def fetchone(self):
@@ -98,6 +104,9 @@ class LotSamplingSaveTests(unittest.TestCase):
             self.assertEqual(store[1]['general_lot_size'], 120)
             self.assertEqual(store[2]['general_lot_size'], 90)
             self.assertTrue(all(c.committed for c in connections))
+
+            overview = main.settings_all_lot_configurations()['data']
+            self.assertEqual({row['bu_id']: row['general_lot_size'] for row in overview}, {1: 120, 2: 90})
 
             from fastapi import HTTPException
             with self.assertRaises(HTTPException) as error:

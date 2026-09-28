@@ -179,6 +179,9 @@ export const fetchPartNumberLookup = (bu_id?: number) => {
 export const fetchSamplingMatrix = () =>
   apiClient.get<{ data: import('../types').SamplingCell[] }>(`${BASE}/lot-sampling/matrix/`).then(r => r.data.data);
 
+export const fetchAllLotConfigurations = () =>
+  apiClient.get<{ data: import('../types').LotConfiguration[] }>(`${BASE}/lot-sampling/configurations/`).then(r => r.data.data);
+
 export const fetchLotConfiguration = (buId: number) =>
   apiClient.get<{ data: import('../types').LotConfiguration | null }>(`${BASE}/lot-sampling/${buId}/`).then(r => r.data.data);
 

@@ -546,7 +546,19 @@
       "selected": "Selected sample",
       "entireLot": "inspect the entire lot",
       "star": "* Means inspect the entire lot.",
-      "missingRow": "The document does not cover 500,001–500,999; verify the source before configuring lots of that size."
+      "missingRow": "The document does not cover 500,001–500,999; verify the source before configuring lots of that size.",
+      "overview": "Lot configuration by model",
+      "overviewHint": "All models together. A BU general quantity appears on each of its models. Use Configure to edit and Save configuration below to record changes in CCS.",
+      "searchModel": "Search BU or model",
+      "businessUnit": "BU",
+      "model": "Model",
+      "status": "Status",
+      "action": "Action",
+      "configure": "Configure",
+      "notConfigured": "Not configured",
+      "missingSize": "Missing size",
+      "active": "Active",
+      "inactive": "Inactive"
     }
   },
   "warehouse": {

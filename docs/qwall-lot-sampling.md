@@ -2,6 +2,8 @@
 
 La configuración **General por BU** permite, por ejemplo, Eaton = 120 y CPS = 90 para todos los modelos respectivos. **Por modelo** guarda un tamaño individual para cada PN. La configuración, las elecciones guardadas y la matriz GL-QA 02 Rev. 00 están en **CCS / SQL Server** (`dbo.ssi_QWallLotSettings`, `dbo.ssi_QWallLotModelSettings`, `dbo.ssi_QWallSamplingMatrix`). El backend Django verifica los roles y envía las peticiones al `qwall-proxy`; no escribe estas elecciones en PostgreSQL.
 
+En **Quality → Q-Wall Settings → Inspección por lote**, la tabla superior muestra todos los modelos. El filtro de BU puede limitar la vista. El botón **Configurar** de cualquier fila abre el editor del BU. En modo **General por BU**, el tamaño se guarda una vez y se muestra en todas las filas de ese BU; en **Por modelo**, las cantidades se editan en la tabla del editor. **Guardar configuración**, debajo de esa tabla, persiste los cambios en CCS. El número de muestra se calcula con `ssi_QWallSamplingMatrix` y no se guarda como elección independiente.
+
 ## Instalación en el servidor
 
 1. `git pull origin main` en platformSSI.

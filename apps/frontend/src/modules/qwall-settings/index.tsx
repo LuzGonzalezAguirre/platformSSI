@@ -69,7 +69,7 @@ export default function QWallSettingsPage() {
         {activeTab === "failModes"        && <FailModesTab buId={buId} />}
         {activeTab === "scanRules"        && <PartNumberRulesTab buId={buId} />}
         {activeTab === "general"          && <GeneralSettingsTab />}
-        {activeTab === "lots"             && <LotSamplingTab buId={buId} />}
+        {activeTab === "lots"             && <LotSamplingTab buId={buId} onSelectBu={setBuId} businessUnits={businessUnits} />}
       </div>
     </div>
   );
