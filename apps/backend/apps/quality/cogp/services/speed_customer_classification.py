@@ -39,7 +39,8 @@ JOHN_DEERE_SPEED_WORKCENTERS = frozenset({
 
 # Finished Good compartido entre John Deere y Eaton. En produccion no se
 # puede resolver por WC: se clasifica por Part_No/modelo.
-SHARED_FINISHED_GOOD_WORKCENTER = "Velocidad - Prueba Final"
+EATON_FINISHED_GOOD_WORKCENTER = "Velocidad - Prueba Final"
+JOHN_DEERE_FINISHED_GOOD_WORKCENTER = "Velocidad - Prueba Final 3"
 
 
 def resolve_speed_scrap_bu(
@@ -55,15 +56,10 @@ def resolve_speed_scrap_bu(
     """
     wc = (workcenter or "").strip()
 
-    if wc == SHARED_FINISHED_GOOD_WORKCENTER:
-        base_part_no = str(part_no or "").strip().split(".")[0]
-        mapped_bu = (
-            part_to_bu.get(str(part_no or "").strip())
-            or part_to_bu.get(base_part_no)
-        )
-        if mapped_bu in (BusinessUnit.JOHN_DEERE, BusinessUnit.EATON):
-            return mapped_bu
-        return None
+    if wc == EATON_FINISHED_GOOD_WORKCENTER:
+        return BusinessUnit.EATON
+    if wc == JOHN_DEERE_FINISHED_GOOD_WORKCENTER:
+        return BusinessUnit.JOHN_DEERE
 
     if wc in JOHN_DEERE_SPEED_WORKCENTERS:
         return BusinessUnit.JOHN_DEERE
