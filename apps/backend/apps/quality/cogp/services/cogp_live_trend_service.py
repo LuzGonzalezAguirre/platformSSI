@@ -11,7 +11,10 @@ from apps.ssi_common.bu_classification import (
     VOLVO_HM_WORKCENTERS,
     PRODUCTION_WORKCENTER_TO_BU,
 )
-from apps.quality.cogp.services.speed_customer_classification import resolve_speed_scrap_bu
+from apps.quality.cogp.services.speed_customer_classification import (
+    resolve_speed_scrap_bu,
+    resolve_speed_production_bu,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +47,7 @@ def _resolve_bu_for_live_production(
     part_to_bu: dict[str, str],
 ) -> str:
     if workcenter_group == "Speed":
-        base_part_no = str(part_no or "").strip().split(".")[0]
-        return part_to_bu.get(base_part_no, BusinessUnit.SPEED)
+        return resolve_speed_production_bu(workcenter, part_no, part_to_bu)
     return resolve_bu_for_production(workcenter)
 
 
