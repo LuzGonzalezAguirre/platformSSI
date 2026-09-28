@@ -53,7 +53,7 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang }: Props) {
   }
 
   const W = 760; const H = 270;
-  const padL = 46; const padR = 48; const padT = 24; const padB = 62;
+  const padL = 46; const padR = 48; const padT = 24; const padB = 76;
   const chartW = W - padL - padR; const chartH = H - padT - padB;
   const maxHours = Math.max(...data.map((d) => d.hours), 1);
   const spacing = chartW / data.length;
@@ -103,32 +103,18 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang }: Props) {
               <rect x={x - barW / 2} y={padT + chartH - h} width={barW} height={h} rx={3} fill="#3b82f6" opacity={hovered === i ? 1 : .78} />
               <text x={x} y={padT + chartH - h - 5} textAnchor="middle" fontSize={8} fontWeight={700} fill="#3b82f6">{d.hours.toFixed(1)}h</text>
               <text x={x} y={padT + chartH + 16} textAnchor="middle" fontSize={7.5} fill="var(--color-text-secondary)">{compactLabel(d.fullLabel)}</text>
+              {d.actions?.slice(0, 2).map((action, actionIndex) => (
+                <a key={action.item_id} href={action.url} target="_blank" rel="noreferrer">
+                  <text x={x} y={padT + chartH + 29 + actionIndex * 11} textAnchor="middle" fontSize={7.5} fontWeight={800} fill="var(--color-primary)">{action.code}</text>
+                </a>
+              ))}
             </g>;
           })}
           <polyline points={points} fill="none" stroke="#f59e0b" strokeWidth={2} strokeLinejoin="round" />
           {data.map((d, i) => <circle key={`p-${d.label}`} cx={cx(i)} cy={yPct(d.cumulativePct)} r={hovered === i ? 4 : 3} fill="#f59e0b" stroke="var(--color-surface)" strokeWidth={1} />)}
         </svg>
       </div>
-      {data.some(item => (item.actions?.length ?? 0) > 0) && (
-        <div style={{ marginTop: "0.7rem", paddingTop: "0.65rem", borderTop: "1px solid var(--color-border)", display: "grid", gap: "0.35rem" }}>
-          {data.filter(item => (item.actions?.length ?? 0) > 0).map(item => (
-            <div key={"actions-" + item.label} style={{ display: "flex", gap: "0.45rem", alignItems: "center", flexWrap: "wrap", fontSize: "0.7rem" }}>
-              <span style={{ color: "var(--color-text-secondary)" }}>{compactLabel(item.fullLabel, 28)}:</span>
-              {item.actions!.map(action => (
-                <a
-                  key={action.item_id}
-                  href={action.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: "var(--color-primary)", fontWeight: 800, textDecoration: "none" }}
-                >
-                  {action.code}
-                </a>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+
     </div>
   );
 }
