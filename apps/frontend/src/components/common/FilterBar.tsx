@@ -13,6 +13,8 @@ interface Props {
   onApply: () => void;
   loading?: boolean;
   extra?: React.ReactNode;
+  before?: React.ReactNode;
+  after?: React.ReactNode;
   dateAddon?: React.ReactNode;
   showBU?: boolean;
   showWorkcenter?: boolean;
@@ -22,7 +24,7 @@ interface Props {
 }
 
 export default function FilterBar({
-  draft, setDraft, onApply, loading, extra, dateAddon,
+  draft, setDraft, onApply, loading, extra, before, after, dateAddon,
   showBU = true, showWorkcenter = true, showShift = true,
   filterScope = "default",
   dateExtraGroups,
@@ -33,6 +35,7 @@ export default function FilterBar({
 
   return (
     <div style={s.bar}>
+      {before}
       <DateRangeSelector
         value={{ start: draft.start, end: draft.end }}
         onChange={(range) => setDraft({ ...draft, ...range })}
@@ -63,6 +66,7 @@ export default function FilterBar({
         {loading ? <RefreshCw size={16} style={{ animation: "spin 1s linear infinite" }} /> : <Play size={16} />}
         <span>{lang === "es" ? "Cargar" : "Load"}</span>
       </button>
+      {after}
     </div>
   );
 }
