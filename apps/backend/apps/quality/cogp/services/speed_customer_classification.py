@@ -62,3 +62,27 @@ def resolve_speed_scrap_bu(
         base_part_no = str(part_no or "").strip().split(".")[0]
         return part_to_bu.get(base_part_no)
     return None
+
+
+def resolve_speed_production_bu(
+    workcenter: str | None,
+    part_no: str | None,
+    part_to_bu: dict[str, str],
+) -> str:
+    """
+    Regla de PRODUCCION/Finished Good para Speed.
+
+    Eaton es estrictamente fisico: solo los tres workcenters declarados en
+    EATON_SPEED_WORKCENTERS pueden alimentar sus piezas producidas, costo
+    extendido y denominadores. Un Part_No mapeado a Eaton fuera de esos WCs
+    NO se atribuye a Eaton.
+    """
+    wc = (workcenter or "").strip()
+    if wc in EATON_SPEED_WORKCENTERS:
+        return BusinessUnit.EATON
+
+    base_part_no = str(part_no or "").strip().split(".")[0]
+    mapped_bu = part_to_bu.get(base_part_no, BusinessUnit.SPEED)
+    if mapped_bu == BusinessUnit.EATON:
+        return BusinessUnit.SPEED
+    return mapped_bu
