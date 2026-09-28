@@ -193,7 +193,7 @@ class ScrapRateService:
     # suma dinamica) NO sube la version. La forma del bucket cacheado por
     # semana no cambio -- solo cambio como se ensambla la respuesta al
     # final, y eso pasa fuera del cache en cada request.
-    CACHE_VERSION = "v4"
+    CACHE_VERSION = "v5"
 
     def __init__(self, client: QualityPlexClient | None = None):
         self.client = client or QualityPlexClient()
