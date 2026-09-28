@@ -8,7 +8,10 @@ from apps.ssi_common.bu_classification import (
     resolve_bu_from_workcenter,
     resolve_bu_for_production,
 )
-from apps.quality.cogp.services.speed_customer_classification import resolve_speed_scrap_bu
+from apps.quality.cogp.services.speed_customer_classification import (
+    resolve_speed_scrap_bu,
+    resolve_speed_production_bu,
+)
 from apps.quality.cogp.services.scrap_rate_service import _to_int_qty
 from apps.ssi_common.action_tracker_actions import get_open_actions, dedupe_actions
 
@@ -45,8 +48,7 @@ def _resolve_bu_for_pareto_production(
     part_to_bu: dict[str, str],
 ) -> str:
     if workcenter_group == "Speed":
-        base_part_no = str(part_no or "").strip().split(".")[0]
-        return part_to_bu.get(base_part_no, BusinessUnit.SPEED)
+        return resolve_speed_production_bu(workcenter, part_no, part_to_bu)
     return resolve_bu_for_production(workcenter)
 
 
