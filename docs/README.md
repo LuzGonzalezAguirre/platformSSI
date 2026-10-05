@@ -21,6 +21,7 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `modules/production.md` | Producción, Ops Report, targets, seguridad, asistencia y productividad | Documentado |
 | `modules/quality.md` | Visión general del dominio de Calidad | Documentado |
 | `modules/quality-qwall.md` | Q-Wall, catálogo, pass rate y lot sampling | Documentado |
+| `modules/quality-chatbot.md` | Chatbot Q-Wall, templates, registry, feedback y limitaciones | Documentado |
 | `modules/quality-cogp.md` | COGP, scrap rate y offenders | Documentado |
 | `modules/quality-problem-control.md` | Problem Control y flujo 8D | Documentado |
 | `modules/quality-incoming-downtime.md` | Incoming Inspection y Downtime de Calidad | Documentado |

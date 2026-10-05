@@ -48,7 +48,7 @@ Los grupos de endpoints principales son:
 | `scan-rules/*` | Reglas de escaneo Q-Wall |
 | `targets/*` | Targets de calidad |
 
-La documentación específica se mantiene en documentos separados para Q-Wall, COGP, Problem Control e Incoming Inspection/Downtime.
+La documentación específica se mantiene en documentos separados para Q-Wall, Chatbot Q-Wall, COGP, Problem Control e Incoming Inspection/Downtime.
 
 ## Dashboard y targets generales
 
@@ -122,6 +122,8 @@ Si faltan filtros obligatorios, la pregunta se excluye de la respuesta.
 Si un template apunta a una función inexistente o la función falla, el servicio omite esa respuesta y registra el problema.
 
 También existen endpoints para feedback y sugerencias.
+
+Para el contrato completo del chatbot, registry, modelos, frontend y limitaciones actuales, consultar `quality-chatbot.md`.
 
 ## Código histórico
 

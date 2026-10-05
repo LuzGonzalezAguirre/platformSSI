@@ -157,6 +157,18 @@ El comentario de aprobación final sugiere conservar aprobaciones previas, pero 
 
 La regla de negocio debe decidirse y reflejarse igual en código, tests y documentación.
 
+### Contrato parcial del chatbot Q-Wall
+
+El chatbot declara capacidades configurables que no están completas de extremo a extremo.
+
+Hallazgos:
+
+- `ChatbotQuestionTemplate.required_filters` no es la fuente utilizada por el runtime; el servicio consulta `intent.required_filters`;
+- `media_list` existe en modelos y DTO, pero el widget no renderiza `media`;
+- el fixture versionado contiene texto español con problemas de encoding y una referencia fija de `created_by`.
+
+Antes de ampliar el chatbot conviene alinear el contrato, agregar tests y reemplazar el fixture por un mecanismo portable de seed.
+
 ### Action Tracker URL hardcodeada en proxy
 
 Existe configuración para Action Tracker, pero el endpoint de referencias construye links con un host fijo.
