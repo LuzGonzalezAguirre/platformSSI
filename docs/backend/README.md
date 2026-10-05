@@ -19,10 +19,10 @@ La aplicación utiliza Django 5.1.4 y Django REST Framework 3.15.2. El proyecto 
 | `apps/quality` | Funciones de calidad |
 | `apps/maintenance` | Funciones de mantenimiento |
 | `apps/warehouse` | Funciones de almacén |
-| `apps/manufacturing` | Dominio de manufactura; revisión funcional separada |
-| `apps/analytics` | Dominio analítico; estructura actualmente limitada |
-| `apps/integrations` | Abstracciones de integración |
-| `apps/core` | Estructura base compartida |
+| `apps/manufacturing` | Estructura registrada sin endpoints funcionales |
+| `apps/analytics` | Estructura registrada sin endpoints funcionales |
+| `apps/integrations` | Estructura actualmente vacía; integraciones reales viven en dominios/proxies |
+| `apps/core` | Estructura actualmente vacía |
 | `apps/ssi_common` | Funciones compartidas de módulos SSI |
 
 También existen `ssi_attendance` y `ssi_chairs` dentro del árbol del backend. Su documentación se agrupa con los módulos SSI.
@@ -61,7 +61,7 @@ El access token tiene una vigencia configurada de 60 minutos.
 
 El refresh token tiene una vigencia configurada de siete días.
 
-La rotación y blacklist de refresh tokens están activadas.
+La configuración habilita rotación y blacklist de refresh tokens. Sin embargo, el endpoint custom `/auth/refresh/` devuelve únicamente un access token, por lo que la rotación estándar no se materializa en el flujo actual. El detalle se mantiene en `../modules/authentication.md`.
 
 ## Caché
 

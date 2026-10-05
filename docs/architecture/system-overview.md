@@ -56,7 +56,7 @@ La ruta de mantenimiento aparece declarada dos veces en `config/urls.py`. Esto s
 
 El backend utiliza Simple JWT. El identificador principal incluido en los tokens es `employee_id`.
 
-La configuración actual establece una duración de 60 minutos para access tokens y siete días para refresh tokens. La rotación de refresh tokens y el blacklist posterior a la rotación están habilitados.
+La configuración actual establece una duración de 60 minutos para access tokens y siete días para refresh tokens. `ROTATE_REFRESH_TOKENS` y el soporte de blacklist están configurados, pero el endpoint custom de refresh devuelve únicamente un nuevo access token y no ejecuta la rotación estándar de Simple JWT. El comportamiento efectivo se documenta en `../modules/authentication.md`.
 
 ## Frontend
 

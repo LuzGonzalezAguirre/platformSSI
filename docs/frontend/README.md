@@ -336,7 +336,7 @@ El backend de Q-Wall Settings sí realiza su propia validación para admin y qua
 
 El backend actual del chatbot trabaja con preguntas predefinidas y un registry de servicios, no con un modelo generativo.
 
-Por estar montado en AppShell, el componente existe en todas las páginas autenticadas aunque su contenido se relacione actualmente con Q-Wall.
+Aunque está montado desde AppShell, `ChatbotWidget` verifica la ruta actual y retorna `null` fuera de los prefijos `/quality/qwall` y `/quality/rejections`. Por tanto, no es visible en el resto de páginas autenticadas.
 
 ## Estado de módulos no conectados
 

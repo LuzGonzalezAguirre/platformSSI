@@ -26,6 +26,7 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `modules/operational-panel.md` | Dashboard transversal de Producción, Mantenimiento, Work Requests y Calidad | Documentado |
 | `modules/quality.md` | Visión general del dominio de Calidad | Documentado |
 | `modules/quality-qwall.md` | Q-Wall, catálogo, pass rate y lot sampling | Documentado |
+| `qwall-lot-sampling.md` | Flujo funcional y configuración de muestreo por lotes Q-Wall | Documentado |
 | `modules/quality-chatbot.md` | Chatbot Q-Wall, templates, registry, feedback y limitaciones | Documentado |
 | `modules/quality-cogp.md` | COGP, scrap rate y offenders | Documentado |
 | `modules/quality-problem-control.md` | Problem Control y flujo 8D | Documentado |
@@ -54,6 +55,14 @@ La documentación AS-IS cubre:
 - deuda técnica.
 
 Los directorios scaffold se documentan como estructura en lugar de atribuirles comportamiento inexistente.
+
+## Verificación de cobertura
+
+En el estado revisado del repositorio no queda ningún módulo funcional activo ni grupo de rutas activas sin cobertura documental.
+
+La correspondencia entre rutas React y documentos se mantiene en `module-inventory.md`.
+
+Los paquetes scaffold, componentes no conectados y rutas placeholder también están inventariados, pero no se presentan como funcionalidad operativa.
 
 ## Criterio de estado
 

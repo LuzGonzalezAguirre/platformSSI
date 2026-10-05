@@ -85,15 +85,41 @@ Si se decide utilizar este paquete, debería tener un propósito explícito, por
 | profile | Implementado con UI parcial | Perfil, avatar, preferencias y contraseña; detalle en `modules/profile.md` |
 | notifications | Implementado | Centro de notificaciones; detalle en `modules/notifications.md` |
 | operational-panel | Implementado | Dashboard agregado de varias áreas; detalle en `modules/operational-panel.md` |
-| production | Implementado | Documentado por submódulos |
-| quality | Implementado | Documentado por submódulos |
-| incoming-inspection | Implementado | Ruta activa dentro de Quality |
-| qwall-settings | Implementado | Ruta activa con autorización backend |
-| maintenance | Implementado | Documentado por submódulos |
-| warehouse | Implementado | BOM/CTB/Demand |
+| production | Implementado | Cobertura en `modules/production.md` |
+| quality | Implementado | Cobertura general en `modules/quality.md` y documentos especializados |
+| incoming-inspection | Implementado | Cobertura en `modules/quality-incoming-downtime.md` |
+| qwall-settings | Implementado | Cobertura en `modules/quality-qwall.md` y `qwall-lot-sampling.md` |
+| maintenance | Implementado | Cobertura en `modules/maintenance.md` |
+| warehouse | Implementado | Cobertura en `modules/warehouse.md` |
 | ssi/attendance | No conectado | Dashboard sin ruta activa |
 | ssi/chair-control | No conectado | Dashboard sin ruta activa |
 | ssi/safe-launch | No conectado | Tutorial sin ruta activa |
+
+## Cobertura documental de rutas activas
+
+La siguiente matriz contrasta los grupos de rutas registrados en `App.tsx` con su documentación AS-IS.
+
+| Grupo | Rutas activas | Documento |
+| --- | --- | --- |
+| Autenticación | `/login` | `modules/authentication.md` |
+| Dashboard raíz | `/` | `frontend/README.md` |
+| Operational Panel | `/operational-panel` | `modules/operational-panel.md` |
+| Producción | `/production/ops-daily-report`, `/production/targets`, `/production/safety`, `/production/assistance`, `/production/leysilla` | `modules/production.md` |
+| Administración | `/settings/users`, `/settings/roles`, `/settings/audit` | `modules/administration.md` |
+| Perfil | `/profile` | `modules/profile.md` |
+| Warehouse | `/warehouse/ctb`, `/warehouse/demand` | `modules/warehouse.md` |
+| Maintenance | `/maintenance/overview`, `/maintenance/work-requests`, `/maintenance/corrective-actions`, `/maintenance/pmp`, `/maintenance/down-equipment` | `modules/maintenance.md` |
+| Quality general | `/quality/dashboard`, `/quality/panel`, `/quality/rejections` | `modules/quality.md` |
+| Q-Wall | `/quality/qwall`, `/quality/qwall-dashboard`, `/quality/qwall/catalog`, `/quality/qwall/settings`, `/quality/qwall/help` | `modules/quality-qwall.md`, `qwall-lot-sampling.md` |
+| Q-Wall Chatbot | visible en Q-Wall/Rejections, sin ruta propia | `modules/quality-chatbot.md` |
+| Incoming Inspection y Downtime | `/quality/incoming-inspection`, `/quality/downtime`, `/quality/downtime/settings` | `modules/quality-incoming-downtime.md` |
+| COGP y Scrap Rate | `/quality/cogp`, `/quality/cogp/mapping`, `/quality/scrap-rate` | `modules/quality-cogp.md` |
+| Problem Control | `/quality/problems`, `/quality/problems/new`, `/quality/problems/:id`, `/quality/problems/:id/edit`, `/quality/problems/:id/approval` | `modules/quality-problem-control.md` |
+| Notificaciones | componente global en TopBar, sin ruta propia | `modules/notifications.md` |
+
+Las rutas `/maintenance/orders`, `/maintenance/actions`, `/maintenance/workcenter`, `/settings/plant` y `/settings` son placeholders y se mantienen fuera del conteo de módulos funcionales.
+
+Con esta revisión, todos los grupos de rutas funcionales activos tienen una referencia documental explícita.
 
 ## Auth frontend
 

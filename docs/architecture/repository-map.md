@@ -15,25 +15,25 @@
 
 `apps/backend` contiene el proyecto Django.
 
-| Aplicación | Clasificación documental inicial |
+| Aplicación | Clasificación documental |
 | --- | --- |
-| analytics | Estructura presente; revisión detallada pendiente |
-| audit | Implementación presente |
-| core | Estructura base |
-| identity | Implementación presente |
-| integrations | Estructura de integración |
-| maintenance | Implementación presente |
-| manufacturing | Estructura presente; revisión detallada pendiente |
-| notifications | Implementación presente |
-| permissions | Implementación presente |
-| production | Implementación presente |
-| quality | Implementación presente |
-| ssi_attendance | Módulo SSI; revisión detallada pendiente |
-| ssi_chairs | Módulo SSI; revisión detallada pendiente |
-| ssi_common | Funciones comunes SSI |
-| warehouse | Implementación presente |
+| analytics | Estructura; namespace registrado sin endpoints funcionales |
+| audit | Implementado |
+| core | Estructura; sin lógica funcional propia |
+| identity | Implementado |
+| integrations | Estructura; las integraciones reales viven en otras capas |
+| maintenance | Implementado |
+| manufacturing | Estructura; namespace registrado sin endpoints funcionales |
+| notifications | Implementado |
+| permissions | Implementado con deuda de enforcement administrativo |
+| production | Implementado |
+| quality | Implementado |
+| ssi_attendance | No conectado al runtime principal |
+| ssi_chairs | No conectado al runtime principal |
+| ssi_common | Implementado como librería compartida |
+| warehouse | Implementado |
 
-La clasificación anterior es únicamente una guía de inventario. El estado definitivo de cada módulo se documentará a partir de sus modelos, URLs, vistas, servicios, repositorios, tareas y pruebas.
+La clasificación fue contrastada contra registro en runtime, URLs, servicios, modelos y consumo frontend. El detalle y las excepciones se mantienen en `../module-inventory.md`.
 
 ## Configuración Django
 
