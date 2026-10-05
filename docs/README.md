@@ -26,7 +26,8 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `modules/warehouse.md` | Demand, BOM Explorer y Clear to Build | Documentado |
 | `modules/ssi.md` | SSI common y estado de Attendance, Chair Control y Safe Launch | Documentado |
 | `frontend/README.md` | Router, navegación, autenticación, estado, i18n y cliente HTTP | Documentado |
-| `integrations/README.md` | Plex, Q-Wall, SQL Server y sistemas externos | Pendiente |
+| `integrations/README.md` | Plex, Q-Wall, SQL Server, Action Tracker y boundaries externos | Documentado |
+| `integrations/qwall-proxy.md` | Diseño y responsabilidades del Q-Wall Proxy | Documentado |
 | `operations/README.md` | Docker, arranque, migraciones, Celery y operación | Pendiente |
 | `data/README.md` | Bases de datos, ownership de datos y scripts SQL | Pendiente |
 
