@@ -28,8 +28,8 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `frontend/README.md` | Router, navegación, autenticación, estado, i18n y cliente HTTP | Documentado |
 | `integrations/README.md` | Plex, Q-Wall, SQL Server, Action Tracker y boundaries externos | Documentado |
 | `integrations/qwall-proxy.md` | Diseño y responsabilidades del Q-Wall Proxy | Documentado |
-| `operations/README.md` | Docker, arranque, migraciones, Celery y operación | Pendiente |
-| `data/README.md` | Bases de datos, ownership de datos y scripts SQL | Pendiente |
+| `operations/README.md` | Docker, arranque, migraciones, Celery y operación | Documentado |
+| `data/README.md` | Bases de datos, ownership de datos y scripts SQL | Documentado |
 
 ## Criterio de estado
 
