@@ -90,3 +90,8 @@ No debe confundirse con integraciones externas de mensajería o colas utilizadas
 El módulo incluye `tests/test_api.py`.
 
 La existencia de estas pruebas cubre una parte del API, pero no implica cobertura completa de todos los eventos de Problem Control.
+
+
+## Documentación de módulo
+
+Para el flujo completo del centro de notificaciones, polling frontend, lifecycle de tareas y limitaciones actuales, consultar `../modules/notifications.md`.

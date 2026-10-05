@@ -114,6 +114,19 @@ Ejemplos:
 
 La matriz activa de Roles no depende de esos métodos, pero deben corregirse antes de implementar administración de overrides o reutilizar esas funciones.
 
+### Generalización incompleta del centro de notificaciones
+
+El modelo backend de notificaciones es genérico, pero la presentación frontend continúa acoplada al caso de Problem Control.
+
+Hallazgos:
+
+- el backend soporta `scope=unread`, pero la UI solo expone `all` y `pending`;
+- cuando `metadata.step` no existe, el frontend muestra "Problem Control" aunque `module` pudiera pertenecer a otro dominio;
+- los textos persistidos por `NotificationService` se generan en inglés y no cambian con el idioma del usuario;
+- no existe una política de retención o purge de `core_notification`.
+
+Antes de ampliar el módulo a otros dominios conviene desacoplar la presentación de Problem Control y definir una política de lifecycle histórico.
+
 ### API URL frontend hardcodeada
 
 El cliente compartido define localhost en código aunque Compose suministra una variable Vite.
