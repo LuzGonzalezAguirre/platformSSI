@@ -80,7 +80,7 @@ Si se decide utilizar este paquete, debería tener un propósito explícito, por
 
 | Módulo | Estado | Notas |
 | --- | --- | --- |
-| auth | Implementado | Login y hook de sesión |
+| auth | Implementado con deuda | Login y sesión JWT; detalle en `modules/authentication.md` |
 | admin | Implementado con deuda | Users, roles y audit activos; detalle en `modules/administration.md`; backend auth debe endurecerse |
 | profile | Implementado con UI parcial | Perfil, avatar, preferencias y contraseña; detalle en `modules/profile.md` |
 | notifications | Implementado | Centro de notificaciones; detalle en `modules/notifications.md` |
@@ -99,9 +99,11 @@ Si se decide utilizar este paquete, debería tener un propósito explícito, por
 
 `LoginPage` y `useAuth` están activos.
 
-Al montar un usuario autenticado, `useAuth` solicita `/auth/me/` para refrescar datos y permisos.
+La sesión utiliza JWT persistido en localStorage, refresca el usuario mediante `/auth/me/` y redirige al login ante 401.
 
-El interceptor HTTP maneja 401 redirigiendo al login, pero no renueva automáticamente el access token mediante refresh token.
+El refresh token existe y se almacena, pero el frontend no lo utiliza para renovación automática.
+
+El flujo completo se documenta en `modules/authentication.md`.
 
 ## Admin frontend
 

@@ -147,6 +147,20 @@ El cliente compartido define localhost en código aunque Compose suministra una 
 
 Debe leerse configuración de ambiente.
 
+### Contratos de Auth inconsistentes
+
+El flujo de autenticación presenta dos diferencias de contrato relevantes.
+
+`MeView.patch` usa `UserSerializer` como serializer de escritura y expone un conjunto más amplio de campos que `ProfileUpdateSerializer`, incluyendo metadata de cuenta como `plant`, `job_title` e `is_active`.
+
+Además, `ROTATE_REFRESH_TOKENS=True` está configurado, pero el endpoint custom de refresh devuelve únicamente un access token y no implementa la rotación estándar de Simple JWT.
+
+Acción recomendada:
+
+- retirar o restringir PATCH de `/auth/me/` a los mismos campos de Profile;
+- definir si refresh tokens deben rotarse realmente;
+- alinear settings, endpoint y frontend con una sola política de sesión.
+
 ### Refresh token sin renovación automática
 
 Se almacena refresh token, pero el interceptor no intenta renovar access token.

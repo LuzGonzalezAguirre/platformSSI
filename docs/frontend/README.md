@@ -203,6 +203,8 @@ El refresh token y usuario almacenado no se eliminan en ese interceptor.
 
 Por tanto, la existencia de refresh token no se utiliza actualmente para una renovación transparente de sesión.
 
+El contrato completo de autenticación se documenta en `../modules/authentication.md`.
+
 ## Cliente HTTP
 
 `services/api.client.ts` centraliza Axios.

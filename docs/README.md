@@ -17,6 +17,7 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `technical-debt.md` | Registro consolidado de deuda técnica | Documentado |
 | `backend/README.md` | Arquitectura Django y configuración transversal | Documentado |
 | `backend/identity-permissions-audit.md` | Identidad, roles, permisos y auditoría | Documentado |
+| `modules/authentication.md` | Login, JWT, refresh, logout, sesión frontend y `/auth/me/` | Documentado |
 | `modules/administration.md` | Gestión de usuarios, roles, permisos y auditoría desde la UI | Documentado |
 | `modules/profile.md` | Perfil, preferencias, avatar, contraseña y estado de cuenta | Documentado |
 | `backend/notifications.md` | Notificaciones persistentes y tareas de usuario | Documentado |

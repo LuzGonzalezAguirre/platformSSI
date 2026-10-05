@@ -183,3 +183,8 @@ Para el flujo completo de la interfaz administrativa de Users, Roles y Audit, su
 ## Profile
 
 Para el flujo completo de autoservicio de Profile, sincronización de preferencias, avatar y limitaciones de la UI, consultar `../modules/profile.md`.
+
+
+## Autenticación de sesión
+
+Para el flujo completo de login, JWT, refresh, logout, persistencia frontend y las diferencias entre `/auth/me/` y Profile, consultar `../modules/authentication.md`.
