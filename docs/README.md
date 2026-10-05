@@ -23,7 +23,7 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `modules/quality-problem-control.md` | Problem Control y flujo 8D | Documentado |
 | `modules/quality-incoming-downtime.md` | Incoming Inspection y Downtime de Calidad | Documentado |
 | `modules/maintenance.md` | Overview, Work Requests, equipos caídos, PMP y Corrective Actions | Documentado |
-| `modules/warehouse.md` | BOM, demanda y Clear to Build | Pendiente |
+| `modules/warehouse.md` | Demand, BOM Explorer y Clear to Build | Documentado |
 | `modules/ssi.md` | Attendance, chair control y safe launch | Pendiente |
 | `frontend/README.md` | Arquitectura React, navegación, estado y acceso a API | Pendiente |
 | `integrations/README.md` | Plex, Q-Wall, SQL Server y sistemas externos | Pendiente |
