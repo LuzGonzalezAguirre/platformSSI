@@ -13,6 +13,8 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `architecture/system-overview.md` | Arquitectura general, componentes y flujo de datos | Documentado |
 | `architecture/repository-map.md` | Estructura lógica del repositorio | Documentado |
 | `documentation-standards.md` | Criterios para mantener la documentación | Documentado |
+| `module-inventory.md` | Estado de módulos, scaffolding y placeholders | Documentado |
+| `technical-debt.md` | Registro consolidado de deuda técnica | Documentado |
 | `backend/README.md` | Arquitectura Django y configuración transversal | Documentado |
 | `backend/identity-permissions-audit.md` | Identidad, roles, permisos y auditoría | Documentado |
 | `backend/notifications.md` | Notificaciones persistentes y tareas de usuario | Documentado |
@@ -30,6 +32,22 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `integrations/qwall-proxy.md` | Diseño y responsabilidades del Q-Wall Proxy | Documentado |
 | `operations/README.md` | Docker, arranque, migraciones, Celery y operación | Documentado |
 | `data/README.md` | Bases de datos, ownership de datos y scripts SQL | Documentado |
+
+## Cobertura
+
+La documentación AS-IS cubre:
+
+- arquitectura general;
+- backend transversal;
+- frontend transversal;
+- módulos funcionales activos;
+- módulos parciales o no conectados;
+- integraciones;
+- operación;
+- datos;
+- deuda técnica.
+
+Los directorios scaffold se documentan como estructura en lugar de atribuirles comportamiento inexistente.
 
 ## Criterio de estado
 
