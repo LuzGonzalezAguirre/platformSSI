@@ -1,0 +1,228 @@
+# Inventario de módulos
+
+## Propósito
+
+Este documento clasifica cada área relevante del repositorio según su estado observable.
+
+La existencia de un directorio no implica que exista funcionalidad operativa.
+
+Estados utilizados:
+
+- Implementado: existe un flujo funcional conectado a la aplicación.
+- Parcial: existe funcionalidad, pero hay dependencias, contratos o partes incompletas.
+- Estructura: existe scaffolding sin flujo funcional suficiente.
+- No conectado: existe implementación de código, pero no está registrada en el runtime principal.
+- Placeholder: existe una ruta o elemento visual explícitamente marcado como futuro.
+
+## Backend Django
+
+| Aplicación | Estado | Evidencia principal |
+| --- | --- | --- |
+| identity | Implementado | Modelo User, auth, profile y administración de usuarios |
+| permissions | Implementado con deuda | RBAC existe; enforcement administrativo incompleto |
+| audit | Implementado | Middleware, modelo y API |
+| notifications | Implementado | Persistencia y sincronización con Problem Control |
+| production | Implementado | Ops, targets, safety, attendance, productivity |
+| quality | Implementado | Q-Wall, COGP, Problem Control, Incoming, Downtime |
+| maintenance | Implementado | KPIs, WR, PMP, down equipment, corrective actions |
+| warehouse | Implementado | BOM, CTB y Demand mediante Plex Proxy |
+| ssi_common | Implementado como librería | Clasificación, filtros, rangos y Action Tracker refs |
+| ssi_attendance | No conectado | No está en INSTALLED_APPS ni config URLs |
+| ssi_chairs | No conectado | No está en INSTALLED_APPS ni config URLs |
+| analytics | Estructura | URLs vacías; subpaquetes sin implementación |
+| manufacturing | Estructura | URLs vacías; subpaquetes sin implementación |
+| core | Estructura | Archivos y subpaquetes vacíos |
+| integrations | Estructura | Archivos y subpaquetes vacíos |
+
+## analytics
+
+La app está registrada en `INSTALLED_APPS` y su URL se incluye bajo `/api/v1/analytics/`.
+
+Sin embargo:
+
+- `urls.py` no publica endpoints;
+- models está vacío;
+- repositories está vacío;
+- serializers está vacío;
+- services está vacío;
+- views está vacío;
+- tests está vacío.
+
+Debe tratarse como namespace reservado.
+
+## manufacturing
+
+La app está registrada y su URL se incluye bajo `/api/v1/manufacturing/`.
+
+Tiene el mismo patrón de scaffolding vacío que analytics.
+
+No se debe documentar una función de manufactura específica hasta que exista código que la implemente.
+
+## core
+
+`apps.core` está registrado en Django.
+
+Actualmente no tiene modelos, URLs, services, views ni lógica compartida.
+
+No funciona todavía como una librería core real.
+
+La lógica compartida más relevante vive hoy en `ssi_common` y en services específicos.
+
+## integrations
+
+`apps.integrations` está registrado en Django pero vacío.
+
+Las integraciones reales viven actualmente dentro de módulos de dominio y en `apps/qwall-proxy`.
+
+Si se decide utilizar este paquete, debería tener un propósito explícito, por ejemplo clientes y contratos externos comunes, evitando mover lógica solo por organización visual.
+
+## Frontend
+
+| Módulo | Estado | Notas |
+| --- | --- | --- |
+| auth | Implementado con deuda | Login y sesión JWT; detalle en `modules/authentication.md` |
+| admin | Implementado con deuda | Users, roles y audit activos; detalle en `modules/administration.md`; backend auth debe endurecerse |
+| profile | Implementado con UI parcial | Perfil, avatar, preferencias y contraseña; detalle en `modules/profile.md` |
+| notifications | Implementado | Centro de notificaciones; detalle en `modules/notifications.md` |
+| operational-panel | Implementado | Dashboard agregado de varias áreas; detalle en `modules/operational-panel.md` |
+| production | Implementado | Cobertura en `modules/production.md` |
+| quality | Implementado | Cobertura general en `modules/quality.md` y documentos especializados |
+| incoming-inspection | Implementado | Cobertura en `modules/quality-incoming-downtime.md` |
+| qwall-settings | Implementado | Cobertura en `modules/quality-qwall.md` y `qwall-lot-sampling.md` |
+| maintenance | Implementado | Cobertura en `modules/maintenance.md` |
+| warehouse | Implementado | Cobertura en `modules/warehouse.md` |
+| ssi/attendance | No conectado | Dashboard sin ruta activa |
+| ssi/chair-control | No conectado | Dashboard sin ruta activa |
+| ssi/safe-launch | No conectado | Tutorial sin ruta activa |
+
+## Cobertura documental de rutas activas
+
+La siguiente matriz contrasta los grupos de rutas registrados en `App.tsx` con su documentación AS-IS.
+
+| Grupo | Rutas activas | Documento |
+| --- | --- | --- |
+| Autenticación | `/login` | `modules/authentication.md` |
+| Dashboard raíz | `/` | `frontend/README.md` |
+| Operational Panel | `/operational-panel` | `modules/operational-panel.md` |
+| Producción | `/production/ops-daily-report`, `/production/targets`, `/production/safety`, `/production/assistance`, `/production/leysilla` | `modules/production.md` |
+| Administración | `/settings/users`, `/settings/roles`, `/settings/audit` | `modules/administration.md` |
+| Perfil | `/profile` | `modules/profile.md` |
+| Warehouse | `/warehouse/ctb`, `/warehouse/demand` | `modules/warehouse.md` |
+| Maintenance | `/maintenance/overview`, `/maintenance/work-requests`, `/maintenance/corrective-actions`, `/maintenance/pmp`, `/maintenance/down-equipment` | `modules/maintenance.md` |
+| Quality general | `/quality/dashboard`, `/quality/panel`, `/quality/rejections` | `modules/quality.md` |
+| Q-Wall | `/quality/qwall`, `/quality/qwall-dashboard`, `/quality/qwall/catalog`, `/quality/qwall/settings`, `/quality/qwall/help` | `modules/quality-qwall.md`, `qwall-lot-sampling.md` |
+| Q-Wall Chatbot | visible en Q-Wall/Rejections, sin ruta propia | `modules/quality-chatbot.md` |
+| Incoming Inspection y Downtime | `/quality/incoming-inspection`, `/quality/downtime`, `/quality/downtime/settings` | `modules/quality-incoming-downtime.md` |
+| COGP y Scrap Rate | `/quality/cogp`, `/quality/cogp/mapping`, `/quality/scrap-rate` | `modules/quality-cogp.md` |
+| Problem Control | `/quality/problems`, `/quality/problems/new`, `/quality/problems/:id`, `/quality/problems/:id/edit`, `/quality/problems/:id/approval` | `modules/quality-problem-control.md` |
+| Notificaciones | componente global en TopBar, sin ruta propia | `modules/notifications.md` |
+
+Las rutas `/maintenance/orders`, `/maintenance/actions`, `/maintenance/workcenter`, `/settings/plant` y `/settings` son placeholders y se mantienen fuera del conteo de módulos funcionales.
+
+Con esta revisión, todos los grupos de rutas funcionales activos tienen una referencia documental explícita.
+
+## Auth frontend
+
+`LoginPage` y `useAuth` están activos.
+
+La sesión utiliza JWT persistido en localStorage, refresca el usuario mediante `/auth/me/` y redirige al login ante 401.
+
+El refresh token existe y se almacena, pero el frontend no lo utiliza para renovación automática.
+
+El flujo completo se documenta en `modules/authentication.md`.
+
+## Admin frontend
+
+Contiene:
+
+- UsersPage;
+- UserModal;
+- RolesPage;
+- AuditPage.
+
+Los clientes consumen las APIs de identity, permissions y audit.
+
+La navegación muestra Administration solo para admin, pero AppShell entrega actualmente el rol `admin` al Sidebar de forma fija.
+
+Además, la seguridad no puede descansar en el frontend debido a los gaps de autorización backend ya documentados.
+
+## Profile
+
+`ProfilePage` permite modificar datos personales, idioma, theme, timezone, avatar y contraseña.
+
+La pantalla también contiene UI estática de sesión activa y código preparado para permisos que actualmente no se renderiza.
+
+El flujo completo y sus limitaciones se documentan en `modules/profile.md`.
+
+## Notifications frontend
+
+`NotificationCenter` consume la API persistente del backend.
+
+Debe considerarse distinto de notificaciones externas como Teams o Power Automate.
+
+## Operational Panel
+
+`OperationalPanelPage` es un dashboard compositor sin backend propio.
+
+Reutiliza servicios de Production, Maintenance, Work Requests y Quality, soporta día/rango, tolera fallos parciales y refresca cada cinco minutos cuando el periodo termina hoy.
+
+La documentación completa de contratos, semántica de fechas, targets, autorización y limitaciones se mantiene en `modules/operational-panel.md`.
+
+## Placeholders de rutas
+
+`App.tsx` contiene rutas cuyo elemento es texto de "próximamente" o una etiqueta simple.
+
+Entre ellas:
+
+- Maintenance Orders;
+- Maintenance Actions;
+- Workcenter Detail;
+- Plant Settings;
+- Settings.
+
+Estas rutas no representan una implementación funcional.
+
+## Árbol backend dentro de frontend
+
+Existe:
+
+`apps/frontend/src/apps/backend/apps/quality/chatbot/management/commands/seed_chatbot_questions.py`.
+
+Los archivos observados en ese árbol están vacíos.
+
+La estructura no forma parte del backend Django ejecutado porque está dentro de `apps/frontend/src`.
+
+Parece un residuo de copia o scaffolding.
+
+Debe eliminarse o justificarse para evitar que un desarrollador confunda esa ruta con `apps/backend/apps/quality/chatbot`, que sí es el backend activo.
+
+## Componentes comunes frontend
+
+`src/components/common` contiene componentes reutilizados para:
+
+- filtros estándar;
+- Business Unit;
+- workcenter;
+- shift;
+- date ranges;
+- multiselect;
+- fullscreen;
+- Action Tracker references.
+
+Esta capa debe continuar siendo el lugar preferido para UI transversal antes de duplicar componentes equivalentes en cada módulo.
+
+## Criterio para nuevos módulos
+
+Un módulo no debe pasar a estado Implementado solamente porque exista su carpeta.
+
+Como mínimo debe verificarse:
+
+1. registro en runtime;
+2. rutas;
+3. contrato API;
+4. capa de datos;
+5. autorización;
+6. frontend conectado, si aplica;
+7. configuración necesaria;
+8. pruebas mínimas del comportamiento crítico;
+9. documentación actualizada.
