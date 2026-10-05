@@ -309,6 +309,8 @@ El diseño se basa en variables CSS de `tokens.css`.
 
 El mapeo de sección a módulo considera Operational Panel como Production para permisos.
 
+Para el detalle del dashboard transversal, sus fuentes, carga paralela y limitaciones, consultar `../modules/operational-panel.md`.
+
 ## Q-Wall group
 
 Q-Wall se presenta como un subgrupo de Quality.

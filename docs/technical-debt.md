@@ -169,6 +169,21 @@ Hallazgos:
 
 Antes de ampliar el chatbot conviene alinear el contrato, agregar tests y reemplazar el fixture por un mecanismo portable de seed.
 
+### Semántica y configuración de Operational Panel
+
+El dashboard transversal mezcla reglas configurables y reglas hardcodeadas.
+
+Hallazgos:
+
+- MTTR y MTBF leen targets configurados, mientras Yield FPY, OEE, completion de WR, backlog y scrap usan umbrales locales;
+- en modo rango, un OEE persistido del último día tiene prioridad sobre el OEE live del rango aunque la tarjeta se etiqueta con el periodo completo;
+- Producción solo renderiza Volvo, Cummins y TULC aunque el contrato de Daily Summary admite BUs dinámicas;
+- el KPI usa `wr.kpis.backlog`, pero el subtítulo español lo describe como Work Requests vencidas;
+- los colores de status de WR dependen de coincidencias de texto;
+- fallos HTTP se representan igual que ausencia real de datos.
+
+Conviene normalizar la semántica de periodo, centralizar targets, distinguir errores de datos vacíos y eliminar dependencias de labels para reglas visuales.
+
 ### Action Tracker URL hardcodeada en proxy
 
 Existe configuración para Action Tracker, pero el endpoint de referencias construye links con un host fijo.

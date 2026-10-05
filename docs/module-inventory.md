@@ -84,7 +84,7 @@ Si se decide utilizar este paquete, debería tener un propósito explícito, por
 | admin | Implementado con deuda | Users, roles, audit; backend auth debe endurecerse |
 | profile | Implementado | Perfil, avatar, preferencias, contraseña |
 | notifications | Implementado | Centro de notificaciones |
-| operational-panel | Implementado | Dashboard agregado de varias áreas |
+| operational-panel | Implementado | Dashboard agregado de varias áreas; detalle en `modules/operational-panel.md` |
 | production | Implementado | Documentado por submódulos |
 | quality | Implementado | Documentado por submódulos |
 | incoming-inspection | Implementado | Ruta activa dentro de Quality |
@@ -143,29 +143,11 @@ Debe considerarse distinto de notificaciones externas como Teams o Power Automat
 
 ## Operational Panel
 
-`OperationalPanelPage` no tiene backend propio.
+`OperationalPanelPage` es un dashboard compositor sin backend propio.
 
-Es un dashboard compositor que llama en paralelo a servicios ya existentes:
+Reutiliza servicios de Production, Maintenance, Work Requests y Quality, soporta día/rango, tolera fallos parciales y refresca cada cinco minutos cuando el periodo termina hoy.
 
-- OpsReportService;
-- MaintenanceService;
-- WorkRequestsService;
-- QualityService;
-- targets de mantenimiento.
-
-La página soporta día o rango.
-
-Para Producción utiliza siempre un solo día; en modo rango utiliza la fecha final.
-
-Carga los bloques con `Promise.all`, pero cada promesa individual captura error y devuelve null.
-
-Esto permite mostrar un panel parcial si una fuente falla.
-
-Si el periodo termina hoy, la pantalla se actualiza automáticamente cada cinco minutos.
-
-Los targets de MTTR y MTBF se obtienen del módulo de Maintenance.
-
-No debe crearse una segunda lógica de cálculo dentro de Operational Panel; su responsabilidad es composición y presentación.
+La documentación completa de contratos, semántica de fechas, targets, autorización y limitaciones se mantiene en `modules/operational-panel.md`.
 
 ## Placeholders de rutas
 
