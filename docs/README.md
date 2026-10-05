@@ -18,6 +18,7 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `backend/README.md` | Arquitectura Django y configuración transversal | Documentado |
 | `backend/identity-permissions-audit.md` | Identidad, roles, permisos y auditoría | Documentado |
 | `modules/administration.md` | Gestión de usuarios, roles, permisos y auditoría desde la UI | Documentado |
+| `modules/profile.md` | Perfil, preferencias, avatar, contraseña y estado de cuenta | Documentado |
 | `backend/notifications.md` | Notificaciones persistentes y tareas de usuario | Documentado |
 | `modules/notifications.md` | Centro de notificaciones, polling, estados leído/pendiente e integración con Problem Control | Documentado |
 | `modules/production.md` | Producción, Ops Report, targets, seguridad, asistencia y productividad | Documentado |

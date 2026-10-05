@@ -82,7 +82,7 @@ Si se decide utilizar este paquete, debería tener un propósito explícito, por
 | --- | --- | --- |
 | auth | Implementado | Login y hook de sesión |
 | admin | Implementado con deuda | Users, roles y audit activos; detalle en `modules/administration.md`; backend auth debe endurecerse |
-| profile | Implementado | Perfil, avatar, preferencias, contraseña |
+| profile | Implementado con UI parcial | Perfil, avatar, preferencias y contraseña; detalle en `modules/profile.md` |
 | notifications | Implementado | Centro de notificaciones; detalle en `modules/notifications.md` |
 | operational-panel | Implementado | Dashboard agregado de varias áreas; detalle en `modules/operational-panel.md` |
 | production | Implementado | Documentado por submódulos |
@@ -120,20 +120,11 @@ Además, la seguridad no puede descansar en el frontend debido a los gaps de aut
 
 ## Profile
 
-`ProfilePage` permite:
+`ProfilePage` permite modificar datos personales, idioma, theme, timezone, avatar y contraseña.
 
-- modificar nombre;
-- apellido;
-- email;
-- idioma;
-- theme;
-- timezone;
-- avatar;
-- contraseña.
+La pantalla también contiene UI estática de sesión activa y código preparado para permisos que actualmente no se renderiza.
 
-El avatar se previsualiza en cliente y se envía como archivo mediante el servicio correspondiente.
-
-La página muestra permisos efectivos agrupados por módulo.
+El flujo completo y sus limitaciones se documentan en `modules/profile.md`.
 
 ## Notifications frontend
 

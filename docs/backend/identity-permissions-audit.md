@@ -178,3 +178,8 @@ Este punto se considera deuda técnica de seguridad y debe corregirse en un camb
 ## Interfaz administrativa
 
 Para el flujo completo de la interfaz administrativa de Users, Roles y Audit, sus contratos frontend y limitaciones actuales, consultar `../modules/administration.md`.
+
+
+## Profile
+
+Para el flujo completo de autoservicio de Profile, sincronización de preferencias, avatar y limitaciones de la UI, consultar `../modules/profile.md`.

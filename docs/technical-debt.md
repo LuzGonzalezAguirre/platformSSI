@@ -127,6 +127,20 @@ Hallazgos:
 
 Antes de ampliar el módulo a otros dominios conviene desacoplar la presentación de Problem Control y definir una política de lifecycle histórico.
 
+### Profile contiene capacidades visuales no respaldadas o incompletas
+
+La pantalla de Profile presenta o prepara elementos que no corresponden todavía a una capacidad completa.
+
+Hallazgos:
+
+- "Active Sessions" muestra una sola sesión de forma estática y no existe API de sesiones/dispositivos;
+- se calculan permisos y existen estilos/componentes asociados, pero la lista no se renderiza;
+- `UserSerializer.requires_email` devuelve `bool(email)`, por lo que el nombre no representa la regla de obligatoriedad por rol;
+- el catálogo de timezone vive hardcodeado en frontend;
+- `preferred_theme` se guarda tanto en backend como en `mes_theme`, creando dos fuentes que deben mantenerse sincronizadas.
+
+La UI debe representar únicamente datos reales o marcar explícitamente placeholders, y los contratos de preferencia deben tener una fuente de verdad definida.
+
 ### API URL frontend hardcodeada
 
 El cliente compartido define localhost en código aunque Compose suministra una variable Vite.
