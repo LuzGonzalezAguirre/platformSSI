@@ -173,3 +173,8 @@ Por lo tanto, el modelo RBAC existe y puede utilizarse, pero la revisión actual
 La navegación del frontend restringe la sección de administración por rol, pero ocultar una ruta en la interfaz no sustituye autorización en backend.
 
 Este punto se considera deuda técnica de seguridad y debe corregirse en un cambio funcional separado.
+
+
+## Interfaz administrativa
+
+Para el flujo completo de la interfaz administrativa de Users, Roles y Audit, sus contratos frontend y limitaciones actuales, consultar `../modules/administration.md`.

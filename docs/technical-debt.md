@@ -101,6 +101,19 @@ Debe existir una sola autoridad.
 
 Conviene añadir guards por permiso para UX, manteniendo backend como autoridad de seguridad.
 
+### Contratos divergentes en PermissionsService
+
+Parte del cliente frontend de permisos no coincide con la API backend actual.
+
+Ejemplos:
+
+- `getChoices` solicita `/permissions/choices/`, mientras el backend publica el catálogo en `/permissions/`;
+- `getRolePermissions` tipa una lista de permisos, pero el backend devuelve un objeto de rol;
+- `setUserOverride` no envía el campo `action` ni `permission_key` esperados por backend;
+- `removeUserOverride` utiliza DELETE, mientras el backend implementa la eliminación como POST con `action="remove_override"`.
+
+La matriz activa de Roles no depende de esos métodos, pero deben corregirse antes de implementar administración de overrides o reutilizar esas funciones.
+
 ### API URL frontend hardcodeada
 
 El cliente compartido define localhost en código aunque Compose suministra una variable Vite.

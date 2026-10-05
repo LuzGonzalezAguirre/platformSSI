@@ -81,7 +81,7 @@ Si se decide utilizar este paquete, debería tener un propósito explícito, por
 | Módulo | Estado | Notas |
 | --- | --- | --- |
 | auth | Implementado | Login y hook de sesión |
-| admin | Implementado con deuda | Users, roles, audit; backend auth debe endurecerse |
+| admin | Implementado con deuda | Users, roles y audit activos; detalle en `modules/administration.md`; backend auth debe endurecerse |
 | profile | Implementado | Perfil, avatar, preferencias, contraseña |
 | notifications | Implementado | Centro de notificaciones |
 | operational-panel | Implementado | Dashboard agregado de varias áreas; detalle en `modules/operational-panel.md` |
