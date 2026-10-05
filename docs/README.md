@@ -17,7 +17,11 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `backend/identity-permissions-audit.md` | Identidad, roles, permisos y auditoría | Documentado |
 | `backend/notifications.md` | Notificaciones persistentes y tareas de usuario | Documentado |
 | `modules/production.md` | Producción, Ops Report, targets, seguridad, asistencia y productividad | Documentado |
-| `modules/quality.md` | Calidad, Q-Wall, COGP, downtime, incoming inspection y problem control | Pendiente |
+| `modules/quality.md` | Visión general del dominio de Calidad | Documentado |
+| `modules/quality-qwall.md` | Q-Wall, catálogo, pass rate y lot sampling | Documentado |
+| `modules/quality-cogp.md` | COGP, scrap rate y offenders | Documentado |
+| `modules/quality-problem-control.md` | Problem Control y flujo 8D | Documentado |
+| `modules/quality-incoming-downtime.md` | Incoming Inspection y Downtime de Calidad | Documentado |
 | `modules/maintenance.md` | Mantenimiento, work requests, PMP y equipos caídos | Pendiente |
 | `modules/warehouse.md` | BOM, demanda y Clear to Build | Pendiente |
 | `modules/ssi.md` | Attendance, chair control y safe launch | Pendiente |
