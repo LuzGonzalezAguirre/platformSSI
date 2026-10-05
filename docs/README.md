@@ -16,7 +16,7 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `backend/README.md` | Arquitectura Django y configuración transversal | Documentado |
 | `backend/identity-permissions-audit.md` | Identidad, roles, permisos y auditoría | Documentado |
 | `backend/notifications.md` | Notificaciones persistentes y tareas de usuario | Documentado |
-| `modules/production.md` | Producción y reporte operacional | Pendiente |
+| `modules/production.md` | Producción, Ops Report, targets, seguridad, asistencia y productividad | Documentado |
 | `modules/quality.md` | Calidad, Q-Wall, COGP, downtime, incoming inspection y problem control | Pendiente |
 | `modules/maintenance.md` | Mantenimiento, work requests, PMP y equipos caídos | Pendiente |
 | `modules/warehouse.md` | BOM, demanda y Clear to Build | Pendiente |
