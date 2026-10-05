@@ -13,8 +13,9 @@ La documentación se construye a partir del estado real del repositorio. No se c
 | `architecture/system-overview.md` | Arquitectura general, componentes y flujo de datos | Documentado |
 | `architecture/repository-map.md` | Estructura lógica del repositorio | Documentado |
 | `documentation-standards.md` | Criterios para mantener la documentación | Documentado |
-| `backend/README.md` | Arquitectura Django y configuración transversal | Pendiente |
-| `backend/identity-permissions-audit.md` | Identidad, roles, permisos y auditoría | Pendiente |
+| `backend/README.md` | Arquitectura Django y configuración transversal | Documentado |
+| `backend/identity-permissions-audit.md` | Identidad, roles, permisos y auditoría | Documentado |
+| `backend/notifications.md` | Notificaciones persistentes y tareas de usuario | Documentado |
 | `modules/production.md` | Producción y reporte operacional | Pendiente |
 | `modules/quality.md` | Calidad, Q-Wall, COGP, downtime, incoming inspection y problem control | Pendiente |
 | `modules/maintenance.md` | Mantenimiento, work requests, PMP y equipos caídos | Pendiente |
