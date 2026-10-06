@@ -5,6 +5,7 @@ from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.permissions.services import PermissionService
 from apps.quality.serializers import (
     DowntimeAssignmentGroupNodeSerializer,
     DowntimeAssignmentsBulkWriteSerializer,
@@ -27,12 +28,13 @@ class CanWriteDowntimeAssignments(BasePermission):
     """
 
     def has_permission(self, request, view) -> bool:
-        if request.method in {"GET", "HEAD", "OPTIONS"}:
-            return True
-
         user = getattr(request, "user", None)
         if not user or not user.is_authenticated:
             return False
+
+        if request.method in {"GET", "HEAD", "OPTIONS"}:
+            return PermissionService.has_permission(user, "quality", "view")
+
         if user.is_superuser:
             return True
 
@@ -53,7 +55,7 @@ class DowntimeAssignmentsView(APIView):
         Guardar materializa lo heredado como decisión explícita del día.
 
     RBAC:
-        GET: cualquier usuario autenticado.
+        GET: requiere quality.view.
         PUT: admin | quality_engineer | supervisor | superuser.
     """
     permission_classes = [IsAuthenticated, CanWriteDowntimeAssignments]
