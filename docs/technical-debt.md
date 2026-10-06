@@ -10,24 +10,31 @@ La prioridad considera impacto potencial sobre seguridad, disponibilidad, manten
 
 ## Prioridad crítica
 
-### Secretos versionados
+### SEC-001 - Retirar y rotar secretos versionados
 
-Se observaron credenciales y tokens funcionales definidos como valores en archivos versionados.
+**Prioridad:** Crítica  
+**Estado:** Mitigada; rotación pendiente por decisión operativa del 06-Oct-2026.
 
-Áreas afectadas:
+Se detectaron credenciales, tokens y valores de conexión funcionales definidos en archivos versionados de configuración, Docker Compose y Q-Wall Proxy.
 
-- Docker Compose;
-- settings;
-- Q-Wall Proxy;
-- scan rules proxy.
+Cambios aplicados:
 
-Acción requerida:
+- los secretos activos fueron retirados de `docker-compose.yml`, settings de Django y Q-Wall Proxy;
+- PostgreSQL, Redis, Plex Proxy, Q-Wall Proxy, Django y la conexión CCS reciben los valores desde variables de entorno;
+- `QWALL_DB_CONN_STR` también fue externalizada aunque utilice Windows Integrated Security;
+- se agregó `.env.example` únicamente con placeholders y valores no sensibles;
+- `.env` continúa excluido por Git;
+- Django y Q-Wall Proxy fallan al iniciar si falta un secreto obligatorio;
+- Q-Wall Proxy carga el `.env` de la raíz cuando se ejecuta directamente en Windows;
+- se agregó secret scanning en CI mediante Gitleaks.
 
-- rotar secretos existentes;
-- retirar valores del repositorio;
-- usar variables de entorno o secret store;
-- evitar defaults válidos;
-- incorporar secret scanning en CI.
+Pendiente para cierre completo:
+
+- rotar los tokens y credenciales que estuvieron versionados anteriormente;
+- actualizar los valores reales en el `.env` del servidor y en cualquier sistema externo que comparta esos secretos;
+- considerar limpieza de historial únicamente después de coordinar la rotación, porque los valores anteriores continúan presentes en commits históricos.
+
+Mientras los valores históricos sigan siendo válidos, SEC-001 no debe marcarse como cerrada.
 
 ### Autorización administrativa backend
 
@@ -304,14 +311,13 @@ Después de atender seguridad, los siguientes bloques aportarían mayor estabili
 
 1. suite de tests de contratos proxy;
 2. CI con build y tests;
-3. secret scanning;
-4. healthchecks de servicios;
-5. structured logging;
-6. métricas de Celery y proxies;
-7. documentación OpenAPI consolidada;
-8. configuración por ambiente;
-9. tests de autorización por endpoint;
-10. limpieza de código inactivo.
+3. healthchecks de servicios;
+4. structured logging;
+5. métricas de Celery y proxies;
+6. documentación OpenAPI consolidada;
+7. configuración por ambiente;
+8. tests de autorización por endpoint;
+9. limpieza de código inactivo.
 
 ## Regla de seguimiento
 
