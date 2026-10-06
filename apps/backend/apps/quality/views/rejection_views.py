@@ -1,8 +1,8 @@
 # apps/quality/views/rejection_views.py
 from django.http import HttpResponse
 from rest_framework.views import APIView
+from apps.permissions.drf import QualityModulePermission
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from apps.quality.services.rejection_service import RejectionService
 from apps.quality.services.rejection_pdf_service import build_rejection_pdf
 from apps.quality.repositories.rejection_repository import RejectionRepository
@@ -13,7 +13,7 @@ class RejectionReportView(APIView):
     Reporte de rechazos.
     CÓDIGO ORIGINAL QUE FUNCIONABA — Solo GET.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [QualityModulePermission]
 
     def get(self, request):
         start = request.query_params.get("start_date")
@@ -38,7 +38,7 @@ class RejectionReportView(APIView):
 
 
 class RejectionPhotoView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [QualityModulePermission]
 
     def get(self, request, inspection_id: int):
         try:
@@ -49,7 +49,7 @@ class RejectionPhotoView(APIView):
 
 
 class RejectionReportPDFView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [QualityModulePermission]
 
     def get(self, request):
         start = request.query_params.get("start_date")
