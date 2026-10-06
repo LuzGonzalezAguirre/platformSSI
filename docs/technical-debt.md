@@ -59,11 +59,27 @@ La visibilidad del frontend continúa siendo una capa de UX; la autoridad de seg
 
 ## Prioridad alta
 
-### Downtime assignment write sin RBAC específico
+### SEC-003 - Restringir escritura de Downtime Assignments
 
-El PUT de asignaciones de Downtime está marcado en el código como pendiente de endurecimiento y utiliza únicamente autenticación.
+**Prioridad:** Alta  
+**Estado:** Resuelta el 06-Oct-2026.
 
-Debe limitarse a los roles definidos por negocio.
+`DowntimeAssignmentsView` aplica ahora una política RBAC explícita:
+
+- GET/HEAD/OPTIONS: cualquier usuario autenticado;
+- PUT: únicamente usuarios con rol `admin`, `quality_engineer` o `supervisor`;
+- superuser conserva acceso de escritura aunque no tenga uno de esos roles.
+
+La validación se realiza en backend mediante `CanWriteDowntimeAssignments`. La UI no se considera autoridad de seguridad.
+
+Se agregaron pruebas de endpoint para:
+
+- lectura con un rol autenticado no privilegiado;
+- denegación de escritura para `operator`;
+- escritura permitida para `quality_engineer`;
+- escritura permitida para `supervisor`;
+- escritura permitida para `admin`;
+- escritura permitida para superuser sin rol.
 
 ### Tracebacks y detalles internos desde Q-Wall Proxy
 
