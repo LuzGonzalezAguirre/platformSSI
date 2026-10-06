@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field, field_validator
 
 # ── Autenticación (mismo esquema Bearer que el resto del proxy) ───────────────
 
-SECRET   = os.getenv("QWALL_PROXY_TOKEN", "7a31cd3e242533dfc1b2962b1d84c47ddb3065e2752654c7f23b2e06f3dd988e")
+SECRET   = require_env("QWALL_PROXY_TOKEN")
 _bearer  = HTTPBearer()
 
 
