@@ -21,6 +21,26 @@ No define todavía una arquitectura de producción endurecida. El repositorio ut
 
 Plex Proxy y Q-Wall Proxy no forman parte de Docker Compose.
 
+## Configuración de ambiente
+
+La raíz contiene `.env.example` como contrato de configuración.
+
+Antes de iniciar el sistema en un host nuevo se debe copiar a `.env` y completar los valores reales. `.env` está ignorado por Git y no debe versionarse.
+
+Variables obligatorias para el runtime actual:
+
+- `DJANGO_SECRET_KEY`;
+- `POSTGRES_PASSWORD`;
+- `REDIS_PASSWORD`;
+- `PLEX_PROXY_SECRET`;
+- `QWALL_PROXY_TOKEN`;
+- `QWALL_DB_CONN_STR`.
+
+Las URLs y nombres no sensibles disponen de defaults de desarrollo cuando el contrato lo permite.
+
+Q-Wall Proxy corre en el host Windows. Su módulo `config.py` lee el mismo `.env` de la raíz antes de resolver las variables requeridas, de modo que Docker y el proxy del host comparten una sola fuente operativa sin guardar secretos en código.
+
+
 ## PostgreSQL
 
 El servicio expone el puerto PostgreSQL al host.
@@ -31,9 +51,9 @@ Utiliza un volumen persistente:
 
 Tiene healthcheck mediante `pg_isready`.
 
-Las credenciales actuales están declaradas directamente en Compose. Sus valores no se reproducen en esta documentación.
+El nombre de base y usuario pueden conservar valores de desarrollo, pero la contraseña se obtiene obligatoriamente de `POSTGRES_PASSWORD`.
 
-Deben externalizarse antes de considerar un despliegue endurecido.
+Docker Compose falla antes de iniciar si la contraseña requerida no está definida.
 
 ## Redis
 
@@ -49,7 +69,7 @@ La configuración actual:
 - expone el puerto al host;
 - tiene healthcheck.
 
-Las credenciales también están versionadas actualmente y deben externalizarse.
+La contraseña se obtiene de `REDIS_PASSWORD` y se utiliza para construir `REDIS_URL` en los servicios Django/Celery. No existe un password funcional de respaldo en Compose.
 
 ## Backend
 
@@ -296,17 +316,16 @@ Una futura mejora debería separar al menos:
 
 ## CI/CD
 
-No se observó un directorio `.github/workflows` en el árbol revisado.
+El despliegue continúa orientado a ejecución manual en el servidor.
 
-El despliegue actual está orientado a ejecución manual en el servidor.
+Existe `.github/workflows/secret-scan.yml`, que ejecuta Gitleaks en pushes a `main` y pull requests para detectar secretos versionados.
 
-Una pipeline futura debería validar como mínimo:
+Siguen pendientes pipelines para:
 
 - backend tests;
 - frontend TypeScript build;
 - lint;
 - migraciones faltantes;
-- checks de secretos;
 - construcción de imágenes;
 - documentación actualizada.
 
@@ -314,13 +333,11 @@ Una pipeline futura debería validar como mínimo:
 
 Riesgos prioritarios observados:
 
-1. secretos versionados;
-2. credenciales de servicios definidas en Compose;
-3. defaults sensibles en código proxy;
-4. puertos de base y Redis expuestos al host;
-5. servidores de desarrollo utilizados como runtime;
-6. ausencia de una configuración production Django separada;
-7. scripts de arranque ambiguos por mezcla PowerShell/Batch;
-8. ausencia de healthchecks de proxies dentro de la orquestación.
+1. los secretos retirados del árbol activo siguen presentes en el historial Git y no fueron rotados;
+2. puertos de base y Redis expuestos al host;
+3. servidores de desarrollo utilizados como runtime;
+4. ausencia de una configuración production Django separada;
+5. scripts de arranque ambiguos por mezcla PowerShell/Batch;
+6. ausencia de healthchecks de proxies dentro de la orquestación.
 
 Las correcciones deben realizarse en commits funcionales distintos de este PR documental.
