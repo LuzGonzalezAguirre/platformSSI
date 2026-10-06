@@ -1,5 +1,4 @@
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -12,10 +11,13 @@ from apps.identity.serializers import (
 from apps.identity.services import UserService
 from apps.permissions.models import Role
 from apps.permissions.services import PermissionService
+from apps.permissions.drf import HasMappedModulePermission
 
 
 class UserListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"GET": "view", "POST": "create"}
 
     def get(self, request):
         role_slug = request.query_params.get("role")
@@ -52,7 +54,9 @@ class UserListCreateView(APIView):
 
 
 class UserDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"GET": "view", "PATCH": "edit"}
 
     def get(self, request, user_id: int):
         try:
@@ -85,7 +89,9 @@ class UserDetailView(APIView):
 
 
 class ToggleActiveView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"POST": "edit"}
 
     def post(self, request, user_id: int):
         try:
@@ -96,7 +102,9 @@ class ToggleActiveView(APIView):
 
 
 class ResetPasswordView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"POST": "edit"}
 
     def post(self, request, user_id: int):
         serializer = ResetPasswordSerializer(data=request.data)
@@ -113,7 +121,9 @@ class ResetPasswordView(APIView):
 
 class RoleChoicesView(APIView):
     """Devuelve los roles del nuevo sistema para el selector del modal."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"GET": "view"}
 
     def get(self, request):
         roles = Role.objects.all().order_by("name")
