@@ -228,15 +228,21 @@ Esto permite que un cambio de inspector sea visible inmediatamente sin esperar l
 
 Logs y summary restringen el FilterContext a las BUs permitidas para el usuario.
 
-### Riesgo RBAC
+### RBAC de asignaciones
 
-`DowntimeAssignmentsView` contiene una advertencia explícita en el código: el PUT debería exigir `admin | quality_engineer | supervisor`.
+`DowntimeAssignmentsView` aplica autorización explícita en backend.
 
-Actualmente la clase usa únicamente `IsAuthenticated`.
+Política:
 
-Por lo tanto, cualquier usuario autenticado que pueda alcanzar el endpoint podría intentar reemplazar las asignaciones del día.
+- GET/HEAD/OPTIONS: cualquier usuario autenticado puede consultar el árbol de asignaciones;
+- PUT: únicamente `admin`, `quality_engineer` o `supervisor`;
+- superuser puede escribir sin depender de un rol asignado.
 
-Este punto es deuda técnica de seguridad prioritaria.
+La política se implementa mediante `CanWriteDowntimeAssignments` y consulta los roles reales asociados al usuario.
+
+El endpoint mantiene separación entre lectura y escritura: un usuario autenticado puede visualizar asignaciones sin recibir capacidad para reemplazarlas.
+
+La cobertura automática incluye un rol sin privilegios de escritura, los tres roles autorizados y superuser.
 
 ## Trabajo relacionado
 
