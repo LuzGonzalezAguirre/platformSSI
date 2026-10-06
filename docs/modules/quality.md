@@ -139,15 +139,47 @@ Su presencia constituye deuda de limpieza del repositorio.
 
 ## Autorización
 
-El dominio no utiliza todavía una única estrategia de autorización.
+El dominio Quality utiliza una política RBAC común basada en permisos efectivos `quality.view/create/edit/delete`.
 
-Algunas áreas utilizan roles explícitos, por ejemplo COGP y Q-Wall Settings.
+La autoridad se resuelve mediante `PermissionService`, por lo que se respetan:
 
-Otras áreas utilizan únicamente `IsAuthenticated`.
+- permisos heredados de uno o más roles;
+- overrides individuales grant/revoke;
+- acceso total de superuser.
 
-Downtime restringe los datos visibles mediante filtros de BU derivados del usuario, pero el endpoint de escritura de asignaciones conserva una deuda RBAC explícita.
+La política se aplica en el registro de rutas mediante `quality_view()` y `QualityModulePermission`.
 
-Por esta razón, la autorización debe evaluarse por submódulo y endpoint, no asumirse a partir del prefijo `/quality`.
+### Matriz común
+
+| Operación | Permiso |
+| --- | --- |
+| GET, HEAD, OPTIONS | `quality.view` |
+| POST que crea un registro | `quality.create` |
+| PUT/PATCH | `quality.edit` |
+| DELETE | `quality.delete` |
+
+Esta matriz cubre Q-Wall reports, Q-Wall Settings, scan rules, COGP, Incoming Inspection, targets, scrap, rechazo, catálogos, chatbot, Downtime de consulta y el CRUD general de Problem Control.
+
+### POST con semántica no CRUD
+
+Algunos POST se mapean explícitamente:
+
+- refresh de Incoming Inspection: `quality.edit`;
+- lookup de usuarios de Incoming Inspection: `quality.view`;
+- submit, close y overrides de workflow de Problem Control: `quality.edit`.
+
+### Excepciones justificadas
+
+Problem Control conserva autorización por asignación para los endpoints de aprobación. Un usuario de Manufacturing, Production o Maintenance asignado como aprobador puede participar en su sección aunque no tenga permisos generales de edición de Quality. Esta excepción evita acoplar aprobaciones interdepartamentales al rol Quality.
+
+Downtime Assignments conserva la política definida en SEC-003 para escritura:
+
+- lectura: `quality.view`;
+- PUT: `admin`, `quality_engineer`, `supervisor` o superuser.
+
+Los filtros por Business Unit siguen siendo una capa adicional de alcance de datos. Tener `quality.view` autoriza el endpoint, pero no elimina una restricción de BU cuando el submódulo la aplique.
+
+La UI puede ocultar controles según permisos, pero la decisión final de autorización permanece en backend.
 
 ## Pruebas
 
