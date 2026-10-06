@@ -21,6 +21,7 @@ from apps.quality.services import incoming_inspection_rejection_comment_service 
 from apps.quality.services import incoming_inspection_user_lookup_service as user_lookup_service
 from apps.quality.services import incoming_inspection_dashboard_service as dashboard_service
 from apps.quality.services import incoming_inspection_pending_service as pending_service
+from apps.permissions.services import PermissionService
 from apps.quality.tasks import (
     INCOMING_REFRESH_LOCK_KEY,
     INCOMING_REFRESH_TASK_KEY_PREFIX,
@@ -45,12 +46,8 @@ PENDING_CACHE_TTL = 45
 # el rango en vez de intentar renderizar todo.
 MAX_PAGE_SIZE = 3000
 
-ALLOWED_SLA_WRITE_ROLES = {"admin", "quality_engineer"}
-
-
 def _has_sla_write_access(request) -> bool:
-    roles = set(request.user.user_roles.values_list("role__slug", flat=True))
-    return bool(roles & ALLOWED_SLA_WRITE_ROLES)
+    return PermissionService.has_permission(request.user, "quality", "edit")
 
 
 def _forbidden():
