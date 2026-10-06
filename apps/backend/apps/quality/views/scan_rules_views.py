@@ -8,18 +8,24 @@ from rest_framework.views import APIView
 
 from apps.quality.serializers.scan_rules_serializers import PartNumberScanRuleSerializer
 from apps.quality.services.scan_rules_service import ScanRulesService
+from apps.permissions.services import PermissionService
 
 PROXY_URL   = os.getenv("QWALL_PROXY_URL",   "http://host.docker.internal:8002")
 PROXY_TOKEN = os.getenv("QWALL_PROXY_TOKEN", "")
 _HEADERS    = {"Authorization": f"Bearer {PROXY_TOKEN}"}
 TIMEOUT     = 30
 
-ALLOWED_ROLES = {"admin", "quality_engineer"}
-
-
 def _has_access(request) -> bool:
-    roles = set(request.user.user_roles.values_list("role__slug", flat=True))
-    return bool(roles & ALLOWED_ROLES)
+    action = {
+        "GET": "view",
+        "HEAD": "view",
+        "OPTIONS": "view",
+        "POST": "create",
+        "PUT": "edit",
+        "PATCH": "edit",
+        "DELETE": "delete",
+    }.get(request.method)
+    return bool(action and PermissionService.has_permission(request.user, "quality", action))
 
 
 def _forbidden():
