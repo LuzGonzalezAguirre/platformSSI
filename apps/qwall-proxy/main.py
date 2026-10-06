@@ -1,4 +1,3 @@
-import os
 import base64
 import pyodbc
 import traceback
@@ -6,7 +5,8 @@ from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
-from config import require_env\nfrom scan_rules_router import router as scan_rules_router
+from config import require_env
+from scan_rules_router import router as scan_rules_router
 
 app    = FastAPI()
 bearer = HTTPBearer()
