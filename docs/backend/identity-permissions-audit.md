@@ -162,18 +162,22 @@ Los errores al crear un AuditLog se silencian para no romper la respuesta princi
 
 El listado de logs se pagina con 50 registros por página.
 
-## Limitaciones de autorización observadas
+## Autorización administrativa
 
-Los endpoints de gestión de usuarios en `apps.identity.views.user_view` requieren `IsAuthenticated`, pero no aplican `HasModulePermission` ni verifican explícitamente `administration.*`.
+Los endpoints administrativos aplican RBAC real mediante `HasMappedModulePermission`.
 
-Los endpoints de gestión de roles y permisos en `apps.permissions.views` también requieren únicamente `IsAuthenticated`.
+La vista define explícitamente el módulo y la acción requerida por método HTTP. Para Administration se utilizan:
 
-Por lo tanto, el modelo RBAC existe y puede utilizarse, pero la revisión actual del código no demuestra enforcement administrativo completo en esos endpoints.
+- `administration.view` para consultas;
+- `administration.create` para creación de usuarios y roles;
+- `administration.edit` para mutaciones no destructivas, reset de contraseña, toggle de estado, asignación de roles y overrides;
+- `administration.delete` para eliminación de roles custom.
 
-La navegación del frontend restringe la sección de administración por rol, pero ocultar una ruta en la interfaz no sustituye autorización en backend.
+El permiso se evalúa mediante `PermissionService.has_permission`, por lo que la autorización utiliza permisos efectivos de roles más overrides individuales. Los superusuarios reciben todas las acciones de todos los módulos.
 
-Este punto se considera deuda técnica de seguridad y debe corregirse en un cambio funcional separado.
+La ruta `/api/v1/permissions/me/` conserva `IsAuthenticated` porque expone únicamente los permisos efectivos del usuario autenticado.
 
+La suite `apps.permissions.tests.AdministrationRBACAPITests` cubre denegación y autorización positiva, rol de sistema con lectura, MES Admin, superuser y protección de roles de sistema.
 
 ## Interfaz administrativa
 
