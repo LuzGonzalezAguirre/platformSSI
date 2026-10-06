@@ -54,3 +54,34 @@ class HasMappedModulePermission(BasePermission):
             return False
 
         return PermissionService.has_permission(user, module, action)
+
+
+DEFAULT_QUALITY_ACTION_MAP = {
+    "GET": "view",
+    "HEAD": "view",
+    "OPTIONS": "view",
+    "POST": "create",
+    "PUT": "edit",
+    "PATCH": "edit",
+    "DELETE": "delete",
+}
+
+
+class QualityModulePermission(BasePermission):
+    """Política RBAC común para el dominio Quality."""
+
+    def has_permission(self, request, view) -> bool:
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+
+        action_map = getattr(
+            view,
+            "quality_action_map",
+            DEFAULT_QUALITY_ACTION_MAP,
+        )
+        action = action_map.get(request.method)
+        if not action:
+            return False
+
+        return PermissionService.has_permission(user, "quality", action)
