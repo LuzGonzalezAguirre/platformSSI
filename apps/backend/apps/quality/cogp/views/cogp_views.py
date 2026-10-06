@@ -16,16 +16,14 @@ from apps.quality.cogp.services.scrap_action_service import manual_test, stage_c
 
 from apps.quality.cogp.services.scrap_rate_service import ScrapRateService
 from apps.ssi_common.filters.base import BaseRangeFilterSerializer
-
-
-ALLOWED_ROLES = {"quality_engineer", "plant_manager", "admin"}
+from apps.permissions.services import PermissionService
 
 
 class CogpScrapIntegrationTestView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not request.user.is_superuser and not request.user.roles.filter(slug__in=("quality_engineer", "admin")).exists():
+        if not PermissionService.has_permission(request.user, "quality", "create"):
             return Response({"detail": "No tienes permiso para probar la integración."}, status=status.HTTP_403_FORBIDDEN)
         serializer = CogpIntegrationTestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -61,7 +59,7 @@ class CogpCurrentOffendersView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not request.user.is_superuser and not request.user.roles.filter(slug__in=("quality_engineer", "admin")).exists():
+        if not PermissionService.has_permission(request.user, "quality", "create"):
             return Response({"detail": "No tienes permiso para enviar ofensores."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = CogpCurrentOffendersSerializer(data=request.data)
@@ -132,13 +130,13 @@ class CogpSettingsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if not request.user.roles.filter(slug__in=ALLOWED_ROLES).exists() and not request.user.is_superuser:
+        if not PermissionService.has_permission(request.user, "quality", "view"):
             return Response({"detail": "No tienes permiso para ver este reporte."}, status=status.HTTP_403_FORBIDDEN)
         obj = CogpSettings.get_solo()
-        return Response({**CogpSettingsSerializer(obj).data, "can_edit": request.user.is_superuser or request.user.roles.filter(slug__in=("admin", "quality_engineer")).exists()})
+        return Response({**CogpSettingsSerializer(obj).data, "can_edit": PermissionService.has_permission(request.user, "quality", "edit")})
 
     def put(self, request):
-        if not request.user.is_superuser and not request.user.roles.filter(slug__in=("admin", "quality_engineer")).exists():
+        if not PermissionService.has_permission(request.user, "quality", "edit"):
             return Response({"detail": "No tienes permiso para cambiar los targets."}, status=status.HTTP_403_FORBIDDEN)
         serializer = CogpSettingsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -152,8 +150,7 @@ class CogpParetoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user_roles = set(request.user.roles.values_list("slug", flat=True))
-        if not user_roles & ALLOWED_ROLES:
+        if not PermissionService.has_permission(request.user, "quality", "view"):
             return Response(
                 {"detail": "No tienes permiso para ver este reporte."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -177,10 +174,7 @@ class CogpSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user_roles = set(
-            request.user.roles.values_list("slug", flat=True)
-        )
-        if not user_roles & ALLOWED_ROLES:
+        if not PermissionService.has_permission(request.user, "quality", "view"):
             return Response(
                 {"detail": "No tienes permiso para ver este reporte."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -220,8 +214,7 @@ class CogpWeeklyTrendView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user_roles = set(request.user.roles.values_list("slug", flat=True))
-        if not user_roles & ALLOWED_ROLES:
+        if not PermissionService.has_permission(request.user, "quality", "view"):
             return Response(
                 {"detail": "No tienes permiso para ver este reporte."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -244,8 +237,7 @@ class CogpMappingCatalogView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user_roles = set(request.user.roles.values_list("slug", flat=True))
-        if not user_roles & ALLOWED_ROLES:
+        if not PermissionService.has_permission(request.user, "quality", "view"):
             return Response(
                 {"detail": "No tienes permiso para ver este catalogo."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -298,8 +290,7 @@ class ScrapRateWeeklyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user_roles = set(request.user.roles.values_list("slug", flat=True))
-        if not user_roles & ALLOWED_ROLES:
+        if not PermissionService.has_permission(request.user, "quality", "view"):
             return Response(
                 {"detail": "No tienes permiso para ver este reporte."},
                 status=status.HTTP_403_FORBIDDEN,
