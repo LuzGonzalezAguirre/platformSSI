@@ -1,5 +1,6 @@
 # apps/quality/incoming_inspection_urls.py
 from django.urls import path
+from apps.permissions.drf import quality_view
 from apps.quality.views.incoming_inspection_views import (
     IncomingInspectionDashboardView,
     IncomingInspectionPendingView,
@@ -14,14 +15,14 @@ from apps.quality.views.incoming_inspection_views import (
 )
 
 urlpatterns = [
-    path("refresh/", IncomingInspectionRefreshView.as_view()),
-    path("refresh/<str:task_id>/", IncomingInspectionRefreshStatusView.as_view()),
-    path("dashboard/", IncomingInspectionDashboardView.as_view()),
-    path("pending/", IncomingInspectionPendingView.as_view()),
-    path("kpis/", IncomingInspectionKPIsView.as_view()),
-    path("detail/", IncomingInspectionDetailView.as_view()),
-    path("sla-config/", IncomingInspectionSLAConfigView.as_view()),
-    path("rejected-lots/", IncomingRejectedLotsView.as_view()),
-    path("rejected-lots/<str:serial_no>/comments/", IncomingRejectionCommentsView.as_view()),
-    path("user-lookup/", IncomingUserLookupView.as_view()),
+    path("refresh/", quality_view(IncomingInspectionRefreshView, {"POST": "edit"})),
+    path("refresh/<str:task_id>/", quality_view(IncomingInspectionRefreshStatusView)),
+    path("dashboard/", quality_view(IncomingInspectionDashboardView)),
+    path("pending/", quality_view(IncomingInspectionPendingView)),
+    path("kpis/", quality_view(IncomingInspectionKPIsView)),
+    path("detail/", quality_view(IncomingInspectionDetailView)),
+    path("sla-config/", quality_view(IncomingInspectionSLAConfigView)),
+    path("rejected-lots/", quality_view(IncomingRejectedLotsView)),
+    path("rejected-lots/<str:serial_no>/comments/", quality_view(IncomingRejectionCommentsView)),
+    path("user-lookup/", quality_view(IncomingUserLookupView, {"POST": "view"})),
 ]
