@@ -81,6 +81,32 @@ Se agregaron pruebas de endpoint para:
 - escritura permitida para `admin`;
 - escritura permitida para superuser sin rol.
 
+### SEC-004 - Unificar autorización en Quality
+
+**Prioridad:** Alta  
+**Estado:** Resuelta el 06-Oct-2026.
+
+Se definió una política común para el dominio Quality basada en permisos efectivos:
+
+- lectura: `quality.view`;
+- creación: `quality.create`;
+- edición: `quality.edit`;
+- eliminación: `quality.delete`.
+
+La política se centraliza en `QualityModulePermission` y se aplica al registrar rutas mediante `quality_view()`.
+
+Se retiró la dependencia de listas de roles fijas en Q-Wall Settings, Scan Rules, COGP, Incoming SLA y Problem Control Settings. Estas áreas consultan ahora `PermissionService`, por lo que funcionan también con roles custom y overrides individuales.
+
+Excepciones documentadas:
+
+- aprobaciones de Problem Control mantienen autorización por usuario asignado;
+- Downtime Assignments mantiene escritura limitada a `admin`, `quality_engineer`, `supervisor` o superuser;
+- filtros por Business Unit continúan aplicándose como restricción adicional de datos.
+
+Los POST cuya semántica no es creación tienen mapping explícito, incluyendo refresh, lookup y transiciones de workflow.
+
+Se agregó cobertura automática para lectura, creación, edición, eliminación, grant/revoke individual y excepciones.
+
 ### Tracebacks y detalles internos desde Q-Wall Proxy
 
 Algunos handlers devuelven el traceback completo dentro del detalle HTTP.
