@@ -18,7 +18,7 @@ La documentación de modelos y comportamiento backend transversal se mantiene en
 
 ## Estado
 
-Estado actual: implementado con deuda de autorización y algunos contratos frontend preparados pero no alineados con el backend.
+Estado actual: implementado con autorización RBAC aplicada en backend y algunos contratos frontend preparados pero no alineados con el backend.
 
 Rutas activas:
 
@@ -380,25 +380,30 @@ Por tanto, la sección Administration no tiene una cobertura i18n uniforme.
 
 ## Seguridad
 
-Este es el principal riesgo del módulo.
+La autorización administrativa se aplica en backend mediante permisos efectivos del módulo `administration`.
 
-Las vistas backend revisadas de:
+Matriz aplicada:
 
-- administración de usuarios;
-- roles;
-- permisos;
-- overrides;
-- consulta de auditoría;
+| Operación | Permiso requerido |
+| --- | --- |
+| Lectura de Users, Roles, Permissions, overrides y Audit | `administration.view` |
+| Crear usuarios o roles custom | `administration.create` |
+| Editar usuarios, reset de contraseña, activar/desactivar, editar roles, asignar roles u overrides | `administration.edit` |
+| Eliminar roles custom | `administration.delete` |
 
-utilizan `IsAuthenticated`.
+La implementación utiliza `HasMappedModulePermission`, que exige un mapa explícito por método HTTP. Esto evita asumir que todo POST representa una creación: acciones como reset de contraseña, toggle de estado y cambios de overrides requieren `administration.edit`.
 
-No aplican actualmente `HasModulePermission("administration", ...)` ni una validación equivalente por rol administrativo.
+Los permisos efectivos continúan siendo calculados por `PermissionService`, incluyendo:
 
-Ocultar la sección en Sidebar no protege la API.
+- unión de permisos heredados de todos los roles;
+- overrides individuales grant/revoke;
+- acceso total para superuser.
 
-Hasta corregirlo, un usuario autenticado que conozca los endpoints podría intentar acceder directamente a operaciones administrativas.
+`GET /api/v1/permissions/me/` conserva únicamente `IsAuthenticated`, porque cada usuario necesita consultar sus propios permisos efectivos para construir su experiencia de navegación.
 
-Este hallazgo ya forma parte de la deuda técnica crítica del proyecto.
+Los roles de sistema mantienen sus reglas adicionales: pueden actualizar su matriz de permisos, pero no pueden eliminarse ni cambiar nombre/descripción mediante el flujo de edición actual.
+
+Ocultar controles o rutas en frontend continúa siendo únicamente una medida de UX; la decisión final de autorización reside en backend.
 
 ## Auditoría de operaciones administrativas
 
@@ -445,10 +450,6 @@ Las entidades principales pertenecen a:
 Los detalles del esquema están documentados en `../backend/identity-permissions-audit.md`.
 
 ## Limitaciones actuales
-
-### Enforcement administrativo incompleto
-
-Es una deuda de seguridad prioritaria y debe corregirse en backend antes de confiar en la visibilidad frontend.
 
 ### Contratos preparados pero divergentes
 
