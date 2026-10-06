@@ -29,3 +29,28 @@ def module_permission(module: str, write_action: str = "edit", read_action: str 
         (HasModulePermission,),
         {"module": module, "write_action": write_action, "read_action": read_action},
     )
+
+class HasMappedModulePermission(BasePermission):
+    """
+    Autoriza cada método HTTP mediante un mapa explícito definido por la vista.
+
+    La vista debe declarar:
+        permission_module = "administration"
+        permission_action_map = {"GET": "view", "POST": "create"}
+
+    Si un método no está mapeado, se deniega por defecto.
+    """
+
+    def has_permission(self, request, view) -> bool:
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+
+        module = getattr(view, "permission_module", "")
+        action_map = getattr(view, "permission_action_map", {})
+        action = action_map.get(request.method)
+
+        if not module or not action:
+            return False
+
+        return PermissionService.has_permission(user, module, action)
