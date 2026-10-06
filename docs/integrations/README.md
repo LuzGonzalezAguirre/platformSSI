@@ -245,27 +245,35 @@ Las escrituras se realizan dentro de una transacción y hacen rollback ante erro
 
 ## Seguridad de integración
 
-### Secretos versionados
+### Configuración sensible
 
-El estado actual del repositorio contiene valores de autenticación y cadenas de conexión como defaults o variables hardcodeadas en configuración, Docker Compose y proxy.
+Los valores sensibles ya no se definen como defaults funcionales dentro del código activo.
 
-Esta documentación no reproduce esos valores.
+La configuración se obtiene desde variables de entorno. En el despliegue actual, el archivo `.env` de la raíz actúa como fuente local del servidor y permanece fuera de Git.
 
-La corrección prioritaria es:
+Variables relevantes:
 
-1. retirar secretos del historial activo;
-2. rotarlos;
-3. utilizar variables de entorno o un secret store;
-4. fallar de forma explícita si un secreto requerido no existe;
-5. evitar defaults válidos de producción en código.
+- `PLEX_PROXY_SECRET`;
+- `QWALL_PROXY_TOKEN`;
+- `QWALL_DB_CONN_STR`;
+- credenciales PostgreSQL;
+- contraseña Redis;
+- `DJANGO_SECRET_KEY`;
+- credenciales opcionales de Action Tracker.
+
+`.env.example` documenta las claves requeridas sin incluir secretos válidos.
+
+Q-Wall Proxy se ejecuta directamente en Windows, por lo que `apps/qwall-proxy/config.py` carga el `.env` de la raíz sin sobrescribir variables que ya existan en el entorno del proceso. Si faltan `QWALL_PROXY_TOKEN` o `QWALL_DB_CONN_STR`, el proxy falla al iniciar en lugar de utilizar un fallback funcional.
+
+Django exige los secretos de Plex y Q-Wall desde el entorno. La configuración de desarrollo también exige `DJANGO_SECRET_KEY`, `POSTGRES_PASSWORD` y `REDIS_URL`.
+
+Los tokens anteriores no fueron rotados en este cambio por decisión operativa. Por lo tanto, aunque ya no aparezcan en el árbol activo, continúan siendo sensibles mientras sigan válidos y permanezcan accesibles en el historial Git.
 
 ### Conexión SQL Server
 
-`qwall-proxy/main.py` tiene una cadena de conexión definida directamente en el archivo.
+La cadena completa de SQL Server CCS se obtiene de `QWALL_DB_CONN_STR`.
 
-`scan_rules_router.py` permite variable de entorno, pero también contiene un fallback funcional.
-
-La política debería ser única y externa al código.
+Tanto `qwall-proxy/main.py` como `scan_rules_router.py` utilizan la misma variable y ya no contienen una conexión funcional de respaldo.
 
 ### Errores
 
