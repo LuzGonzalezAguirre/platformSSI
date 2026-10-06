@@ -23,7 +23,7 @@ DOWNTIME_ASSIGNMENT_WRITE_ROLES = frozenset({
 
 class CanWriteDowntimeAssignments(BasePermission):
     """
-    La lectura queda disponible para cualquier usuario autenticado.
+    La lectura requiere quality.view.
     PUT requiere un rol autorizado o superuser.
     """
 
