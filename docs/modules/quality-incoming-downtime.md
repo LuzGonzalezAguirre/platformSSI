@@ -234,13 +234,13 @@ Logs y summary restringen el FilterContext a las BUs permitidas para el usuario.
 
 Política:
 
-- GET/HEAD/OPTIONS: cualquier usuario autenticado puede consultar el árbol de asignaciones;
+- GET/HEAD/OPTIONS: requiere `quality.view`;
 - PUT: únicamente `admin`, `quality_engineer` o `supervisor`;
 - superuser puede escribir sin depender de un rol asignado.
 
 La política se implementa mediante `CanWriteDowntimeAssignments` y consulta los roles reales asociados al usuario.
 
-El endpoint mantiene separación entre lectura y escritura: un usuario autenticado puede visualizar asignaciones sin recibir capacidad para reemplazarlas.
+El endpoint mantiene separación entre lectura y escritura: un usuario con `quality.view` puede visualizar asignaciones sin recibir automáticamente capacidad para reemplazarlas.
 
 La cobertura automática incluye un rol sin privilegios de escritura, los tres roles autorizados y superuser.
 
