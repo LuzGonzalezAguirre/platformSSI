@@ -14,23 +14,23 @@ class QualityAuthorizationPolicyTests(APITestCase):
         PermissionService.seed_all()
 
         cls.maintenance = User.objects.create_user(
-            employee_id="quality-rbac-maint",
+            employee_id="qrbac-maint",
             password="Password123!",
         )
         cls.plant_manager = User.objects.create_user(
-            employee_id="quality-rbac-manager",
+            employee_id="qrbac-manager",
             password="Password123!",
         )
         cls.quality_engineer = User.objects.create_user(
-            employee_id="quality-rbac-engineer",
+            employee_id="qrbac-engineer",
             password="Password123!",
         )
         cls.admin = User.objects.create_user(
-            employee_id="quality-rbac-admin",
+            employee_id="qrbac-admin",
             password="Password123!",
         )
         cls.override_user = User.objects.create_user(
-            employee_id="quality-rbac-override",
+            employee_id="qrbac-override",
             password="Password123!",
         )
 
