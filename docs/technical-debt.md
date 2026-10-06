@@ -66,7 +66,7 @@ La visibilidad del frontend continúa siendo una capa de UX; la autoridad de seg
 
 `DowntimeAssignmentsView` aplica ahora una política RBAC explícita:
 
-- GET/HEAD/OPTIONS: cualquier usuario autenticado;
+- GET/HEAD/OPTIONS: requiere `quality.view`;
 - PUT: únicamente usuarios con rol `admin`, `quality_engineer` o `supervisor`;
 - superuser conserva acceso de escritura aunque no tenga uno de esos roles.
 
