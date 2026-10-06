@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.identity.models import User
-from apps.permissions.models import Permission, Role, RolePermission, UserRole
+from apps.permissions.models import Role, UserRole
 from apps.permissions.services import PermissionService
 
 
