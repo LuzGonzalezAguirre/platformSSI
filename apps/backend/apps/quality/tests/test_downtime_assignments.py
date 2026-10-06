@@ -54,7 +54,7 @@ class DowntimeAssignmentsRBACAPITests(APITestCase):
         "downtime_assignment_service.build_assignment_tree",
         return_value=[],
     )
-    def test_any_authenticated_role_can_read_assignments(self, build_tree):
+    def test_role_with_quality_view_can_read_assignments(self, build_tree):
         self.authenticate(self.operator)
 
         response = self.client.get(
