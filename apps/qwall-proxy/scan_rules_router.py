@@ -8,13 +8,14 @@ Registro en main.py:
 
 Variable de entorno requerida:
     QWALL_DB_CONN_STR — connection string pyodbc hacia SQL Server CCS
-    PROXY_SECRET      — Bearer token (compartido con el resto del proxy)
+    QWALL_PROXY_TOKEN — Bearer token (compartido con el resto del proxy)
 """
 import os
 from datetime import datetime, timezone
 from typing import Optional
 
 import pyodbc
+from config import require_env
 from fastapi import APIRouter, HTTPException, Query, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field, field_validator
@@ -33,10 +34,7 @@ def _verify(credentials: HTTPAuthorizationCredentials = Security(_bearer)):
 
 # ── Conexión a SQL Server CCS ─────────────────────────────────────────────────
 
-_CCS_CONN_STR = os.getenv(
-    "QWALL_DB_CONN_STR",
-    "DRIVER={ODBC Driver 17 for SQL Server};SERVER=AAS-PAC-FTP01;DATABASE=CCS;Trusted_Connection=yes;",
-)
+_CCS_CONN_STR = require_env("QWALL_DB_CONN_STR")
 
 
 def _conn():
