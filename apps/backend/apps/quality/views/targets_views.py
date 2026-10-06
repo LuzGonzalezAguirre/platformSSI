@@ -1,13 +1,13 @@
 # apps/quality/views/targets_views.py
 from rest_framework.views import APIView
+from apps.permissions.drf import QualityModulePermission
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from apps.quality.models import QualityTarget
 from apps.quality.serializers import QualityTargetSerializer
 
 
 class QualityTargetView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [QualityModulePermission]
 
     def get(self, request):
         targets = QualityTarget.objects.all().order_by(
