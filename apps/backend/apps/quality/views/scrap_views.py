@@ -2,14 +2,14 @@
 from datetime import date
 
 from rest_framework.views import APIView
+from apps.permissions.drf import QualityModulePermission
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from apps.quality.services.quality_service import QualityService
 from apps.warehouse.services.plex_client import PlexProxyError
 
 
 class ScrapDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [QualityModulePermission]
 
     def get(self, request):
         start = request.query_params.get("start_date")
