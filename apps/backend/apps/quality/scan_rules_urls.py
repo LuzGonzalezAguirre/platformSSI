@@ -1,4 +1,5 @@
 from django.urls import path
+from apps.permissions.drf import quality_view
 from apps.quality.views.scan_rules_views import (
     ScanRuleListCreateView,
     ScanRuleDetailView,
@@ -7,8 +8,8 @@ from apps.quality.views.scan_rules_views import (
 )
 
 urlpatterns = [
-    path("",                  ScanRuleListCreateView.as_view()),
-    path("pn-lookup/",        PartNumberLookupView.as_view()),
-    path("<int:pk>/",         ScanRuleDetailView.as_view()),
-    path("<int:pk>/toggle/",  ScanRuleToggleView.as_view()),
+    path("",                  quality_view(ScanRuleListCreateView)),
+    path("pn-lookup/",        quality_view(PartNumberLookupView)),
+    path("<int:pk>/",         quality_view(ScanRuleDetailView)),
+    path("<int:pk>/toggle/",  quality_view(ScanRuleToggleView)),
 ]
