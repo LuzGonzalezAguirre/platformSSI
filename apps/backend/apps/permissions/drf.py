@@ -85,3 +85,16 @@ class QualityModulePermission(BasePermission):
             return False
 
         return PermissionService.has_permission(user, "quality", action)
+
+
+def quality_view(view_class, action_map=None):
+    """
+    Registra una APIView del dominio Quality con la política RBAC común.
+
+    action_map permite documentar excepciones semánticas donde el verbo HTTP
+    no representa CRUD directo.
+    """
+    view_class.permission_classes = [QualityModulePermission]
+    if action_map is not None:
+        view_class.quality_action_map = action_map
+    return view_class.as_view()
