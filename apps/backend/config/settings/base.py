@@ -125,14 +125,14 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 PLEX_PROXY_URL    = env("PLEX_PROXY_URL", default="http://host.docker.internal:8001")
-PLEX_PROXY_SECRET = env("PLEX_PROXY_SECRET", default="")
+PLEX_PROXY_SECRET = env("PLEX_PROXY_SECRET")
 PLEX_CACHE_TTL    = 300  # segundos — 5 minutos default
 
 QWALL_PROXY_URL    = env("QWALL_PROXY_URL", default="http://host.docker.internal:8002")
 ACTION_TRACKER_URL = env("ACTION_TRACKER_URL", default="")
 ACTION_TRACKER_BOT_USER = env("ACTION_TRACKER_BOT_USER", default="")
 ACTION_TRACKER_BOT_PASSWORD = env("ACTION_TRACKER_BOT_PASSWORD", default="")
-QWALL_PROXY_TOKEN = env("QWALL_PROXY_TOKEN", default="7a31cd3e242533dfc1b2962b1d84c47ddb3065e2752654c7f23b2e06f3dd988e")
+QWALL_PROXY_TOKEN = env("QWALL_PROXY_TOKEN")
 
 
 CELERY_BEAT_SCHEDULE = {
