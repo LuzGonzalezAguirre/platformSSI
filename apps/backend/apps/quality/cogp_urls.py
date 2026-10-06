@@ -1,4 +1,5 @@
 from django.urls import path
+from apps.permissions.drf import quality_view
 from apps.quality.cogp.views.cogp_views import (
     CogpSummaryView,
     CogpWeeklyTrendView,
@@ -11,12 +12,12 @@ from apps.quality.cogp.views.cogp_views import (
 )
 
 urlpatterns = [
-    path("settings/", CogpSettingsView.as_view()),
-    path("scrap-integration/test/", CogpScrapIntegrationTestView.as_view()),
-    path("scrap-integration/current-offenders/", CogpCurrentOffendersView.as_view()),
-    path("summary/", CogpSummaryView.as_view()),
-    path("weekly-trend/", CogpWeeklyTrendView.as_view()),
-    path("mapping/", CogpMappingCatalogView.as_view()),
-    path("pareto/", CogpParetoView.as_view()),
-    path("scrap-rate/", ScrapRateWeeklyView.as_view()),
+    path("settings/", quality_view(CogpSettingsView)),
+    path("scrap-integration/test/", quality_view(CogpScrapIntegrationTestView)),
+    path("scrap-integration/current-offenders/", quality_view(CogpCurrentOffendersView)),
+    path("summary/", quality_view(CogpSummaryView)),
+    path("weekly-trend/", quality_view(CogpWeeklyTrendView)),
+    path("mapping/", quality_view(CogpMappingCatalogView)),
+    path("pareto/", quality_view(CogpParetoView)),
+    path("scrap-rate/", quality_view(ScrapRateWeeklyView)),
 ]
