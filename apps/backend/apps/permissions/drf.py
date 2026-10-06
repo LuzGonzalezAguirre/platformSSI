@@ -30,15 +30,10 @@ def module_permission(module: str, write_action: str = "edit", read_action: str 
         {"module": module, "write_action": write_action, "read_action": read_action},
     )
 
+
 class HasMappedModulePermission(BasePermission):
     """
     Autoriza cada método HTTP mediante un mapa explícito definido por la vista.
-
-    La vista debe declarar:
-        permission_module = "administration"
-        permission_action_map = {"GET": "view", "POST": "create"}
-
-    Si un método no está mapeado, se deniega por defecto.
     """
 
     def has_permission(self, request, view) -> bool:
@@ -95,6 +90,7 @@ def quality_view(view_class, action_map=None):
     no representa CRUD directo.
     """
     view_class.permission_classes = [QualityModulePermission]
-    if action_map is not None:
-        view_class.quality_action_map = action_map
+    view_class.quality_action_map = (
+        action_map if action_map is not None else DEFAULT_QUALITY_ACTION_MAP
+    )
     return view_class.as_view()
