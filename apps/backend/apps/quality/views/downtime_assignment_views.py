@@ -1,7 +1,7 @@
 # apps/quality/views/downtime_assignment_views.py
 from datetime import date as date_cls
 
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -11,6 +11,32 @@ from apps.quality.serializers import (
 )
 from apps.quality.services import downtime_assignment_service
 from apps.quality.services.downtime_assignment_resolver import INHERITANCE_LOOKBACK_DAYS
+
+
+DOWNTIME_ASSIGNMENT_WRITE_ROLES = frozenset({
+    "admin",
+    "quality_engineer",
+    "supervisor",
+})
+
+
+class CanWriteDowntimeAssignments(BasePermission):
+    """
+    La lectura queda disponible para cualquier usuario autenticado.
+    PUT requiere un rol autorizado o superuser.
+    """
+
+    def has_permission(self, request, view) -> bool:
+        if request.method in {"GET", "HEAD", "OPTIONS"}:
+            return True
+
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+
+        return user.roles.filter(slug__in=DOWNTIME_ASSIGNMENT_WRITE_ROLES).exists()
 
 
 class DowntimeAssignmentsView(APIView):
@@ -26,12 +52,11 @@ class DowntimeAssignmentsView(APIView):
         REPLACE-SET por día: lo que no venga se borra para esa fecha.
         Guardar materializa lo heredado como decisión explícita del día.
 
-    ⚠️ RBAC pendiente: el PUT debería exigir
-       admin | quality_engineer | supervisor
-       vía user.roles.values_list("role__slug", flat=True).
-       Hoy cualquier usuario autenticado puede reasignar toda la planta.
+    RBAC:
+        GET: cualquier usuario autenticado.
+        PUT: admin | quality_engineer | supervisor | superuser.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanWriteDowntimeAssignments]
 
     def get(self, request):
         date_str = request.query_params.get("date")
