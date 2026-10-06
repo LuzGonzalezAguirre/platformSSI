@@ -5,11 +5,14 @@ from rest_framework.views import APIView
 
 from apps.permissions.models import Permission, Role, Module, Action
 from apps.permissions.services import PermissionService
+from apps.permissions.drf import HasMappedModulePermission
 from apps.identity.repositories import UserRepository
 
 
 class PermissionChoicesView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"GET": "view"}
 
     def get(self, request):
         permissions = Permission.objects.all().order_by("module", "action")
@@ -20,7 +23,9 @@ class PermissionChoicesView(APIView):
 
 
 class RoleListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"GET": "view", "POST": "create"}
 
     def get(self, request):
         roles = Role.objects.prefetch_related("role_permissions__permission").all()
@@ -65,7 +70,9 @@ class RoleListCreateView(APIView):
 
 
 class RoleDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"GET": "view", "PUT": "edit", "DELETE": "delete"}
 
     def get(self, request, slug: str):
         try:
@@ -117,7 +124,9 @@ class RoleDetailView(APIView):
 
 
 class UserPermissionsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"GET": "view", "POST": "edit"}
 
     def get(self, request, user_id: int):
         user = UserRepository.get_by_id(user_id)
