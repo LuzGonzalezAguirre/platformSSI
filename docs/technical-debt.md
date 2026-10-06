@@ -36,17 +36,26 @@ Pendiente para cierre completo:
 
 Mientras los valores históricos sigan siendo válidos, SEC-001 no debe marcarse como cerrada.
 
-### Autorización administrativa backend
+### SEC-002 - Aplicar RBAC real a endpoints administrativos
 
-El modelo RBAC existe, pero endpoints administrativos de usuarios, roles y permisos utilizan en varios casos únicamente `IsAuthenticated`.
+**Prioridad:** Crítica  
+**Estado:** Resuelta el 06-Oct-2026.
 
-Ocultar esas pantallas en frontend no protege la API.
+Se aplicó enforcement backend de `administration.view/create/edit/delete` sobre los endpoints administrativos de Users, Roles, Permissions, overrides y Audit.
 
-Acción requerida:
+Reglas aplicadas:
 
-- definir permisos backend por endpoint;
-- cubrirlos con tests negativos y positivos;
-- verificar superuser y roles de sistema.
+- lectura de usuarios, roles, permisos, overrides y auditoría: `administration.view`;
+- creación de usuarios y roles custom: `administration.create`;
+- edición de usuarios, reset de contraseña, activar/desactivar, edición de roles, asignación de roles y overrides: `administration.edit`;
+- eliminación de roles custom: `administration.delete`;
+- `GET /permissions/me/` permanece disponible para cualquier usuario autenticado porque representa sus propios permisos efectivos.
+
+La autorización se resuelve con `PermissionService`, por lo que respeta unión de roles, grants/revokes individuales y el bypass total de superuser.
+
+Se añadieron pruebas positivas y negativas que cubren usuario autenticado sin permisos, Plant Manager con lectura administrativa, MES Admin, superuser, mutaciones de usuario, Audit, catálogo de permisos y protección de roles de sistema.
+
+La visibilidad del frontend continúa siendo una capa de UX; la autoridad de seguridad está ahora en backend.
 
 ## Prioridad alta
 
