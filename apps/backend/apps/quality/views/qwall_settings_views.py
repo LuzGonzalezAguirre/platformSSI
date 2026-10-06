@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.quality.models import FailModeTranslation, QWallSettings
+from apps.permissions.services import PermissionService
 from apps.quality.services.fail_mode_translation_service import FailModeTranslationService
 
 PROXY_URL   = os.getenv("QWALL_PROXY_URL",   "http://host.docker.internal:8002")
@@ -18,12 +19,18 @@ PROXY_TOKEN = os.getenv("QWALL_PROXY_TOKEN", "")
 HEADERS     = {"Authorization": f"Bearer {PROXY_TOKEN}"}
 TIMEOUT     = 30
 
-ALLOWED_ROLES = {"admin", "quality_engineer"}
-
-
 def _has_access(request) -> bool:
-    roles = set(request.user.user_roles.values_list("role__slug", flat=True))
-    return bool(roles & ALLOWED_ROLES)
+    action = {
+        "GET": "view",
+        "HEAD": "view",
+        "OPTIONS": "view",
+        "POST": "create",
+        "PUT": "edit",
+        "PATCH": "edit",
+        "DELETE": "delete",
+    }.get(request.method)
+    return bool(action and PermissionService.has_permission(request.user, "quality", action))
+
 
 
 def _forbidden():
