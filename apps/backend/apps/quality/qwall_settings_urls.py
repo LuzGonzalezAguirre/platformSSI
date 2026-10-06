@@ -1,4 +1,5 @@
 from django.urls import path
+from apps.permissions.drf import quality_view
 from apps.quality.views.qwall_settings_views import (
     QWallBusinessUnitsView,
     QWallRolesView,
