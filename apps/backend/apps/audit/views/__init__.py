@@ -1,5 +1,4 @@
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Count, Max, Q
@@ -9,10 +8,13 @@ from datetime import timedelta
 from apps.audit.models import AuditLog
 from apps.audit.serializers import AuditLogSerializer, UserActivitySerializer
 from apps.identity.models import User
+from apps.permissions.drf import HasMappedModulePermission
 
 
 class AuditUserListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"GET": "view"}
 
     def get(self, request):
         cutoff = timezone.now() - timedelta(days=30)
@@ -31,7 +33,9 @@ class AuditUserListView(APIView):
 
 
 class AuditLogListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasMappedModulePermission]
+    permission_module = "administration"
+    permission_action_map = {"GET": "view"}
 
     def get(self, request):
         queryset = AuditLog.objects.select_related("user").all()
