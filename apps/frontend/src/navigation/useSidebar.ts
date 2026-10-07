@@ -4,11 +4,11 @@ import {
   SidebarState,
   SidebarAction,
   NavSection,
-  UserRole,
   UseSidebarReturn,
 } from "./types";
 import { sidebarConfig } from "./sidebarConfig";
-import { useAuthStore, UserPermissions, ModuleKey } from "../store/authStore";
+import { filterSectionsByPermissions } from "./sidebarPermissions";
+import { useAuthStore } from "../store/authStore";
 
 const initialState: SidebarState = {
   expandedSectionId: null,
@@ -46,48 +46,6 @@ function sidebarReducer(state: SidebarState, action: SidebarAction): SidebarStat
   }
 }
 
-// Mapeo sección → módulo de permisos
-const SECTION_MODULE_MAP: Record<string, ModuleKey> = {
-  "operational-panel": "production", 
-  production:     "production",
-  quality:        "quality",
-  maintenance:    "maintenance",
-  warehouse:      "warehouse",
-  administration: "administration",
-};
-
-function filterSectionsByPermissions(
-  sections: NavSection[],
-  userRole: UserRole,
-  permissions: UserPermissions | undefined,
-): NavSection[] {
-  return sections
-    .filter((section) => {
-      // Primero filtra por rol (acceso mínimo)
-      if (!section.allowedRoles.includes(userRole)) return false;
-
-      // Luego verifica que tenga al menos "view" en ese módulo
-      const module = SECTION_MODULE_MAP[section.id];
-      if (!module || !permissions) return false;
-      return permissions[module]?.includes("view") ?? false;
-    })
-    .map((section) => ({
-      ...section,
-      items: section.items
-        .filter((item) => item.allowedRoles.includes(userRole))
-        .map((item) =>
-          item.children
-            ? {
-                ...item,
-                children: item.children.filter((c) => c.allowedRoles.includes(userRole)),
-              }
-            : item,
-        ),
-    }))
-    .filter((section) => section.items.length > 0)
-    .sort((a, b) => a.order - b.order);
-}
-
 function findSectionByPath(sections: NavSection[], path: string): string | null {
   for (const section of sections) {
     for (const item of section.items) {
@@ -118,14 +76,14 @@ function findItemByPath(sections: NavSection[], path: string): string | null {
   return null;
 }
 
-export function useSidebar(userRole: UserRole): UseSidebarReturn {
+export function useSidebar(): UseSidebarReturn {
   const location = useLocation();
   const [state, dispatch] = useReducer(sidebarReducer, initialState);
   const permissions = useAuthStore((s) => s.user?.permissions);
 
   const visibleSections = useMemo(
-    () => filterSectionsByPermissions(sidebarConfig, userRole, permissions),
-    [userRole, permissions],
+    () => filterSectionsByPermissions(sidebarConfig, permissions),
+    [permissions],
   );
 
   const activeSectionId = useMemo(
