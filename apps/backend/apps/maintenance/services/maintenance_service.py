@@ -41,6 +41,34 @@ def _filter_rows_by_bu(rows: list[dict], allowed_bu: tuple[str, ...]) -> list[di
     return [row for row in rows if _row_bu(row) in allowed]
 
 
+def _aggregate_kpi_rows(rows: list[dict]) -> dict:
+    totals = defaultdict(float)
+    for row in rows:
+        for field in (
+            "operating_hours", "downtime_hours", "down_hours",
+            "setup_hours", "idle_hours", "total_failures",
+        ):
+            totals[field] += float(row.get(field) or 0)
+
+    failures = totals["total_failures"]
+    operating = totals["operating_hours"]
+    downtime = totals["downtime_hours"]
+    failure_hours = max(downtime - totals["setup_hours"], 0)
+    planned = operating + downtime
+
+    return {
+        "operating_hours": _round2(operating),
+        "downtime_hours": _round2(downtime),
+        "down_hours": _round2(totals["down_hours"]),
+        "setup_hours": _round2(totals["setup_hours"]),
+        "idle_hours": _round2(totals["idle_hours"]),
+        "total_failures": int(failures),
+        "mttr_hours": _round2(failure_hours / failures) if failures else None,
+        "mtbf_hours": _round2(operating / failures) if failures else None,
+        "availability_pct": _round2(operating * 100 / planned) if planned else None,
+    }
+
+
 def _aggregate_oee_details(details: list[dict]) -> dict | None:
     if not details:
         return None
@@ -117,49 +145,27 @@ class MaintenanceService:
 
     @staticmethod
     def get_kpis(filter_ctx: FilterContext) -> dict:
-        cache_key = filter_ctx.cache_key("maint:kpis:v2")
+        cache_key = filter_ctx.cache_key("maint:kpis:v3")
         cached = cache.get(cache_key)
         if cached:
             return cached
 
-        chunks = list(date_chunks(
+        scoped_rows = []
+        for chunk_start, chunk_end in date_chunks(
             filter_ctx.start_date.isoformat(), filter_ctx.end_date.isoformat()
-        ))
-        if len(chunks) == 1:
-            result = _post("/maintenance-kpis", {
-                "start_date": chunks[0][0].isoformat(),
-                "end_date": chunks[0][1].isoformat(),
-            })
-            cache.set(cache_key, result, CACHE_TTL)
-            return result
-
-        totals = defaultdict(float)
-        fields = (
-            "operating_hours", "downtime_hours", "down_hours",
-            "setup_hours", "idle_hours", "total_failures",
-        )
-        for chunk_start, chunk_end in chunks:
+        ):
             response = _post("/maintenance-kpis", {
                 "start_date": chunk_start.isoformat(),
                 "end_date": chunk_end.isoformat(),
             })
-            data = response.get("data") or {}
-            for field in fields:
-                totals[field] += float(data.get(field) or 0)
+            scoped_rows.extend(
+                _filter_rows_by_bu(response.get("by_workcenter", []), filter_ctx.bu)
+            )
 
-        failures = totals["total_failures"]
-        operating = totals["operating_hours"]
-        downtime = totals["downtime_hours"]
-        failure_hours = max(downtime - totals["setup_hours"], 0)
-        planned = operating + downtime
-        data = {field: _round2(totals[field]) for field in fields}
-        data["total_failures"] = int(failures)
-        data["mttr_hours"] = _round2(failure_hours / failures) if failures else None
-        data["mtbf_hours"] = _round2(operating / failures) if failures else None
-        data["availability_pct"] = _round2(operating * 100 / planned) if planned else None
-        result = {"data": data}
+        result = {"data": _aggregate_kpi_rows(scoped_rows)}
         cache.set(cache_key, result, CACHE_TTL)
         return result
+
 
     @staticmethod
     def get_downtime_reasons(start_date: str, end_date: str) -> dict:
