@@ -80,50 +80,32 @@ Los placeholders no deben documentarse como módulos funcionales.
 
 El contenido tiene un ancho máximo de 1600 px y scroll vertical independiente.
 
-## Hallazgo de rol del Sidebar
+## Visibilidad del Sidebar
 
-El componente llama:
+El Sidebar ya no recibe un rol hardcodeado ni una taxonomía legacy de roles.
 
-`<Sidebar userRole={"admin" as UserRole} />`
+`AppShell` monta directamente:
 
-Por lo tanto, el rol enviado al sistema de navegación está hardcodeado como `admin` y no deriva del usuario autenticado.
+`<Sidebar />`
 
-`useSidebar` todavía aplica permisos efectivos por módulo, por lo que una sección sin permiso `view` puede quedar oculta.
+`useSidebar` obtiene los permisos efectivos del usuario desde `authStore.user.permissions` y delega la visibilidad a `filterSectionsByPermissions()`.
 
-Sin embargo, cualquier filtro puramente basado en `allowedRoles` evalúa al usuario como admin.
+La política es la misma utilizada por los guards de rutas:
 
-Esto es especialmente relevante para items como Q-Wall Settings.
+- una sección requiere `module.view`;
+- los items normales heredan `view`;
+- un item puede declarar `requiredAction` cuando necesita otra acción;
+- Q-Wall Settings requiere `quality.edit`.
 
-La navegación debe corregirse para utilizar roles reales o eliminar el sistema paralelo de roles del sidebar.
+No existe un fallback visual a `admin` ni una conversión entre roles frontend y backend.
 
-## Sistema de roles del frontend
+## Roles y navegación
 
-`navigation/types.ts` declara:
+La navegación ya no utiliza una taxonomía propia de roles.
 
-- operador;
-- tecnico;
-- lider;
-- supervisor;
-- ingeniero;
-- admin;
-- gerente.
+Los roles reales continúan disponibles en `user.roles` para administración, perfil y cualquier flujo donde el rol sea dato de negocio, pero no se usan para decidir qué secciones aparecen en el Sidebar.
 
-El backend RBAC utiliza slugs diferentes y más específicos, por ejemplo:
-
-- operator;
-- supervisor;
-- quality_engineer;
-- process_engineer;
-- maintenance_engineer;
-- inventory_engineer;
-- admin;
-- plant_manager.
-
-Existen por tanto dos taxonomías de roles.
-
-La navegación mezcla además permisos efectivos del backend con este enum de roles legacy del frontend.
-
-Una dirección de arquitectura más consistente es usar permisos `module.action` como autoridad y reservar roles para administración, no para lógica duplicada de visibilidad.
+La visibilidad de navegación usa exclusivamente permisos efectivos `module.action`, que ya incorporan roles y overrides calculados por backend.
 
 ## Permisos
 
@@ -381,8 +363,8 @@ El build ejecuta primero TypeScript y después Vite.
 
 ## Deuda técnica prioritaria
 
-1. eliminar el rol `admin` hardcodeado de AppShell;
-2. consolidar roles legacy del frontend con el RBAC backend;
+1. mantener alineados Sidebar y guards de rutas con la matriz backend;
+2. evitar reintroducir taxonomías legacy de roles para navegación;
 3. mantener alineados los guards de rutas con la matriz backend;
 4. mantener enforcement real en backend;
 5. parametrizar API base URL por ambiente;
