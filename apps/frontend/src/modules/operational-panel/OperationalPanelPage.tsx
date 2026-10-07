@@ -6,7 +6,7 @@ import { MaintenanceService } from "../maintenance/overview/overview.service";
 import { useDashboardTargets } from "../maintenance/overview/useDashboardTargets";
 import { WorkRequestsService } from "../maintenance/work-requests/work-requests.service";
 import { QualityService } from "../quality/services/quality.service";
-import { DailySummary } from "../production/ops-report/types";
+import { ClientMetrics, DailySummary } from "../production/ops-report/types";
 import { MaintenanceKPIs, OEEData } from "../maintenance/overview/types";
 import { WRDashboard } from "../maintenance/work-requests/types";
 
@@ -392,9 +392,9 @@ export default function OperationalPanelPage() {
   }, [load, dateMode, singleDate, rangeEnd]);
 
   // ── Valores derivados ─────────────────────────────────────────────────────
-  const volvo   = data.prod?.volvo;
-  const cummins = data.prod?.cummins;
-  const tulc    = data.prod?.tulc;
+  const volvo   = data.prod?.volvo as ClientMetrics | undefined;
+  const cummins = data.prod?.cummins as ClientMetrics | undefined;
+  const tulc    = data.prod?.tulc as ClientMetrics | undefined;
 
   const oeePct   = data.oee ? parseFloat(data.oee.oee_pct)          : data.oeeLive ? parseFloat(data.oeeLive.oee_pct as string)          : null;
   const availPct = data.oee ? parseFloat(data.oee.availability_pct)  : data.oeeLive ? parseFloat(data.oeeLive.availability_pct as string)  : null;
