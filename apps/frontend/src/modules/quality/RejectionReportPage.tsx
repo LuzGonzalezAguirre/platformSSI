@@ -389,13 +389,11 @@ export default function RejectionReportPage() {
         include_test: includeTest ? "true" : "false",
       });
       if (buId) params.append("bu_id", buId);
-      const token = localStorage.getItem("mes_access_token");
-      const res = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/quality/rejection-report/pdf/?${params}`,
-      { headers: { Authorization: `Bearer ${token ?? ""}` } },
+      const res = await apiClient.get(
+        `/quality/rejection-report/pdf/?${params}`,
+        { responseType: "blob" },
       );
-      if (!res.ok) return;
-      const blob = await res.blob();
+      const blob = res.data as Blob;
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
       a.href     = url;
