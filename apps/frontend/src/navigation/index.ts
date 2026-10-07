@@ -6,7 +6,6 @@ export type {
   NavSection,
   SidebarState,
   SidebarAction,
-  UserRole,
   Theme,
   Language,
   UseSidebarReturn,
