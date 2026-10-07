@@ -298,19 +298,48 @@ El frontend contiene una vista independiente `LeysillaPage` y componentes dentro
 
 También existe generación de material PDF de capacitación en `generateTrainingPdf.ts`.
 
-## Autorización observada
+## Autorización
 
-El módulo no utiliza una política uniforme.
+Production utiliza una política RBAC común basada en permisos efectivos `production.view/create/edit/delete`.
 
-Las vistas de Safety sí emplean clases generadas con `module_permission`.
+La autoridad se resuelve mediante `PermissionService`, por lo que se respetan permisos heredados de roles, grants y revokes individuales y el acceso total de superuser.
 
-Targets, WIP, OEE, asistencia, productividad, Ops Report y gran parte de CCS utilizan únicamente `IsAuthenticated`.
+La política se aplica al registrar las rutas mediante `production_view()` y `ProductionModulePermission`.
 
-En Safety, `SafetySettingsView` asigna `ProductionEdit` a toda la clase, por lo que incluso GET requiere permiso edit.
+### Matriz común
 
-`SafetyIncidentListCreateView` asigna `ProductionCreate` a toda la clase, por lo que incluso el listado GET requiere permiso create.
+| Operación | Permiso |
+| --- | --- |
+| GET, HEAD, OPTIONS | `production.view` |
+| POST que crea un registro o evento | `production.create` |
+| PUT/PATCH | `production.edit` |
+| DELETE | `production.delete` |
 
-Estas diferencias deben revisarse en una etapa funcional de endurecimiento de autorización.
+### POST con semántica no CRUD
+
+Los siguientes endpoints usan un mapping explícito:
+
+- Targets, WIP y OEE por POST: `production.edit`, porque actualizan valores operativos existentes;
+- Attendance y CCS Attendance Daily por POST: `production.edit`;
+- Earned Hours por POST: `production.edit`;
+- reactivación de empleados por POST: `production.edit`;
+- CCS attendance records y KPIs por POST: `production.view`, porque son consultas con body;
+- Ley Silla KPIs, breaks y charts por POST: `production.view`;
+- CCS check-in, check-out y overtime por POST: `production.create`.
+
+### Safety
+
+Safety quedó bajo la misma matriz común.
+
+Esto corrige la inconsistencia anterior donde GET de settings exigía `production.edit` y GET de incidents exigía `production.create`.
+
+Ahora:
+
+- lectura de settings, incidents y counter history: `production.view`;
+- creación de incidents: `production.create`;
+- edición de settings e incidents: `production.edit`.
+
+La UI puede ocultar acciones según permisos, pero la autoridad de seguridad permanece en backend.
 
 ## Deuda técnica observada
 
