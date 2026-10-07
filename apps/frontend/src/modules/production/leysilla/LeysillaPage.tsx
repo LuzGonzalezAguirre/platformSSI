@@ -134,7 +134,7 @@ export default function LeysillaPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="break_date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} />
                 <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v: number) => [v, lang === "es" ? "Descansos" : "Breaks"]} />
+                <Tooltip formatter={(v) => [Number(v ?? 0), lang === "es" ? "Descansos" : "Breaks"]} />
                 <Bar dataKey="total_breaks" fill="#0070C0" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -154,7 +154,7 @@ export default function LeysillaPage() {
                     <Cell key={e.turno} fill={TURNO_COLORS[e.turno] || "#888"} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => [v, lang === "es" ? "Descansos" : "Breaks"]} />
+                <Tooltip formatter={(v) => [Number(v ?? 0), lang === "es" ? "Descansos" : "Breaks"]} />
                 <Legend formatter={(v) => `Turno ${v}`} />
               </PieChart>
             </ResponsiveContainer>
@@ -171,7 +171,7 @@ export default function LeysillaPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="break_date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} />
                 <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v: number) => [`${v} min`, lang === "es" ? "Promedio" : "Average"]} />
+                <Tooltip formatter={(v) => [`${Number(v ?? 0)} min`, lang === "es" ? "Promedio" : "Average"]} />
                 <Line type="monotone" dataKey="avg_duration" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
