@@ -62,6 +62,18 @@ export const AssistanceService = {
   deleteEarnedHours: (date: string): Promise<void> =>
     apiClient.delete(`/production/earned-hours/`, { params: { date } }).then(() => undefined),
 
+  getCcsEmployees: (): Promise<any[]> =>
+    apiClient.get(`${BASE}/ccs/employees/`).then((r: any) => r.data?.data ?? []),
+
+  checkIn: (barcode: string): Promise<any> =>
+    apiClient.post(`${BASE}/ccs/check-in/`, { barcode_id: barcode }).then((r: any) => r.data),
+
+  checkOut: (barcode: string): Promise<any> =>
+    apiClient.post(`${BASE}/ccs/check-out/`, { barcode_id: barcode }).then((r: any) => r.data),
+
+  registerOvertime: (employeeId: number, date: string): Promise<any> =>
+    apiClient.post(`${BASE}/ccs/overtime/`, { employee_id: employeeId, date }).then((r: any) => r.data),
+
   // ── Chair Control (Ley Silla) ────────────────────────────────────────────
 
   getChairKpis: (filters: { start_date: string; end_date: string; turno?: string }): Promise<any> =>
