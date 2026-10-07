@@ -95,7 +95,7 @@ export function LeysillaTab({ lang }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="break_date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} />
                 <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v: number) => [v, lang === "es" ? "Descansos" : "Breaks"]} />
+                <Tooltip formatter={(v) => [Number(v ?? 0), lang === "es" ? "Descansos" : "Breaks"]} />
                 <Bar dataKey="total_breaks" fill="#0070C0" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -110,12 +110,16 @@ export function LeysillaTab({ lang }: Props) {
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={turnoD?.data || []} dataKey="total" nameKey="turno" cx="50%" cy="50%" outerRadius={70}
-                  label={({ turno: t, percent }) => `T${t}: ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                  label={(props) => {
+                    const t = (props.payload as { turno?: string } | undefined)?.turno ?? "";
+                    const percent = Number(props.percent ?? 0);
+                    return `T${t}: ${(percent * 100).toFixed(0)}%`;
+                  }} labelLine={false}>
                   {(turnoD?.data || []).map((e: any) => (
                     <Cell key={e.turno} fill={TURNO_COLORS[e.turno] || "#888"} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => [v, lang === "es" ? "Descansos" : "Breaks"]} />
+                <Tooltip formatter={(v) => [Number(v ?? 0), lang === "es" ? "Descansos" : "Breaks"]} />
                 <Legend formatter={(v) => `Turno ${v}`} />
               </PieChart>
             </ResponsiveContainer>
@@ -132,7 +136,7 @@ export function LeysillaTab({ lang }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="break_date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} />
                 <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v: number) => [`${v} min`, lang === "es" ? "Promedio" : "Average"]} />
+                <Tooltip formatter={(v) => [`${Number(v ?? 0)} min`, lang === "es" ? "Promedio" : "Average"]} />
                 <Line type="monotone" dataKey="avg_duration" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
