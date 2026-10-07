@@ -104,6 +104,8 @@ function Bar({ pct, color }: { pct: number; color: string }) {
 
 // ── Filtros de tabla ──────────────────────────────────────────────────────────
 
+type FlagFilter = "" | "flagged" | "unflagged";
+
 interface TableFilters {
   filtered:     QWallRow[];
   inspector:    string;
@@ -112,18 +114,22 @@ interface TableFilters {
   setResult:    (v: "" | "PASS" | "FAIL") => void;
   partNo:       string;
   setPartNo:    (v: string) => void;
+  flag:         FlagFilter;
+  setFlag:      (v: FlagFilter) => void;
   inspectors:   string[];
   partNumbers:  string[];
 }
 
-function useTableFilters(rows: QWallRow[], pnForBu: string[]): TableFilters {
+function useTableFilters(rows: QWallRow[], selectedBuIds: string[]): TableFilters {
   const [inspector, setInspector] = useState<string>("");
   const [result,    setResult]    = useState<"" | "PASS" | "FAIL">("");
   const [partNo,    setPartNo]    = useState<string>("");
 
-  // Filtrar por BU primero
-  const buFiltered: QWallRow[] = pnForBu.length > 0
-    ? rows.filter((r) => pnForBu.includes(r.part_number))
+  const [flag, setFlag] = useState<FlagFilter>("");
+
+  // Identificar la BU por su ID, incluso si varias comparten un part number.
+  const buFiltered: QWallRow[] = selectedBuIds.length > 0
+    ? rows.filter((r) => r.bu_id != null && selectedBuIds.includes(String(r.bu_id)))
     : rows;
 
   const inspectors:  string[] = [...new Set<string>(buFiltered.map((r) => r.inspector))].sort();
@@ -132,13 +138,14 @@ function useTableFilters(rows: QWallRow[], pnForBu: string[]): TableFilters {
   const filtered: QWallRow[] = buFiltered.filter((r) =>
     (!inspector || r.inspector   === inspector) &&
     (!result    || r.result      === result)    &&
-    (!partNo    || r.part_number === partNo)
+    (!partNo    || r.part_number === partNo) &&
+    (!flag || (flag === "flagged" ? r.flag_id != null : r.flag_id == null))
   );
 
   return {
     filtered, inspector, setInspector,
     result, setResult, partNo, setPartNo,
-    inspectors, partNumbers,
+    flag, setFlag, inspectors, partNumbers,
   };
 }
 
@@ -241,10 +248,6 @@ export default function QWallPage() {
     return [...seen.entries()].map(([bu_id, bu_name]) => ({ bu_id, bu_name }));
   }, [partCatalog]);
 
-  const pnForBu: string[] = selectedBuIds.length > 0
-    ? partCatalog.filter((p) => selectedBuIds.includes(String(p.bu_id))).map((p) => p.ssiPN)
-    : partCatalog.map((p) => p.ssiPN);
-
   const buIdsForService: number[] = selectedBuIds.map(Number);
 
   const load = useCallback(async () => {
@@ -267,17 +270,18 @@ useEffect(() => {
   }
 }, [includeTest, selectedBuIds]);
 
-  const filters = useTableFilters(data?.rows ?? [], pnForBu);
+  const filters = useTableFilters(data?.rows ?? [], selectedBuIds);
 
-  // Reset partNo al cambiar BU
+  // Evitar filtros de inspector/modelo que pertenecen a la BU anterior.
   useEffect(() => {
     filters.setPartNo("");
+    filters.setInspector("");
   }, [selectedBuIds]);
 
   // KPIs y aggregados derivados del subset BU-filtrado
   const subsetRows  = filters.filtered;
-  const allBuRows   = pnForBu.length > 0
-    ? (data?.rows ?? []).filter((r) => pnForBu.includes(r.part_number))
+  const allBuRows   = selectedBuIds.length > 0
+    ? (data?.rows ?? []).filter((r) => r.bu_id != null && selectedBuIds.includes(String(r.bu_id)))
     : (data?.rows ?? []);
 
   const kpis        = deriveKpis(allBuRows);
@@ -537,6 +541,16 @@ useEffect(() => {
               </div>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" as const }}>
 
+                <label style={{ ...s.label, display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                  Flag
+                  <select style={s.input} value={filters.flag}
+                    onChange={(e) => filters.setFlag(e.target.value as FlagFilter)}>
+                    <option value="">{l ? "Todas las piezas" : "All pieces"}</option>
+                    <option value="flagged">{l ? "Con flag" : "Flagged"}</option>
+                    <option value="unflagged">{l ? "Sin flag" : "Not flagged"}</option>
+                  </select>
+                </label>
+
                 <select style={s.input} value={filters.inspector}
                   onChange={(e) => filters.setInspector(e.target.value)}>
                   <option value="">{l ? "— Inspector —" : "— Inspector —"}</option>
@@ -574,6 +588,7 @@ useEffect(() => {
                       l ? "Tipo"      : "Type",
                       l ? "Resultado" : "Result",
                       "WO",
+                      "BU",
                       "Part No.",
                       "Serial SSI",
                       t("qwallSettings.columns.serialClient"),
@@ -599,6 +614,9 @@ useEffect(() => {
                         <span style={s.badge(row.result === "PASS")}>{row.result}</span>
                       </td>
                       <td style={{ ...s.td, fontFamily: "monospace" }}>{row.work_order}</td>
+                      <td style={s.td}>
+                        {buCatalog.find((b) => b.bu_id === row.bu_id)?.bu_name ?? row.bu_id ?? "—"}
+                      </td>
                       <td style={{ ...s.td, fontFamily: "monospace" }}>{row.part_number}</td>
                       <td style={{ ...s.td, fontFamily: "monospace" }}>{row.serial_ssi}</td>
                       <td style={{ ...s.td, fontFamily: "monospace" }}>{row.serial_volvo}</td>
@@ -610,21 +628,21 @@ useEffect(() => {
                       }}>
                         {row.fail_modes || "—"}
                       </td>
-                      <td style={{ ...s.td, maxWidth: "180px" }}>
+                      <td style={{ ...s.td, minWidth: "150px", maxWidth: "260px", overflowWrap: "anywhere" }}>
                         {row.flag_id != null ? (
-                          <span
-                            title={row.flag_comment || row.flag_fail_mode_name || undefined}
-                            style={{
-                              display: "flex", alignItems: "center", gap: "0.3rem",
-                              color: "#f59e0b", overflow: "hidden",
-                            }}
-                          >
-                            <FlagIcon size={12} style={{ flexShrink: 0 }} />
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {row.flag_comment || row.flag_fail_mode_name || ""}
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: "#f59e0b", fontWeight: 700 }}>
+                              <FlagIcon size={12} aria-hidden="true" />
+                              FLAG #{row.flag_id}
                             </span>
-                          </span>
-                        ) : null}
+                            {row.flag_fail_mode_name && <span>{row.flag_fail_mode_name}</span>}
+                            {row.flag_comment && (
+                              <span style={{ color: "var(--color-text-secondary)", whiteSpace: "pre-wrap" }}>
+                                {row.flag_comment}
+                              </span>
+                            )}
+                          </div>
+                        ) : <span style={{ color: "var(--color-text-secondary)" }}>—</span>}
                       </td>
                     </tr>
                   ))}
