@@ -129,6 +129,24 @@ Safety quedó alineado con la misma matriz, eliminando la inconsistencia funcion
 
 Se agregó cobertura automática para lectura, edición, eliminación, grants/revokes y endpoints CCS con semántica especial.
 
+### SEC-006 - Corregir permisos class-level de Safety
+
+**Prioridad:** Alta  
+**Estado:** Resuelta el 06-Oct-2026.
+
+Safety dejó de depender de permisos class-level que aplicaban una sola acción a todos los métodos HTTP.
+
+La política actual se define por método al registrar las rutas:
+
+- `GET /safety/settings/`: `production.view`;
+- `PATCH /safety/settings/`: `production.edit`;
+- `GET /safety/incidents/`: `production.view`;
+- `POST /safety/incidents/`: `production.create`;
+- `PATCH /safety/incidents/{id}/`: `production.edit`;
+- `GET /safety/counter-history/`: `production.view`.
+
+Este cambio forma parte de la política común de SEC-005, pero SEC-006 se valida además con pruebas específicas de `view`, `create` y `edit` sobre endpoints Safety.
+
 ### Tracebacks y detalles internos desde Q-Wall Proxy
 
 Algunos handlers devuelven el traceback completo dentro del detalle HTTP.
