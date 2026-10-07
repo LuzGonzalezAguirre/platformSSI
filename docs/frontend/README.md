@@ -37,11 +37,13 @@ También inicializa i18n y carga `styles/tokens.css`.
 
 El resto de la aplicación está envuelto por `PrivateRoute`.
 
-`PrivateRoute` comprueba solamente `isAuthenticated`.
+`PrivateRoute` comprueba autenticación.
 
-No valida permisos por módulo ni rol para cada URL.
+Las rutas funcionales de módulos utilizan además `PermissionRoute`, que consulta `authStore.hasPermission(module, action)` antes de montar la página.
 
-Por lo tanto, el control visual del sidebar no reemplaza la autorización del backend.
+Si falta el permiso requerido, el usuario se redirige al dashboard raíz.
+
+El guard frontend es una capa de UX. La autorización real continúa en backend y no debe depender de React Router.
 
 ## Rutas activas
 
@@ -150,15 +152,30 @@ Acciones:
 
 ## Rutas y permisos
 
-Aunque el sidebar filtre secciones, `App.tsx` no contiene un `PermissionRoute`.
+`App.tsx` utiliza `PermissionRoute` como guard reutilizable.
 
-Un usuario autenticado puede navegar manualmente a una URL aunque el sidebar no la muestre.
+La política base de navegación es:
 
-La seguridad efectiva depende entonces del endpoint backend consumido por la página.
+- rutas Production: `production.view`;
+- rutas Quality: `quality.view`;
+- rutas Maintenance: `maintenance.view`;
+- rutas Warehouse: `warehouse.view`;
+- rutas Administration: `administration.view`;
+- Operational Panel: `production.view`.
 
-Esto es particularmente importante porque la revisión backend encontró endpoints que también usan únicamente `IsAuthenticated`.
+Algunas rutas con semántica explícita de cambio elevan el requisito:
 
-La corrección debe realizarse primero en backend y, adicionalmente, puede incorporarse un guard frontend para UX.
+- crear Problem Control: `quality.create`;
+- editar Problem Control: `quality.edit`;
+- Q-Wall Settings: `quality.edit`;
+- COGP Mapping: `quality.edit`;
+- Downtime Settings: `quality.edit`.
+
+La ruta de aprobación de Problem Control conserva `quality.view` en frontend porque el backend aplica la autorización fina por usuario asignado al flujo.
+
+Dashboard raíz, Profile y Settings general permanecen disponibles para cualquier usuario autenticado.
+
+Los guards del frontend evitan navegación manual incoherente, pero no constituyen una frontera de seguridad. El backend continúa siendo la autoridad final.
 
 ## Estado de autenticación
 
@@ -366,7 +383,7 @@ El build ejecuta primero TypeScript y después Vite.
 
 1. eliminar el rol `admin` hardcodeado de AppShell;
 2. consolidar roles legacy del frontend con el RBAC backend;
-3. agregar guards de permiso a rutas como mejora de UX;
+3. mantener alineados los guards de rutas con la matriz backend;
 4. mantener enforcement real en backend;
 5. parametrizar API base URL por ambiente;
 6. definir estrategia de refresh token;
