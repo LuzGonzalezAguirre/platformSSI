@@ -1,7 +1,7 @@
 // apps/frontend/src/App.tsx
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useAuthStore } from "./store/authStore";
+import { useAuthStore, ModuleKey, ActionKey } from "./store/authStore";
 import LoginPage from "./modules/auth/LoginPage";
 import AppShell from "./components/layout/AppShell";
 import UsersPage from "./modules/admin/UsersPage";
@@ -63,54 +63,79 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
+function PermissionRoute({
+  module,
+  action = "view",
+  children,
+}: {
+  module: ModuleKey;
+  action?: ActionKey;
+  children: React.ReactNode;
+}) {
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  return hasPermission(module, action)
+    ? <>{children}</>
+    : <Navigate to="/" replace />;
+}
+
+const withPermission = (
+  module: ModuleKey,
+  element: React.ReactNode,
+  action: ActionKey = "view",
+) => (
+  <PermissionRoute module={module} action={action}>
+    {element}
+  </PermissionRoute>
+);
+
 function AppRoutes() {
   return (
     <AppShell>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/production/ops-daily-report" element={<OpsReportPage />} />
-        <Route path="/production/targets" element={<TargetsPage />} />
-        <Route path="/production/safety" element={<SafetyPage />} />
-        <Route path="/production/assistance" element={<AssistancePage />} />
-        <Route path="/production/leysilla" element={<LeysillaPage />} />
-        <Route path="/maintenance/orders" element={<div>Órdenes de Mantenimiento</div>} />
-        <Route path="/settings/users" element={<UsersPage />} />
-        <Route path="/settings/roles" element={<RolesPage />} />
-        <Route path="/settings/audit" element={<AuditPage />} />
-        <Route path="/settings/plant" element={<div>Planta</div>} />
+        <Route path="/production/ops-daily-report" element={withPermission("production", <OpsReportPage />)} />
+        <Route path="/production/targets" element={withPermission("production", <TargetsPage />)} />
+        <Route path="/production/safety" element={withPermission("production", <SafetyPage />)} />
+        <Route path="/production/assistance" element={withPermission("production", <AssistancePage />)} />
+        <Route path="/production/leysilla" element={withPermission("production", <LeysillaPage />)} />
+        <Route path="/maintenance/orders" element={withPermission("maintenance", <div>Órdenes de Mantenimiento</div>)} />
+        <Route path="/settings/users" element={withPermission("administration", <UsersPage />)} />
+        <Route path="/settings/roles" element={withPermission("administration", <RolesPage />)} />
+        <Route path="/settings/audit" element={withPermission("administration", <AuditPage />)} />
+        <Route path="/settings/plant" element={withPermission("administration", <div>Planta</div>)} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<div>Configuración</div>} />
-        <Route path="/warehouse/ctb" element={<ClearToBuildPage />} />
-        <Route path="/warehouse/demand" element={<DemandPage />} />
-        <Route path="/maintenance/overview" element={<OverviewPage />} />
-        <Route path="/maintenance/actions" element={<div>Actions — próximamente</div>} />
-        <Route path="/maintenance/workcenter" element={<div>Workcenter Detail — próximamente</div>} />
-        <Route path="/maintenance/work-requests" element={<WorkRequestsPage />} />
-        <Route path="/quality/dashboard" element={<QualityDashboard />} />
-        <Route path="/quality/panel" element={<QualityPanelPage />} />
-        <Route path="/operational-panel" element={<OperationalPanelPage />} />
-        <Route path="/maintenance/corrective-actions" element={<CorrectiveActionsPage />} />
-        <Route path="/quality/qwall" element={<QWallPage />} />
-        <Route path="/quality/qwall-dashboard" element={<QWallDashboardPage />} />
-        <Route path="/quality/rejections" element={<RejectionReportPage />} />
-        <Route path="/quality/downtime" element={<DowntimePage />} />
+        <Route path="/warehouse/ctb" element={withPermission("warehouse", <ClearToBuildPage />)} />
+        <Route path="/warehouse/demand" element={withPermission("warehouse", <DemandPage />)} />
+        <Route path="/maintenance/overview" element={withPermission("maintenance", <OverviewPage />)} />
+        <Route path="/maintenance/actions" element={withPermission("maintenance", <div>Actions — próximamente</div>)} />
+        <Route path="/maintenance/workcenter" element={withPermission("maintenance", <div>Workcenter Detail — próximamente</div>)} />
+        <Route path="/maintenance/work-requests" element={withPermission("maintenance", <WorkRequestsPage />)} />
+        <Route path="/quality/dashboard" element={withPermission("quality", <QualityDashboard />)} />
+        <Route path="/quality/panel" element={withPermission("quality", <QualityPanelPage />)} />
+        <Route path="/operational-panel" element={withPermission("production", <OperationalPanelPage />)} />
+        <Route path="/maintenance/corrective-actions" element={withPermission("maintenance", <CorrectiveActionsPage />)} />
+        <Route path="/quality/qwall" element={withPermission("quality", <QWallPage />)} />
+        <Route path="/quality/qwall-dashboard" element={withPermission("quality", <QWallDashboardPage />)} />
+        <Route path="/quality/rejections" element={withPermission("quality", <RejectionReportPage />)} />
+        <Route path="/quality/downtime" element={withPermission("quality", <DowntimePage />)} />
 
-        <Route path="/quality/problems" element={<ProblemListPage />} />
-        <Route path="/quality/problems/new" element={<ProblemWizardPage />} />
-        <Route path="/quality/problems/:id" element={<ProblemEntryPage />} />
-        <Route path="/quality/problems/:id/edit" element={<ProblemWizardPage />} />
-        <Route path="/quality/problems/:id/approval" element={<ProblemApprovalPage />} />
+        <Route path="/quality/problems" element={withPermission("quality", <ProblemListPage />)} />
+        <Route path="/quality/problems/new" element={withPermission("quality", <ProblemWizardPage />, "create")} />
+        <Route path="/quality/problems/:id" element={withPermission("quality", <ProblemEntryPage />)} />
+        <Route path="/quality/problems/:id/edit" element={withPermission("quality", <ProblemWizardPage />, "edit")} />
+        <Route path="/quality/problems/:id/approval" element={withPermission("quality", <ProblemApprovalPage />)} />
 
-        <Route path="/quality/qwall/catalog" element={<FailureCatalogPage />} />
-        <Route path="/quality/qwall/settings" element={<QWallSettingsPage />} />
-        <Route path="/quality/qwall/help" element={<HelpPage />} />
-        <Route path="/quality/incoming-inspection" element={<IncomingInspectionPage />} />
-        <Route path="/quality/cogp" element={<CogpDashboardPage />} />
-        <Route path="/quality/cogp/mapping" element={<CogpMappingPage />} />
-        <Route path="/quality/downtime/settings" element={<DowntimeSettingsPage />} />
-        <Route path="/quality/scrap-rate" element={<ScrapRatePage />} />
-        <Route path="/maintenance/pmp" element={<PmpPage />} />
-        <Route path="/maintenance/down-equipment" element={<DownEquipmentPage />} />
+        <Route path="/quality/qwall/catalog" element={withPermission("quality", <FailureCatalogPage />)} />
+        <Route path="/quality/qwall/settings" element={withPermission("quality", <QWallSettingsPage />, "edit")} />
+        <Route path="/quality/qwall/help" element={withPermission("quality", <HelpPage />)} />
+        <Route path="/quality/incoming-inspection" element={withPermission("quality", <IncomingInspectionPage />)} />
+        <Route path="/quality/cogp" element={withPermission("quality", <CogpDashboardPage />)} />
+        <Route path="/quality/cogp/mapping" element={withPermission("quality", <CogpMappingPage />, "edit")} />
+        <Route path="/quality/downtime/settings" element={withPermission("quality", <DowntimeSettingsPage />, "edit")} />
+        <Route path="/quality/scrap-rate" element={withPermission("quality", <ScrapRatePage />)} />
+        <Route path="/maintenance/pmp" element={withPermission("maintenance", <PmpPage />)} />
+        <Route path="/maintenance/down-equipment" element={withPermission("maintenance", <DownEquipmentPage />)} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>
