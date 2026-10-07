@@ -339,6 +339,8 @@ Ahora:
 - creación de incidents: `production.create`;
 - edición de settings e incidents: `production.edit`.
 
+La separación se valida con pruebas específicas para usuarios con solo lectura, usuarios con `production.create` y usuarios con `production.edit`.
+
 La UI puede ocultar acciones según permisos, pero la autoridad de seguridad permanece en backend.
 
 ## Deuda técnica observada
