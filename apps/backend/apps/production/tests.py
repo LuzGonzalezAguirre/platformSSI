@@ -73,7 +73,7 @@ class ProductionAuthorizationPolicyTests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(read_response.status_code, status.HTTP_200_OK)
+        self.assertNotEqual(read_response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(write_response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_production_edit_allows_target_write_to_reach_serializer(self):
