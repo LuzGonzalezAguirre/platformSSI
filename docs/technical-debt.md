@@ -226,17 +226,33 @@ Los fallos de proxies, Celery y jobs semanales deberían ser detectables sin rev
 
 ## Prioridad media
 
-### Sidebar con rol admin hardcodeado
+### SEC-010 - Eliminar rol admin hardcodeado del Sidebar
 
-`AppShell` pasa `admin` al Sidebar independientemente del usuario.
+**Prioridad:** Media  
+**Estado:** Resuelta el 06-Oct-2026.
 
-Debe usarse el modelo real de permisos/roles.
+Se eliminó el prop `userRole` del Sidebar y el valor hardcodeado `admin` de `AppShell`.
 
-### Taxonomías de roles duplicadas
+La navegación dejó de utilizar `allowedRoles` y la taxonomía legacy de roles frontend.
 
-Frontend y backend mantienen nombres y categorías de roles diferentes.
+La visibilidad se calcula con los permisos efectivos entregados por backend:
 
-Debe existir una sola autoridad.
+- cada sección declara su módulo;
+- la sección requiere `module.view`;
+- cada item hereda `view` salvo que declare `requiredAction`;
+- Q-Wall Settings requiere `quality.edit`.
+
+La política se centraliza en `filterSectionsByPermissions()`, reutilizada por `useSidebar`.
+
+Se agregó una prueba automatizada de navegación que valida:
+
+- lectura de módulo con `view`;
+- ocultamiento de items `edit` para usuarios read-only;
+- visualización de items `edit` cuando existe ese permiso;
+- ocultamiento completo de secciones sin `view`;
+- visibilidad de Administration basada en `administration.view`, no en nombre de rol.
+
+Los roles reales continúan formando parte del usuario, pero ya no constituyen una segunda autoridad de navegación.
 
 ### SEC-009 - Agregar guards de permiso en rutas frontend
 
