@@ -131,6 +131,43 @@ class ProductionAuthorizationPolicyTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+
+    def test_safety_incident_create_requires_production_create(self):
+        self.authenticate(self.maintenance)
+
+        denied = self.client.post(
+            "/api/v1/production/safety/incidents/",
+            {},
+            format="json",
+        )
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.authenticate(self.operator)
+        allowed = self.client.post(
+            "/api/v1/production/safety/incidents/",
+            {},
+            format="json",
+        )
+        self.assertEqual(allowed.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_safety_settings_patch_requires_production_edit(self):
+        self.authenticate(self.operator)
+
+        denied = self.client.patch(
+            "/api/v1/production/safety/settings/",
+            {},
+            format="json",
+        )
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.authenticate(self.process_engineer)
+        allowed = self.client.patch(
+            "/api/v1/production/safety/settings/",
+            {},
+            format="json",
+        )
+        self.assertEqual(allowed.status_code, status.HTTP_400_BAD_REQUEST)
+
     @patch(
         "apps.production.views.ccs_views._proxy_post",
         return_value=Response({"ok": True}),
