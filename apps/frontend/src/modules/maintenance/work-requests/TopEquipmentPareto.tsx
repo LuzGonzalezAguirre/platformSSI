@@ -80,7 +80,7 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang }: Props) {
           <div style={{ position: "absolute", zIndex: 5, left: `${(cx(hovered as number) / W) * 100}%`, top: 4, transform: "translateX(-50%)", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "0.5rem 0.7rem", boxShadow: "0 4px 14px rgba(0,0,0,.16)", fontSize: "0.72rem", pointerEvents: "none", maxWidth: 280 }}>
             <div style={{ fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 4 }}>{active.fullLabel}</div>
             <div>{active.hours.toFixed(1)} h · {active.cumulativePct.toFixed(1)}% {l ? "acumulado" : "cumulative"}</div>
-            {active.actions?.length > 0 && (
+            {active.actions && active.actions.length > 0 && (
               <div style={{ marginTop: 4, color: "var(--color-primary)", fontWeight: 700 }}>
                 {(l ? "Acciones: " : "Actions: ") + active.actions.map(action => action.code).join(", ")}
               </div>
