@@ -53,7 +53,7 @@ export function ChartsSection({ dailyData, turnoData, loadingDaily, loadingTurno
               />
               <YAxis tick={{ fontSize: 10 }} />
               <Tooltip
-                formatter={(v: number) => [v, "Descansos"]}
+                formatter={(v) => [Number(v ?? 0), "Descansos"]}
                 labelFormatter={(l) => `Fecha: ${l}`}
               />
               <Bar dataKey="total_breaks" fill="#0070C0" radius={[3, 3, 0, 0]} name="Descansos" />
@@ -76,7 +76,11 @@ export function ChartsSection({ dailyData, turnoData, loadingDaily, loadingTurno
                 cx="50%"
                 cy="50%"
                 outerRadius={80}
-                label={({ turno, percent }) => `Turno ${turno}: ${(percent * 100).toFixed(1)}%`}
+                label={(props) => {
+                  const turno = (props.payload as { turno?: string } | undefined)?.turno ?? "";
+                  const percent = Number(props.percent ?? 0);
+                  return `Turno ${turno}: ${(percent * 100).toFixed(1)}%`;
+                }}
                 labelLine={false}
               >
                 {turnoData.map((entry) => (
@@ -87,7 +91,7 @@ export function ChartsSection({ dailyData, turnoData, loadingDaily, loadingTurno
                 ))}
               </Pie>
               <Legend formatter={(v) => `Turno ${v}`} />
-              <Tooltip formatter={(v: number) => [v, "Descansos"]} />
+              <Tooltip formatter={(v) => [Number(v ?? 0), "Descansos"]} />
             </PieChart>
           </ResponsiveContainer>
         )}
@@ -108,7 +112,7 @@ export function ChartsSection({ dailyData, turnoData, loadingDaily, loadingTurno
               />
               <YAxis tick={{ fontSize: 10 }} />
               <Tooltip
-                formatter={(v: number) => [`${v} min`, "Promedio"]}
+                formatter={(v) => [`${Number(v ?? 0)} min`, "Promedio"]}
                 labelFormatter={(l) => `Fecha: ${l}`}
               />
               <Line
