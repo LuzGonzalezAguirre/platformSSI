@@ -170,7 +170,27 @@ Se añadieron pruebas que verifican:
 - recálculo de OEE después del filtro;
 - recálculo de KPI después del filtro.
 
-La política real de qué BU corresponde a cada usuario continúa centralizada en `get_allowed_bu_for_user()`. Actualmente ese resolver concede todas las BUs, por lo que definir restricciones reales por usuario/rol sigue siendo una deuda separada.
+La política de visibilidad por BU permanece centralizada en `get_allowed_bu_for_user()`. Por definición de negocio, todos los usuarios autenticados tienen acceso a todas las BUs; el resolver se conserva como punto único de esa regla.
+
+### SEC-008 - Implementar restricción real por Business Unit
+
+**Prioridad:** Alta  
+**Estado:** Cerrada por definición de negocio el 06-Oct-2026.
+
+Después de revisar el requerimiento funcional se determinó que no debe existir segmentación de visibilidad por Business Unit.
+
+La política oficial es:
+
+- todos los usuarios autenticados pueden ver todas las BUs;
+- el rol del usuario no reduce el catálogo visible;
+- departamento y permisos de módulo tampoco reducen la visibilidad por BU;
+- los parámetros `bu` en endpoints son filtros funcionales, no controles de autorización.
+
+`get_allowed_bu_for_user()` continúa siendo el resolver central y devuelve explícitamente `ALL_BU_CODES`.
+
+Se retiraron los comentarios que presentaban esta conducta como un TODO o una restricción pendiente y se añadieron pruebas para bloquear regresiones por rol, incluidos roles estándar, roles custom y usuarios sin un rol legacy definido.
+
+No debe implementarse una matriz usuario/rol -> BU salvo que la regla de negocio cambie formalmente.
 
 ### Tracebacks y detalles internos desde Q-Wall Proxy
 
@@ -376,12 +396,6 @@ Dividir por routers/repositories.
 ### SQL inline en proxy
 
 Mover queries complejas a repositories facilita pruebas y manejo de conexión.
-
-### Restricción por Business Unit no implementada
-
-`get_allowed_bu_for_user` devuelve todas las BUs para todos los usuarios.
-
-La infraestructura para centralizar el filtro existe, pero la política real está pendiente.
 
 ## Prioridad baja o limpieza
 
