@@ -1,47 +1,36 @@
-export type UserRole =
-  | "operador"
-  | "tecnico"
-  | "lider"
-  | "supervisor"
-  | "ingeniero"
-  | "admin"
-  | "gerente";
+import type { ActionKey, ModuleKey } from "../store/authStore";
 
 export type Theme = "light" | "dark" | "system";
 
 export type Language = "es" | "en";
 
-// Un item individual dentro de una seccion
 export interface NavItem {
   id: string;
-  labelKey: string;         // clave i18n: "nav.dashboard"
-  path: string;             // ruta React Router (vacío "" si es sub-grupo)
-  icon: string;             // nombre del icono (string, el componente lo resuelve)
-  allowedRoles: UserRole[]; // roles que pueden ver este item
-  badge?: number;           // notificaciones opcionales
+  labelKey: string;
+  path: string;
+  icon: string;
+  requiredAction?: ActionKey;
+  badge?: number;
   disabled?: boolean;
-  children?: NavItem[];     // sub-grupo desplegable (sin ruta propia)
+  children?: NavItem[];
 }
 
-// Una seccion del sidebar (accordion)
 export interface NavSection {
   id: string;
   labelKey: string;
   icon: string;
-  allowedRoles: UserRole[];
+  module: ModuleKey;
   items: NavItem[];
-  order: number;            // para ordenar secciones
+  order: number;
 }
 
-// Estado del sidebar
 export interface SidebarState {
   expandedSectionId: string | null;
-  expandedSubGroupId: string | null; // sub-grupo Q-Wall y similares
+  expandedSubGroupId: string | null;
   activeItemId: string | null;
-  isCollapsed: boolean;     // sidebar colapsado a solo iconos
+  isCollapsed: boolean;
 }
 
-// Accion del sidebar
 export type SidebarAction =
   | { type: "TOGGLE_SECTION"; sectionId: string }
   | { type: "SET_ACTIVE"; itemId: string; sectionId: string }
@@ -49,7 +38,6 @@ export type SidebarAction =
   | { type: "EXPAND_SECTION"; sectionId: string }
   | { type: "TOGGLE_SUBGROUP"; subGroupId: string };
 
-// Resultado del hook useSidebar
 export interface UseSidebarReturn {
   state: SidebarState;
   visibleSections: NavSection[];
@@ -62,10 +50,9 @@ export interface UseSidebarReturn {
   isItemActive: (itemId: string) => boolean;
 }
 
-// Resultado del hook useTheme
 export interface UseThemeReturn {
   theme: Theme;
-  resolvedTheme: "light" | "dark"; // tema real aplicado (system resuelto)
+  resolvedTheme: "light" | "dark";
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }
