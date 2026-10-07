@@ -107,6 +107,28 @@ Los POST cuya semántica no es creación tienen mapping explícito, incluyendo r
 
 Se agregó cobertura automática para lectura, creación, edición, eliminación, grant/revoke individual y excepciones.
 
+### SEC-005 - Unificar autorización en Production
+
+**Prioridad:** Alta  
+**Estado:** Resuelta el 06-Oct-2026.
+
+Se definió una política común para el dominio Production basada en permisos efectivos:
+
+- lectura: `production.view`;
+- creación: `production.create`;
+- edición: `production.edit`;
+- eliminación: `production.delete`.
+
+La política se centraliza en `ProductionModulePermission` y se aplica al registrar rutas mediante `production_view()`.
+
+Se cubren Targets, WIP, OEE, Safety, asistencia, empleados, productividad, Ops Report, exportaciones, CCS Attendance y Ley Silla.
+
+Los POST cuya semántica no coincide con creación tienen mapping explícito. Entre ellos, KPIs y charts de CCS/Ley Silla requieren `production.view`, mientras Attendance, Targets, WIP, OEE y reactivaciones requieren `production.edit`.
+
+Safety quedó alineado con la misma matriz, eliminando la inconsistencia funcional donde algunos GET requerían permisos de escritura.
+
+Se agregó cobertura automática para lectura, edición, eliminación, grants/revokes y endpoints CCS con semántica especial.
+
 ### Tracebacks y detalles internos desde Q-Wall Proxy
 
 Algunos handlers devuelven el traceback completo dentro del detalle HTTP.
