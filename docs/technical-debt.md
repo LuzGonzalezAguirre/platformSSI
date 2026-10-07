@@ -147,6 +147,31 @@ La política actual se define por método al registrar las rutas:
 
 Este cambio forma parte de la política común de SEC-005, pero SEC-006 se valida además con pruebas específicas de `view`, `create` y `edit` sobre endpoints Safety.
 
+### SEC-007 - Revisar segmentación por BU en Maintenance
+
+**Prioridad:** Alta  
+**Estado:** Resuelta el 06-Oct-2026.
+
+Se unificó la segmentación de Business Unit en Maintenance Overview.
+
+Los endpoints de KPIs, downtime reasons, detail, downtime by month, OEE trend y OEE live construyen ahora el mismo `FilterContext` y lo restringen mediante `get_allowed_bu_for_user()`.
+
+Work Requests y Down Equipment continúan utilizando el mismo resolver.
+
+Para evitar agregados de planta completa después del scope, el Plex proxy expone contexto por workcenter en KPIs, downtime y OEE. platformSSI clasifica las filas mediante `resolve_maintenance_bu()`, filtra primero y recalcula después los totales de KPI y OEE.
+
+El OEE manual diario se considera global de planta y solo se utiliza cuando el scope efectivo contiene todas las BUs; un scope parcial usa OEE Plex segmentado.
+
+Se añadieron pruebas que verifican:
+
+- propagación del scope efectivo a reasons, detail y OEE trend;
+- intersección entre BU solicitada y BU permitida;
+- exclusión de otra BU en downtime reasons;
+- recálculo de OEE después del filtro;
+- recálculo de KPI después del filtro.
+
+La política real de qué BU corresponde a cada usuario continúa centralizada en `get_allowed_bu_for_user()`. Actualmente ese resolver concede todas las BUs, por lo que definir restricciones reales por usuario/rol sigue siendo una deuda separada.
+
 ### Tracebacks y detalles internos desde Q-Wall Proxy
 
 Algunos handlers devuelven el traceback completo dentro del detalle HTTP.
