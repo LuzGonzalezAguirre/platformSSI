@@ -162,7 +162,7 @@ export interface ScrapRateResponse {
 export const CogpService = {
   stageCurrentOffenders: (data: { start_date: string; end_date: string; workcenter?: string[] }): Promise<CogpCurrentOffendersResult> =>
     apiClient.post(`${BASE}/scrap-integration/current-offenders/`, data).then((r: any) => r.data),
-  createScrapTest: (data: CogpScrapTest): Promise<{ source_key: string; tracker_code: string }> =>
+  createScrapTest: (data: CogpScrapTest): Promise<{ source_key: string; tracker_code: string; processing_status?: string }> =>
     apiClient.post(`${BASE}/scrap-integration/test/`, data).then((r: any) => r.data),
   getSettings: (): Promise<CogpSettings> =>
     apiClient.get(`${BASE}/settings/`).then((r: any) => r.data),
