@@ -70,12 +70,30 @@ function GroupSummaryChart({ data, lang }: { data: EquipmentGridItem[]; lang: st
           const circ = 2 * Math.PI * r;
           let off = 0;
           const arcs = groups.map(([group, val], idx) => {
-            const dash = circ * (val.hours / totalH);
+            const dash = totalH > 0 ? circ * (val.hours / totalH) : 0;
             const arc  = { group, dash, off, col: PALETTE[idx % PALETTE.length] };
             off += dash;
             return arc;
           });
-          
+          return (
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-label={l ? "Distribución de horas por grupo" : "Hours distribution by group"}>
+              <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-border)" strokeWidth={stroke} />
+              {arcs.map((arc) => (
+                <circle
+                  key={arc.group}
+                  cx={cx}
+                  cy={cy}
+                  r={r}
+                  fill="none"
+                  stroke={arc.col}
+                  strokeWidth={stroke}
+                  strokeDasharray={`${arc.dash} ${Math.max(circ - arc.dash, 0)}`}
+                  strokeDashoffset={-arc.off}
+                  transform={`rotate(-90 ${cx} ${cy})`}
+                />
+              ))}
+            </svg>
+          );
         })()}
       </div>
     </div>
