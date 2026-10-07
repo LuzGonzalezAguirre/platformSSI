@@ -6,6 +6,7 @@ import requests
 from django.core.cache import cache
 from apps.ssi_common.filters.base import FilterContext
 from apps.ssi_common.plex_ranges import PLEX_CHUNK_DAYS, date_chunks
+from apps.maintenance.services.maintenance_classification import resolve_maintenance_bu
 
 PROXY_URL    = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
 PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
@@ -26,6 +27,61 @@ def _post(endpoint: str, payload: dict, timeout: int = 45) -> dict:
 
 def _round2(value: float) -> float:
     return round(value, 2)
+
+
+def _row_bu(row: dict) -> str:
+    return resolve_maintenance_bu(
+        row.get("workcenter_group") or row.get("Workcenter_Group"),
+        row.get("workcenter") or row.get("Workcenter"),
+    )
+
+
+def _filter_rows_by_bu(rows: list[dict], allowed_bu: tuple[str, ...]) -> list[dict]:
+    allowed = set(allowed_bu)
+    return [row for row in rows if _row_bu(row) in allowed]
+
+
+def _aggregate_oee_details(details: list[dict]) -> dict | None:
+    if not details:
+        return None
+
+    totals = defaultdict(float)
+    for item in details:
+        for field in (
+            "good_qty", "scrap_qty", "total_qty",
+            "operating_hours", "plan_hours", "ideal_hours_total",
+        ):
+            totals[field] += float(item.get(field) or 0)
+
+    availability = (
+        totals["operating_hours"] * 100 / totals["plan_hours"]
+        if totals["plan_hours"] else 0
+    )
+    performance = (
+        totals["ideal_hours_total"] * 100 / totals["operating_hours"]
+        if totals["operating_hours"] else 0
+    )
+    quality = (
+        totals["good_qty"] * 100 / totals["total_qty"]
+        if totals["total_qty"] else 0
+    )
+    oee = min(
+        (availability / 100) * (performance / 100) * (quality / 100) * 100,
+        100,
+    )
+    return {
+        "part_workcenter": "TOTAL",
+        "good_qty": totals["good_qty"],
+        "scrap_qty": totals["scrap_qty"],
+        "total_qty": totals["total_qty"],
+        "operating_hours": totals["operating_hours"],
+        "plan_hours": totals["plan_hours"],
+        "ideal_hours_total": totals["ideal_hours_total"],
+        "availability_pct": _round2(availability),
+        "performance_pct": _round2(performance),
+        "quality_pct": _round2(quality),
+        "oee_pct": _round2(oee),
+    }
 
 
 def _oee_periods(start_date: str, end_date: str):
@@ -247,6 +303,162 @@ class MaintenanceService:
         if data:
             cache.set(key, data, CACHE_TTL)
         return data
+
+    @staticmethod
+    def get_downtime_reasons_scoped(filter_ctx: FilterContext) -> dict:
+        key = filter_ctx.cache_key("maint:reasons:scoped:v1")
+        cached = cache.get(key)
+        if cached:
+            return cached
+
+        by_reason = defaultdict(lambda: {"total_events": 0, "total_hours": 0.0})
+        for chunk_start, chunk_end in date_chunks(
+            filter_ctx.start_date.isoformat(),
+            filter_ctx.end_date.isoformat(),
+        ):
+            response = _post("/maintenance-downtime-reasons", {
+                "start_date": chunk_start.isoformat(),
+                "end_date": chunk_end.isoformat(),
+            })
+            rows = _filter_rows_by_bu(response.get("data", []), filter_ctx.bu)
+            for row in rows:
+                reason = row.get("reason") or row.get("Reason") or "Sin Razón"
+                item = by_reason[reason]
+                item["total_events"] += int(row.get("total_events") or row.get("Total_Events") or 0)
+                item["total_hours"] += float(row.get("total_hours") or row.get("Total_Hours") or 0)
+
+        grand_total = sum(item["total_hours"] for item in by_reason.values())
+        data = [
+            {
+                "reason": reason,
+                "total_events": item["total_events"],
+                "total_hours": _round2(item["total_hours"]),
+                "percentage": _round2(item["total_hours"] * 100 / grand_total) if grand_total else 0,
+            }
+            for reason, item in by_reason.items()
+        ]
+        data.sort(key=lambda row: row["total_hours"], reverse=True)
+        result = {"data": data, "grand_total_hours": _round2(grand_total)}
+        cache.set(key, result, CACHE_TTL)
+        return result
+
+    @staticmethod
+    def get_downtime_detail_scoped(filter_ctx: FilterContext, reason: str) -> dict:
+        key = filter_ctx.cache_key(f"maint:detail:scoped:v1:{reason}")
+        cached = cache.get(key)
+        if cached:
+            return cached
+
+        rows = []
+        for chunk_start, chunk_end in date_chunks(
+            filter_ctx.start_date.isoformat(),
+            filter_ctx.end_date.isoformat(),
+        ):
+            response = _post("/maintenance-downtime-detail", {
+                "start_date": chunk_start.isoformat(),
+                "end_date": chunk_end.isoformat(),
+                "reason": reason,
+            })
+            rows.extend(_filter_rows_by_bu(response.get("data", []), filter_ctx.bu))
+
+        rows.sort(key=lambda row: str(row.get("Log_Date") or row.get("log_date") or ""))
+        result = {"data": rows}
+        cache.set(key, result, 300)
+        return result
+
+    @staticmethod
+    def get_downtime_by_month_scoped(filter_ctx: FilterContext) -> dict:
+        detail = MaintenanceService.get_downtime_detail_scoped(filter_ctx, "")
+        aggregated = defaultdict(lambda: {"total_events": 0, "total_hours": 0.0})
+
+        for row in detail.get("data", []):
+            raw_date = str(row.get("Log_Date") or row.get("log_date") or "")[:10]
+            reason = row.get("Reason") or row.get("reason") or "Sin Razón"
+            if not raw_date:
+                continue
+            key = (raw_date, reason)
+            aggregated[key]["total_events"] += 1
+            aggregated[key]["total_hours"] += float(row.get("Log_Hours") or row.get("log_hours") or 0)
+
+        data = [
+            {
+                "date": day,
+                "reason": reason,
+                "total_events": values["total_events"],
+                "total_hours": _round2(values["total_hours"]),
+            }
+            for (day, reason), values in aggregated.items()
+        ]
+        data.sort(key=lambda row: (row["date"], row["reason"]))
+        return {"data": data}
+
+    @staticmethod
+    def get_oee_live_scoped(filter_ctx: FilterContext) -> dict | None:
+        key = filter_ctx.cache_key("maint:oee_live:scoped:v1")
+        cached = cache.get(key)
+        if cached:
+            return cached
+
+        details = []
+        for chunk_start, chunk_end in date_chunks(
+            filter_ctx.start_date.isoformat(),
+            filter_ctx.end_date.isoformat(),
+        ):
+            result = _post(
+                "/oee-live",
+                {
+                    "start_date": chunk_start.isoformat(),
+                    "end_date": chunk_end.isoformat(),
+                },
+                timeout=60,
+            )
+            raw = result.get("data") or {}
+            details.extend(
+                _filter_rows_by_bu(raw.get("details", []), filter_ctx.bu)
+            )
+
+        data = _aggregate_oee_details(details)
+        if data is not None:
+            cache.set(key, data, CACHE_TTL)
+        return data
+
+    @staticmethod
+    def get_oee_trend_live_scoped(filter_ctx: FilterContext) -> list:
+        key = filter_ctx.cache_key("maint:oee_trend_live:scoped:v1")
+        cached = cache.get(key)
+        if cached:
+            return cached
+
+        result = []
+        for period_start, period_end in _oee_periods(
+            filter_ctx.start_date.isoformat(),
+            filter_ctx.end_date.isoformat(),
+        ):
+            try:
+                resp = _post(
+                    "/oee-live",
+                    {
+                        "start_date": period_start.isoformat(),
+                        "end_date": period_end.isoformat(),
+                    },
+                    timeout=60,
+                )
+                raw = resp.get("data") or {}
+                details = _filter_rows_by_bu(raw.get("details", []), filter_ctx.bu)
+                data = _aggregate_oee_details(details)
+                if data and data.get("oee_pct", 0) > 0:
+                    result.append({
+                        "date": period_end.isoformat(),
+                        "oee_pct": data["oee_pct"],
+                        "availability_pct": data["availability_pct"],
+                        "performance_pct": data["performance_pct"],
+                        "quality_pct": data["quality_pct"],
+                    })
+            except Exception:
+                pass
+
+        cache.set(key, result, 3600)
+        return result
 
     @staticmethod
     def get_oee_trend_live(start_date: str, end_date: str) -> list:
