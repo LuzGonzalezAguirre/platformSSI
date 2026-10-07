@@ -5,7 +5,6 @@ import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import UserMenu from "./UserMenu";
 import { useAuthStore } from "../../store/authStore";
-import { UserRole } from "../../navigation/types";
 import ChatbotWidget from "../../modules/quality/chatbot/ChatbotWidget";
 
 interface AppShellProps {
@@ -36,7 +35,7 @@ export default function AppShell({ children }: AppShellProps) {
   return (
     <div style={styles.shell}>
       {/* Sidebar */}
-      <Sidebar userRole={"admin" as UserRole} />
+      <Sidebar />
 
       {/* Main area */}
       <div style={styles.main}>
