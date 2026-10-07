@@ -415,17 +415,53 @@ El Equipment Catalog se obtiene desde Plex proxy y se cachea una hora.
 
 El Assignee Catalog filtra usuarios activos con rol `maintenance_engineer`.
 
-## Autorización observada
+## Segmentación por Business Unit
 
-El módulo combina tres estrategias:
+Maintenance Overview utiliza un único resolver de alcance:
 
-1. filtrado de BUs permitidas para algunos dashboards;
-2. validación de roles en services para escrituras;
-3. vistas que requieren únicamente `IsAuthenticated`.
+`get_allowed_bu_for_user(user)`.
 
-Por ejemplo, KPI principal y Work Requests restringen FilterContext por BU, pero reasons, detail, OEE trend y OEE live no aplican ese filtro en sus views actuales.
+Las views construyen un `MaintenanceFilterSerializer`, convierten el request en `FilterContext` y aplican `restricted_to_bu()` antes de llamar a servicios.
 
-Esto debe evaluarse antes de considerar que todos los endpoints de Mantenimiento tienen el mismo nivel de segmentación.
+La misma política se aplica a:
+
+- KPIs;
+- downtime reasons;
+- downtime detail;
+- downtime by month;
+- OEE trend;
+- OEE live;
+- Work Requests;
+- Down Equipment.
+
+El filtro solicitado por el cliente nunca amplía el alcance del usuario: se intersecta con las BUs permitidas.
+
+### Agregaciones
+
+Los agregados de Maintenance se calculan después de segmentar por BU.
+
+El Plex proxy expone contexto de workcenter para:
+
+- KPIs mediante `by_workcenter`;
+- downtime reasons mediante `workcenter` y `workcenter_group`;
+- downtime detail mediante `Workcenter` y `Workcenter_Group`;
+- OEE detail mediante `workcenter`, `workcenter_group`, `operating_hours`, `plan_hours` e `ideal_hours_total`.
+
+platformSSI clasifica esas filas con `resolve_maintenance_bu()`, elimina las que están fuera del scope efectivo y después recalcula los totales.
+
+Esto evita comparar KPIs, reasons y OEE construidos sobre universos de datos distintos.
+
+### OEE manual
+
+`production.OEERecord` representa un valor manual global de planta y no contiene Business Unit.
+
+Por esa razón, el override manual de OEE diario solo se utiliza cuando el scope efectivo incluye todas las BUs. Para un scope parcial, OEE se calcula desde Plex usando las filas segmentadas.
+
+### Estado del resolver
+
+El resolver central todavía devuelve todas las BUs para todos los usuarios mientras no exista una política real de asignación por BU.
+
+La segmentación de Maintenance ya queda preparada para esa política: cuando `get_allowed_bu_for_user()` empiece a devolver un subconjunto, los endpoints anteriores aplicarán el nuevo alcance sin cambios adicionales en sus views.
 
 ## Pruebas
 
