@@ -103,15 +103,17 @@ Existe un comentario pendiente de negocio para el grupo `Speed - WSS/JET/BA`; mi
 
 Los consumidores deben mostrar los workcenters no clasificados en lugar de ocultarlos.
 
-## RBAC por Business Unit
+## Visibilidad por Business Unit
 
-`get_allowed_bu_for_user` es el punto único definido para limitar visibilidad por BU.
+`get_allowed_bu_for_user` es el punto único que define la visibilidad de Business Unit para los módulos operativos.
 
-Actualmente devuelve todas las BUs para todos los usuarios.
+La regla de negocio vigente es global: todos los usuarios autenticados pueden ver todas las BUs, independientemente de su rol, departamento o permisos de módulo.
 
-El propio archivo indica que la restricción real por BU está pendiente.
+Por lo tanto, el resolver devuelve siempre `ALL_BU_CODES`.
 
-Los módulos que llaman esta función están preparados para incorporar el control central posteriormente, pero hoy no existe segmentación efectiva de datos por BU.
+Un parámetro `bu` enviado por el frontend funciona únicamente como filtro funcional de consulta. No representa una frontera de autorización ni limita qué BUs puede conocer el usuario.
+
+Los módulos deben continuar utilizando `get_allowed_bu_for_user()` en lugar de hardcodear el catálogo, no porque exista segmentación por rol, sino para mantener una sola fuente de verdad para esta política.
 
 ## Rangos Plex
 
