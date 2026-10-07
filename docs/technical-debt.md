@@ -238,11 +238,30 @@ Frontend y backend mantienen nombres y categorías de roles diferentes.
 
 Debe existir una sola autoridad.
 
-### Guards de rutas frontend
+### SEC-009 - Agregar guards de permiso en rutas frontend
 
-`PrivateRoute` valida únicamente autenticación.
+**Prioridad:** Media  
+**Estado:** Resuelta el 06-Oct-2026.
 
-Conviene añadir guards por permiso para UX, manteniendo backend como autoridad de seguridad.
+Se agregó `PermissionRoute` en `App.tsx` utilizando `authStore.hasPermission(module, action)`.
+
+Las rutas de Production, Quality, Maintenance, Warehouse y Administration ahora validan el permiso de módulo antes de montar la página.
+
+Operational Panel utiliza `production.view`.
+
+Las rutas con intención explícita de modificación usan permisos más específicos:
+
+- creación de Problem Control: `quality.create`;
+- edición de Problem Control: `quality.edit`;
+- Q-Wall Settings: `quality.edit`;
+- COGP Mapping: `quality.edit`;
+- Downtime Settings: `quality.edit`.
+
+Problem Control Approval conserva `quality.view` en frontend porque la autorización fina depende del usuario asignado y permanece en backend.
+
+Dashboard raíz, Profile y Settings general continúan siendo rutas autenticadas sin permiso de módulo específico.
+
+El guard frontend es únicamente una protección de UX contra navegación manual a rutas no visibles. El backend continúa siendo la autoridad de seguridad.
 
 ### Contratos divergentes en PermissionsService
 
