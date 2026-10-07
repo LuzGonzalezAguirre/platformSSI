@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext ts,tsx"
+    "lint": "eslint src --ext ts,tsx",
+    "test:navigation": "tsc src/navigation/sidebarPermissions.ts --outDir .navigation-test-build --module commonjs --moduleResolution node --target ES2020 --skipLibCheck --esModuleInterop --allowImportingTsExtensions false --noEmit false && node --test src/navigation/sidebarPermissions.test.cjs && node -e \"require('fs').rmSync('.navigation-test-build',{recursive:true,force:true})\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.10",
