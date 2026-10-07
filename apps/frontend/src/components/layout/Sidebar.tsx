@@ -2,12 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import * as Icons from "lucide-react";
 import { useSidebar } from "../../navigation";
-import { UserRole } from "../../navigation/types";
 import { useTheme } from "../../navigation/useTheme";
-
-interface SidebarProps {
-  userRole: UserRole;
-}
 
 const resolvedTheme = document.documentElement.getAttribute("data-theme") ?? "light";
 function DynamicIcon({ name }: { name: string }) {
@@ -16,7 +11,7 @@ function DynamicIcon({ name }: { name: string }) {
   return <Icon size={18} />;
 }
 
-export default function Sidebar({ userRole }: SidebarProps) {
+export default function Sidebar() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const {
@@ -29,7 +24,7 @@ export default function Sidebar({ userRole }: SidebarProps) {
     isSubGroupExpanded,
     isItemActive,
     state,
-  } = useSidebar(userRole);
+  } = useSidebar();
 
   const handleItemClick = (itemId: string, sectionId: string, path: string) => {
     setActive(itemId, sectionId);
