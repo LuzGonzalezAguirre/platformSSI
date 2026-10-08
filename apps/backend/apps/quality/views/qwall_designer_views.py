@@ -39,7 +39,7 @@ class QWallDesignerProxyView(APIView):
             path += f"/{pk}"
         if action:
             path += f"/{action}"
-        headers = {"Authorization": f"Bearer {PROXY_TOKEN}"}
+        headers = {"Authorization": f"Bearer {PROXY_TOKEN}", "X-Designer-User": str(request.user.get_username())[:100]}
         try:
             response = requests.request(
                 request.method, f"{PROXY_URL}{path}",
