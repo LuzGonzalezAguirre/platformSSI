@@ -21,6 +21,7 @@ import QualityPanelPage from "./modules/quality/QualityPanelPage";
 import OperationalPanelPage from "./modules/operational-panel/OperationalPanelPage";
 import CorrectiveActionsPage from "./modules/maintenance/corrective-actions/CorrectiveActionsPage";
 import QWallPage from "./modules/quality/qwall/QWallPage";
+import QWallDesignerPage from "./modules/quality/qwall/designer/QWallDesignerPage";
 import QWallDashboardPage from "./modules/quality/qwall/QWallDashboardPage";
 import RejectionReportPage from "./modules/quality/RejectionReportPage";
 import CogpDashboardPage from "./modules/quality/cogp/CogpDashboardPage";
@@ -116,6 +117,7 @@ function AppRoutes() {
         <Route path="/operational-panel" element={withPermission("production", <OperationalPanelPage />)} />
         <Route path="/maintenance/corrective-actions" element={withPermission("maintenance", <CorrectiveActionsPage />)} />
         <Route path="/quality/qwall" element={withPermission("quality", <QWallPage />)} />
+        <Route path="/quality/qwall/designer" element={withPermission("quality", <QWallDesignerPage />, "edit")} />
         <Route path="/quality/qwall-dashboard" element={withPermission("quality", <QWallDashboardPage />)} />
         <Route path="/quality/rejections" element={withPermission("quality", <RejectionReportPage />)} />
         <Route path="/quality/downtime" element={withPermission("quality", <DowntimePage />)} />
