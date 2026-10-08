@@ -145,12 +145,14 @@ class MaintenanceService:
 
     @staticmethod
     def get_kpis(filter_ctx: FilterContext) -> dict:
-        cache_key = filter_ctx.cache_key("maint:kpis:v3")
+        cache_key = filter_ctx.cache_key("maint:kpis:v4")
         cached = cache.get(cache_key)
         if cached:
             return cached
 
         scoped_rows = []
+        global_operating_hours = 0.0
+        global_unplanned_failures = 0
         for chunk_start, chunk_end in date_chunks(
             filter_ctx.start_date.isoformat(), filter_ctx.end_date.isoformat()
         ):
@@ -158,11 +160,31 @@ class MaintenanceService:
                 "start_date": chunk_start.isoformat(),
                 "end_date": chunk_end.isoformat(),
             })
+            data = response.get("data") or {}
+            # Require the updated proxy; never silently use Down events as
+            # Unplanned Maintenance Work Requests.
+            if "unplanned_failures" not in data or "operating_hours" not in data:
+                raise RuntimeError(
+                    "plex-proxyO requiere actualizarse para calcular MTBF "
+                    "global con Work Requests Unplanned Maintenance"
+                )
+            global_unplanned_failures += int(data["unplanned_failures"] or 0)
+            global_operating_hours += float(data["operating_hours"] or 0)
             scoped_rows.extend(
                 _filter_rows_by_bu(response.get("by_workcenter", []), filter_ctx.bu)
             )
 
-        result = {"data": _aggregate_kpi_rows(scoped_rows)}
+        kpis = _aggregate_kpi_rows(scoped_rows)
+        # Existing scoped MTTR continues using Down events. MTBF and its
+        # failure count are plant-wide, independent of workcenter and BU.
+        kpis["down_events"] = kpis["total_failures"]
+        kpis["total_failures"] = global_unplanned_failures
+        kpis["mtbf_operating_hours"] = _round2(global_operating_hours)
+        kpis["mtbf_hours"] = (
+            _round2(global_operating_hours / global_unplanned_failures)
+            if global_unplanned_failures else None
+        )
+        result = {"data": kpis}
         cache.set(cache_key, result, CACHE_TTL)
         return result
 

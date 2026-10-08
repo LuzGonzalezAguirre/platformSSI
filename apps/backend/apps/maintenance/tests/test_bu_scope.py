@@ -156,6 +156,7 @@ class MaintenanceBUScopeServiceTests(SimpleTestCase):
     @patch("apps.maintenance.services.maintenance_service._post")
     def test_kpi_aggregation_uses_only_allowed_bu(self, post):
         post.return_value = {
+            "data": {"operating_hours": 28, "unplanned_failures": 7},
             "by_workcenter": [
                 {
                     "workcenter": "HM Ensamble Final 2",
@@ -184,5 +185,28 @@ class MaintenanceBUScopeServiceTests(SimpleTestCase):
 
         self.assertEqual(result["operating_hours"], 8.0)
         self.assertEqual(result["downtime_hours"], 2.0)
-        self.assertEqual(result["total_failures"], 1)
+        self.assertEqual(result["total_failures"], 7)
+        self.assertEqual(result["down_events"], 1)
+        self.assertEqual(result["mttr_hours"], 2.0)
+        self.assertEqual(result["mtbf_operating_hours"], 28.0)
+        self.assertEqual(result["mtbf_hours"], 4.0)
         self.assertEqual(result["availability_pct"], 80.0)
+
+    @patch("apps.maintenance.services.maintenance_service._post")
+    def test_kpis_zero_unplanned_requests_returns_no_mtbf(self, post):
+        post.return_value = {
+            "data": {"operating_hours": 100, "unplanned_failures": 0},
+            "by_workcenter": [],
+        }
+
+        result = MaintenanceService.get_kpis(self.ctx)["data"]
+
+        self.assertEqual(result["total_failures"], 0)
+        self.assertIsNone(result["mtbf_hours"])
+
+    @patch("apps.maintenance.services.maintenance_service._post")
+    def test_kpis_requires_updated_proxy(self, post):
+        post.return_value = {"data": {"operating_hours": 100}, "by_workcenter": []}
+
+        with self.assertRaisesRegex(RuntimeError, "plex-proxyO"):
+            MaintenanceService.get_kpis(self.ctx)

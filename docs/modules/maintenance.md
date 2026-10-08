@@ -66,11 +66,13 @@ Fórmulas efectivas:
 
 `MTTR = failure_hours / total_failures`
 
-`MTBF = operating_hours / total_failures`
+`MTBF = global_operating_hours / global_unplanned_work_requests`
 
 `availability = operating_hours / (operating_hours + downtime_hours) * 100`
 
 Para MTTR, `failure_hours` se calcula como downtime menos setup, con mínimo cero.
+
+MTBF y `total_failures` del Overview son globales de planta (independientes del filtro BU). El proxy cuenta `COUNT(DISTINCT Work_Request_Key)` en `Maintenance_v_Work_Request` vinculado a `Maintenance_v_Work_Request_Type`, con `Work_Request_Type = Unplanned Maintenance` y `Request_Date` en la misma ventana de turno utilizada por el KPI de horas operativas. Incluye solicitudes sin Workcenter. El numerador utiliza las horas operativas globales del proxy, no las horas filtradas por BU. `down_events` conserva el recuento Down (5445) filtrado por BU y se utiliza internamente para MTTR; por ello, `total_failures` no corresponde al denominador del MTTR. Para rangos largos se suman ambas métricas por ventana y se recalcula la razón. Si el proxy no suministra `unplanned_failures`, el backend devuelve un error explícito en lugar de utilizar silenciosamente eventos Down. El conteo no excluye solicitudes canceladas, porque todavía no se ha definido esa regla.
 
 El caché de KPIs es de 600 segundos.
 
