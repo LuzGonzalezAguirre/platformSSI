@@ -5,6 +5,8 @@ export interface MaintenanceKPIs {
   setup_hours:      number;
   idle_hours:       number;
   total_failures:   number;
+  down_events:      number;
+  mtbf_operating_hours: number;
   mttr_hours:       number | null;
   mtbf_hours:       number | null;
   availability_pct: number | null;
