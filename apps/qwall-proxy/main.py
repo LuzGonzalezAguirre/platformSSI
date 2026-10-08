@@ -53,7 +53,7 @@ class RejectionReportBody(BaseModel):
 def get_inspections(body: DateRange):
     if body.bu_ids:
         placeholders = ", ".join(str(int(b)) for b in body.bu_ids)
-        bu_filter = f"AND pn.bu_id IN ({placeholders})"
+        bu_filter = f"AND COALESCE(i.bu_id, pn.bu_id) IN ({placeholders})"
     else:
         bu_filter = ""
 
@@ -64,7 +64,8 @@ def get_inspections(body: DateRange):
         p.fpcaSN                                        AS serial_volvo,
         p.workOrder                                     AS work_order,
         pn.ssiPN                                        AS part_number,
-        pn.bu_id                                        AS bu_id,
+        COALESCE(i.bu_id, pn.bu_id)                    AS bu_id,
+        bu.bu_name                                      AS bu_name,
         u.name                                          AS inspector,
         CASE i.inspection_type
             WHEN 1 THEN 'Inspection 1'
@@ -106,6 +107,7 @@ def get_inspections(body: DateRange):
     FROM ssi_Inspections   i
     INNER JOIN ssi_Products    p   ON i.product_id = p.product_id
     INNER JOIN ssi_PartNumbers pn  ON p.pn_id      = pn.pn_id
+    LEFT JOIN ssi_BusinessUnits bu ON bu.bu_id = COALESCE(i.bu_id, pn.bu_id)
     INNER JOIN ssi_Users       u   ON i.user_id    = u.user_id
     WHERE CAST(i.started_at AS DATE) BETWEEN ? AND ?
     {bu_filter}
@@ -261,12 +263,13 @@ def get_part_numbers():
 def piece_flags_count(start_date: str, end_date: str, bu_ids: list[int] | None = Query(None)):
     if bu_ids:
         placeholders = ", ".join(str(int(b)) for b in bu_ids)
-        bu_filter = f"AND pn.bu_id IN ({placeholders})"
+        bu_filter = f"AND COALESCE(i.bu_id, pn.bu_id) IN ({placeholders})"
     else:
         bu_filter = ""
     sql = f"""
         SELECT COUNT(*) AS flag_count
         FROM ssi_PieceFlagRecords pfr
+        LEFT JOIN ssi_Inspections i ON pfr.inspection_id = i.inspection_id
         INNER JOIN ssi_Products    p  ON pfr.product_id = p.product_id
         INNER JOIN ssi_PartNumbers pn ON p.pn_id         = pn.pn_id
         WHERE CAST(pfr.created_at AS DATE) BETWEEN ? AND ?
@@ -284,10 +287,13 @@ def piece_flags_count(start_date: str, end_date: str, bu_ids: list[int] | None =
 
 
 @app.get("/piece-flags", dependencies=[Depends(verify)])
-def piece_flags(start_date: str, end_date: str, bu_id: int | None = None):
+def piece_flags(start_date: str, end_date: str, bu_id: int | None = None,
+                bu_ids: list[int] | None = Query(None)):
     """Detalle de flags (solo lectura) para cruzar en memoria contra inspecciones
     por inspection_id — una sola consulta para todo el rango, nunca por fila."""
-    bu_filter = f"AND pn.bu_id = {int(bu_id)}" if bu_id else ""
+    selected = bu_ids or ([bu_id] if bu_id is not None else [])
+    placeholders = ", ".join(str(int(b)) for b in selected)
+    bu_filter = f"AND COALESCE(i.bu_id, pn.bu_id) IN ({placeholders})" if selected else ""
     sql = f"""
         SELECT
             pfr.flag_id,
@@ -296,6 +302,7 @@ def piece_flags(start_date: str, end_date: str, bu_id: int | None = None):
             fm.fail_code   AS fail_mode_code,
             fm.description AS fail_mode_name
         FROM ssi_PieceFlagRecords pfr
+        LEFT JOIN ssi_Inspections i ON pfr.inspection_id = i.inspection_id
         INNER JOIN ssi_Products    p  ON pfr.product_id  = p.product_id
         INNER JOIN ssi_PartNumbers pn ON p.pn_id          = pn.pn_id
         LEFT JOIN  ssi_FailModes   fm ON pfr.fail_mode_id = fm.fail_mode_id
