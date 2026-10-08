@@ -145,6 +145,13 @@ export const sidebarConfig: NavSection[] = [
           },
           
           {
+            id: "quality.qwall-designer",
+            requiredAction: "edit",
+            labelKey: "nav.items.qwallDesigner",
+            path: "/quality/qwall/designer",
+            icon: "PanelsTopLeft",
+          },
+          {
             id: "quality.qwall-help",
             labelKey: "nav.items.qualityQwallHelp",
             path: "/quality/qwall/help",
