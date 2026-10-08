@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Flag as FlagIcon } from "lucide-react";
 import {
@@ -7,7 +7,7 @@ import {
   QWallRow,
   QWallInspectorRow,
   QWallPartRow,
-  QWallPartNumber,
+  QWallBusinessUnit,
 } from "../services/qwall.service";
 import BUSelect from "../../../components/common/BUSelect";
 import DateRangeSelector from "../../../components/common/DateRangeSelector";
@@ -226,27 +226,14 @@ export default function QWallPage() {
   const [error,       setError]       = useState<string | null>(null);
   const [includeTest, setIncludeTest] = useState<boolean>(false);
 
-  // Catálogo BU / PN — se sigue derivando de partCatalog (decisión: no
-  // cambiar a /qwall/settings/business-units/ por ahora). Multi-select real:
-  // selectedBuIds guarda bu_id como STRING porque BUSelect trabaja con
-  // string[] (mismo contrato que el resto del proyecto) — se castea a
-  // number[] solo al llamar al servicio.
-  const [partCatalog,   setPartCatalog]   = useState<QWallPartNumber[]>([]);
+  const [buCatalog, setBuCatalog] = useState<QWallBusinessUnit[]>([]);
   const [selectedBuIds, setSelectedBuIds] = useState<string[]>([]);
 
   useEffect(() => {
-    QWallService.getPartNumbers().then(setPartCatalog).catch(() => {});
-  }, []);
-
-  // Catálogo único bu_id -> bu_name, derivado de partCatalog (mismo origen
-  // que antes, solo que ahora se preserva el id además del nombre).
-  const buCatalog = useMemo(() => {
-    const seen = new Map<number, string>();
-    for (const p of partCatalog) {
-      if (!seen.has(p.bu_id)) seen.set(p.bu_id, p.bu_name);
-    }
-    return [...seen.entries()].map(([bu_id, bu_name]) => ({ bu_id, bu_name }));
-  }, [partCatalog]);
+    QWallService.getBusinessUnits().then(setBuCatalog).catch(() => {
+      setError(l ? "Error al cargar las unidades de negocio." : "Failed to load business units.");
+    });
+  }, [l]);
 
   const buIdsForService: number[] = selectedBuIds.map(Number);
 
@@ -350,7 +337,7 @@ useEffect(() => {
           {data && (
             <button
               style={s.btnOutline}
-              onClick={() => QWallService.downloadExcel(dateRange.start, dateRange.end, includeTest)}
+              onClick={() => QWallService.downloadExcel(dateRange.start, dateRange.end, includeTest, buIdsForService)}
             >
               <Download size={13} /> Excel
             </button>
@@ -615,7 +602,7 @@ useEffect(() => {
                       </td>
                       <td style={{ ...s.td, fontFamily: "monospace" }}>{row.work_order}</td>
                       <td style={s.td}>
-                        {buCatalog.find((b) => b.bu_id === row.bu_id)?.bu_name ?? row.bu_id ?? "—"}
+                        {row.bu_name ?? buCatalog.find((b) => b.bu_id === row.bu_id)?.bu_name ?? row.bu_id ?? "—"}
                       </td>
                       <td style={{ ...s.td, fontFamily: "monospace" }}>{row.part_number}</td>
                       <td style={{ ...s.td, fontFamily: "monospace" }}>{row.serial_ssi}</td>

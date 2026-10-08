@@ -69,7 +69,7 @@ class QWallService:
     @staticmethod
     def _cache_key(start_date: date, end_date: date, include_test: bool,
                     bu_ids: list[int] | None, locale: str) -> str:
-        raw = (f"qwall:{start_date}:{end_date}:test={include_test}:"
+        raw = (f"qwall:inspection-bu-v2:{start_date}:{end_date}:test={include_test}:"
                f"bu={_bu_ids_cache_fragment(bu_ids)}:loc={locale}")
         return hashlib.md5(raw.encode()).hexdigest()
 
@@ -174,7 +174,7 @@ class QWallService:
 
     @staticmethod
     def _bu_summary_cache_key(start_date: date, end_date: date, include_test: bool) -> str:
-        raw = f"qwall:bu_summary:{start_date}:{end_date}:test={include_test}"
+        raw = f"qwall:inspection-bu-v2:bu_summary:{start_date}:{end_date}:test={include_test}"
         return hashlib.md5(raw.encode()).hexdigest()
 
     @staticmethod
@@ -229,7 +229,7 @@ class QWallService:
     @staticmethod
     def _part_number_summary_cache_key(business_unit_id: int, start_date: date,
                                         end_date: date, include_test: bool) -> str:
-        raw = f"qwall:part_number_summary:{business_unit_id}:{start_date}:{end_date}:test={include_test}"
+        raw = f"qwall:inspection-bu-v2:part_number_summary:{business_unit_id}:{start_date}:{end_date}:test={include_test}"
         return hashlib.md5(raw.encode()).hexdigest()
 
     @staticmethod
@@ -311,7 +311,7 @@ class QWallService:
     @staticmethod
     def _fail_by_point_cache_key(start_date: date, end_date: date,
                                   include_test: bool, bu_id: int | None) -> str:
-        raw = f"qwall:point_fails:{bu_id or 'all'}:{start_date}:{end_date}:test={include_test}"
+        raw = f"qwall:inspection-bu-v2:point_fails:{bu_id or 'all'}:{start_date}:{end_date}:test={include_test}"
         return hashlib.md5(raw.encode()).hexdigest()
 
     @staticmethod
@@ -532,7 +532,7 @@ class QWallService:
     @staticmethod
     def _pareto_cache_key(granularity: str, start_date: date, end_date: date,
                            include_test: bool, bu_id: int | None, locale: str, limit: int) -> str:
-        raw = (f"qwall:pareto:{granularity}:{bu_id or 'all'}:{locale}:"
+        raw = (f"qwall:inspection-bu-v2:pareto:{granularity}:{bu_id or 'all'}:{locale}:"
                f"{start_date}:{end_date}:test={include_test}:limit={limit}")
         return hashlib.md5(raw.encode()).hexdigest()
 
@@ -579,7 +579,7 @@ class QWallService:
     @staticmethod
     def _trend_cache_key(granularity: str, start_date: date, end_date: date,
                           include_test: bool, bu_id: int | None) -> str:
-        raw = f"qwall:trend:{granularity}:{bu_id or 'all'}:{start_date}:{end_date}:test={include_test}"
+        raw = f"qwall:inspection-bu-v2:trend:{granularity}:{bu_id or 'all'}:{start_date}:{end_date}:test={include_test}"
         return hashlib.md5(raw.encode()).hexdigest()
 
     @staticmethod

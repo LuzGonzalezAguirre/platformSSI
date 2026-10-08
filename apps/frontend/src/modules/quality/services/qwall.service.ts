@@ -42,6 +42,7 @@ export interface QWallRow {
   work_order:       string;
   part_number:      string;
   bu_id:            number | null;
+  bu_name?:         string | null;
   inspector:        string;
   inspection_type:  string;
   result:           "PASS" | "FAIL";
@@ -267,10 +268,14 @@ getFailByPoint: async (
   return data;
 },
 
-downloadExcel: async (startDate: string, endDate: string, includeTest = false): Promise<void> => {
+downloadExcel: async (startDate: string, endDate: string, includeTest = false, buIds: number[] = []): Promise<void> => {
   const token   = localStorage.getItem("mes_access_token") ?? "";
   const baseUrl = ((import.meta as any).env?.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1").replace(/\/$/, "");
-  const url     = `${baseUrl}/quality/qwall/?start_date=${startDate}&end_date=${endDate}&export=xlsx&include_test=${includeTest}`;
+  const params = new URLSearchParams({
+    start_date: startDate, end_date: endDate, export: "xlsx", include_test: String(includeTest),
+  });
+  buIds.forEach((id) => params.append("bu_id", String(id)));
+  const url = `${baseUrl}/quality/qwall/?${params}`;
 
   const response = await fetch(url, {
     method: "GET",
