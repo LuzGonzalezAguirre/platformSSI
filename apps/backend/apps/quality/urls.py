@@ -1,5 +1,6 @@
 # apps/quality/urls.py
 from django.urls import path, include
+from apps.quality.views.qwall_designer_views import QWallDesignerProxyView
 from apps.permissions.drf import quality_view
 from apps.quality.views import (
     FailureCatalogView,
@@ -67,6 +68,9 @@ from apps.quality.views import (
 )
 
 urlpatterns = [
+    path("qwall/designer/<str:resource>/", QWallDesignerProxyView.as_view()),
+    path("qwall/designer/<str:resource>/<int:pk>/", QWallDesignerProxyView.as_view()),
+    path("qwall/designer/<str:resource>/<int:pk>/<str:action>/", QWallDesignerProxyView.as_view()),
     path("chatbot/", include("apps.quality.chatbot_urls")),
     path("scrap-detail/", quality_view(ScrapDetailView)),
     path("targets/", quality_view(QualityTargetView)),
