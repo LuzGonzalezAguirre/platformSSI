@@ -39,3 +39,11 @@ npm run build
 ```
 
 Las seis pruebas usan SQLite en memoria y las funciones de consulta aisladas por AST; verifican BU explícita distinta de la del modelo, fallback para NULL, todas/múltiples BU y consistencia entre cantidad y detalle de flags. No usan CCS. La sentencia completa de inspecciones contiene funciones específicas de SQL Server; la prueba local ejecuta su expresión de BU y predicado extraídos, mientras que las consultas de flags se ejecutan completas adaptando el CAST de fecha. Queda pendiente probar la ejecución SQL Server en el servidor de la planta.
+
+## Modelo por inspección
+
+Para corregir únicamente una inspección de un QR compartido, `ssi_Inspections.pn_id` permite registrar el modelo de esa inspección sin cambiar `ssi_Products.pn_id`. Report y flags usan `COALESCE(i.pn_id, p.pn_id)` al consultar el catálogo de modelos. El campo NULL mantiene el comportamiento histórico. La BU efectiva conserva la prioridad `COALESCE(i.bu_id, pn.bu_id)`.
+
+Antes de desplegar esta versión del proxy, ejecutar `scripts/sql/ssi_QWallInspectionPartNumber.sql` en CCS. Agrega una columna nullable y su FK; no modifica inspecciones ni productos. Las correcciones de datos se ejecutan por inspection_id con validación de producto, estado y modelo. No hay migraciones Django. Las fechas, seriales, fotos y resultados originales pueden conservarse; la corrección de BU/modelo no requiere reasignar vínculos de resultados o flags.
+
+El alcance de la lectura de modelo por inspección es Report, sus agregados derivados, flags y Excel. Otros módulos que consultan directamente el producto conservan su comportamiento. El cliente Desktop puede seguir omitiendo pn_id, en cuyo caso se usa el modelo del producto.
