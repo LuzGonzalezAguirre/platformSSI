@@ -57,7 +57,8 @@
       "qualityCogpMapping": "Mapeo COGP",
       "qualityScrapRate": "Scrap Rate",
       "maintenancePmp": "Programa PM",
-      "maintenanceDownEquipment": "Equipos caídos"
+      "maintenanceDownEquipment": "Equipos caídos",
+      "qwallDesigner": "Diseñador de inspecciones"
     }
   },
   "pmp": {
