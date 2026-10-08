@@ -106,7 +106,7 @@ def get_inspections(body: DateRange):
         DATENAME(MONTH, i.started_at)                   AS month_name
     FROM ssi_Inspections   i
     INNER JOIN ssi_Products    p   ON i.product_id = p.product_id
-    INNER JOIN ssi_PartNumbers pn  ON p.pn_id      = pn.pn_id
+    INNER JOIN ssi_PartNumbers pn  ON COALESCE(i.pn_id, p.pn_id) = pn.pn_id
     LEFT JOIN ssi_BusinessUnits bu ON bu.bu_id = COALESCE(i.bu_id, pn.bu_id)
     INNER JOIN ssi_Users       u   ON i.user_id    = u.user_id
     WHERE CAST(i.started_at AS DATE) BETWEEN ? AND ?
@@ -271,7 +271,7 @@ def piece_flags_count(start_date: str, end_date: str, bu_ids: list[int] | None =
         FROM ssi_PieceFlagRecords pfr
         LEFT JOIN ssi_Inspections i ON pfr.inspection_id = i.inspection_id
         INNER JOIN ssi_Products    p  ON pfr.product_id = p.product_id
-        INNER JOIN ssi_PartNumbers pn ON p.pn_id         = pn.pn_id
+        INNER JOIN ssi_PartNumbers pn ON COALESCE(i.pn_id, p.pn_id) = pn.pn_id
         WHERE CAST(pfr.created_at AS DATE) BETWEEN ? AND ?
         {bu_filter}
     """
@@ -304,7 +304,7 @@ def piece_flags(start_date: str, end_date: str, bu_id: int | None = None,
         FROM ssi_PieceFlagRecords pfr
         LEFT JOIN ssi_Inspections i ON pfr.inspection_id = i.inspection_id
         INNER JOIN ssi_Products    p  ON pfr.product_id  = p.product_id
-        INNER JOIN ssi_PartNumbers pn ON p.pn_id          = pn.pn_id
+        INNER JOIN ssi_PartNumbers pn ON COALESCE(i.pn_id, p.pn_id) = pn.pn_id
         LEFT JOIN  ssi_FailModes   fm ON pfr.fail_mode_id = fm.fail_mode_id
         WHERE CAST(pfr.created_at AS DATE) BETWEEN ? AND ?
         {bu_filter}
