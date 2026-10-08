@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from config import require_env
 from scan_rules_router import router as scan_rules_router
+from designer_router import router as designer_router
 
 app    = FastAPI()
 bearer = HTTPBearer()
@@ -26,6 +27,7 @@ def get_conn():
 
 
 app.include_router(scan_rules_router, prefix="/scan-rules", tags=["Scan Rules"])
+app.include_router(designer_router, prefix="/designer", tags=["Q-Wall Designer"])
 
 
 @app.get("/health")

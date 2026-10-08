@@ -17,8 +17,8 @@ NO se considera validado en compilación o en tableta Windows. El menú y la
 ruta requieren permiso `quality.edit`.
 
 La API Django delega en el servicio definido por `QWALL_PROXY_URL`.
-El proxy existente deberá implementar `/designer/*` antes de habilitar
-el editor a usuarios de producción. No hay prueba disponible que demuestre
+El proxy incluye ahora `designer_router.py` con las operaciones `/designer/*`.
+El funcionamiento todavía requiere validación contra CCS y Q-Wall Windows. No hay prueba disponible que demuestre
 que esos endpoints existen actualmente.
 
 ## Contrato requerido para qwall-proxy
@@ -41,8 +41,8 @@ Para compatibilidad, el JSON debe corresponder a los serializers actuales de
 
 ## Requisitos antes del despliegue
 
-1. Implementar las operaciones en el qwall-proxy que posee conectividad a CCS,
-   usando consultas parametrizadas y transacciones SQL Server.
+1. Validar en CCS las operaciones implementadas en qwall-proxy,
+   incluyendo claves, esquemas de columnas, consultas parametrizadas y transacciones SQL Server.
 2. Revisar el flujo borrador/publicación: nunca sobrescribir una versión
    publicada utilizada por QWall Windows sin una activación controlada.
 3. Validar pertenencia de parte y punto de inspección a la misma BU.
@@ -66,3 +66,12 @@ se recomienda un permiso granular de publicación, validación de alcance por
 BU en el servidor y auditoría del usuario responsable de cada versión.
 
 No fusionar a `main` hasta cubrir los requisitos anteriores.
+
+## Implementación de CCS
+
+`apps/qwall-proxy/designer_router.py` reutiliza `QWALL_DB_CONN_STR`,
+`QWALL_PROXY_TOKEN` y las tablas `dbo.ssi_StepDesigner`,
+`dbo.ssi_ButtonPositions` y sus tablas `_History`.
+No crea tablas ni duplica diseños en PostgreSQL.
+La validación del SQL real, el despliegue y la compatibilidad con el cliente Windows
+siguen pendientes; no se ha probado contra el servidor CCS desde esta revisión.
