@@ -145,7 +145,7 @@ class MaintenanceService:
 
     @staticmethod
     def get_kpis(filter_ctx: FilterContext) -> dict:
-        cache_key = filter_ctx.cache_key("maint:kpis:v4")
+        cache_key = filter_ctx.cache_key("maint:kpis:v5")
         cached = cache.get(cache_key)
         if cached:
             return cached
@@ -153,6 +153,7 @@ class MaintenanceService:
         scoped_rows = []
         global_operating_hours = 0.0
         global_unplanned_failures = 0
+        bu_totals = defaultdict(lambda: {"operating_hours": 0.0, "total_failures": 0})
         for chunk_start, chunk_end in date_chunks(
             filter_ctx.start_date.isoformat(), filter_ctx.end_date.isoformat()
         ):
@@ -173,6 +174,18 @@ class MaintenanceService:
             scoped_rows.extend(
                 _filter_rows_by_bu(response.get("by_workcenter", []), filter_ctx.bu)
             )
+            if "unplanned_by_workcenter" not in response:
+                raise RuntimeError(
+                    "plex-proxyO requiere actualizarse para desglosar MTBF por BU"
+                )
+            for row in response.get("by_workcenter", []):
+                bu = _row_bu(row)
+                if bu in filter_ctx.bu:
+                    bu_totals[bu]["operating_hours"] += float(row.get("operating_hours") or 0)
+            for row in response["unplanned_by_workcenter"]:
+                bu = _row_bu(row)
+                if bu in filter_ctx.bu:
+                    bu_totals[bu]["total_failures"] += int(row.get("unplanned_failures") or 0)
 
         kpis = _aggregate_kpi_rows(scoped_rows)
         # Existing scoped MTTR continues using Down events. MTBF and its
@@ -184,6 +197,19 @@ class MaintenanceService:
             _round2(global_operating_hours / global_unplanned_failures)
             if global_unplanned_failures else None
         )
+        kpis["mtbf_by_bu"] = [
+            {
+                "bu": bu,
+                "operating_hours": _round2(values["operating_hours"]),
+                "total_failures": values["total_failures"],
+                "mtbf_hours": (
+                    _round2(values["operating_hours"] / values["total_failures"])
+                    if values["total_failures"] else None
+                ),
+            }
+            for bu, values in sorted(bu_totals.items())
+            if values["operating_hours"] or values["total_failures"]
+        ]
         result = {"data": kpis}
         cache.set(cache_key, result, CACHE_TTL)
         return result
