@@ -153,6 +153,39 @@ class MaintenanceBUScopeServiceTests(SimpleTestCase):
         self.assertEqual(result["quality_pct"], 90.0)
         self.assertEqual(result["oee_pct"], 54.0)
 
+    @patch(
+        "apps.maintenance.views.overview_views.get_allowed_bu_for_user",
+        return_value=("VOLVO", "TULC"),
+    )
+    @patch(
+        "apps.maintenance.views.overview_views.MaintenanceService.get_kpis",
+        return_value={"data": {}},
+    )
+    def test_kpi_explicit_bu_uses_selected_scope(self, service, allowed):
+        response = self.client.get(
+            "/api/v1/maintenance/overview/kpis/"
+            "?start_date=2026-10-01&end_date=2026-10-02&bu=VOLVO"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(service.call_args.args[0].bu, ("VOLVO",))
+        self.assertFalse(service.call_args.kwargs["global_mtbf"])
+
+    @patch(
+        "apps.maintenance.views.overview_views.get_allowed_bu_for_user",
+        return_value=("VOLVO", "TULC"),
+    )
+    @patch(
+        "apps.maintenance.views.overview_views.MaintenanceService.get_kpis",
+        return_value={"data": {}},
+    )
+    def test_kpi_without_bu_uses_plant_scope(self, service, allowed):
+        response = self.client.get(
+            "/api/v1/maintenance/overview/kpis/"
+            "?start_date=2026-10-01&end_date=2026-10-02"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(service.call_args.kwargs["global_mtbf"])
+
     @patch("apps.maintenance.services.maintenance_service._post")
     def test_kpi_aggregation_uses_only_allowed_bu(self, post):
         post.return_value = {
@@ -190,13 +223,34 @@ class MaintenanceBUScopeServiceTests(SimpleTestCase):
 
         self.assertEqual(result["operating_hours"], 8.0)
         self.assertEqual(result["downtime_hours"], 2.0)
-        self.assertEqual(result["total_failures"], 7)
+        self.assertEqual(result["total_failures"], 2)
         self.assertEqual(result["down_events"], 1)
         self.assertEqual(result["mttr_hours"], 2.0)
-        self.assertEqual(result["mtbf_operating_hours"], 28.0)
+        self.assertEqual(result["mtbf_operating_hours"], 8.0)
         self.assertEqual(result["mtbf_hours"], 4.0)
+        self.assertEqual(result["mtbf_scope"], "selected_bu")
         self.assertEqual(result["mtbf_by_bu"], [{"bu": "VOLVO", "operating_hours": 8.0, "total_failures": 2, "mtbf_hours": 4.0}])
         self.assertEqual(result["availability_pct"], 80.0)
+
+    @patch("apps.maintenance.services.maintenance_service._post")
+    def test_kpis_global_retains_unassigned_requests(self, post):
+        post.return_value = {
+            "data": {"operating_hours": 28, "unplanned_failures": 7},
+            "by_workcenter": [
+                {"workcenter": "HM Ensamble Final 2", "workcenter_group": "Heater Module",
+                 "operating_hours": 8, "downtime_hours": 2, "down_hours": 2,
+                 "setup_hours": 0, "idle_hours": 0, "total_failures": 1},
+            ],
+            "unplanned_by_workcenter": [
+                {"workcenter": "HM Ensamble Final 2", "workcenter_group": "Heater Module", "unplanned_failures": 2},
+                {"workcenter": None, "workcenter_group": None, "unplanned_failures": 5},
+            ],
+        }
+        result = MaintenanceService.get_kpis(self.ctx, global_mtbf=True)["data"]
+        self.assertEqual(result["total_failures"], 7)
+        self.assertEqual(result["mtbf_operating_hours"], 28.0)
+        self.assertEqual(result["mtbf_hours"], 4.0)
+        self.assertEqual(result["mtbf_scope"], "plant")
 
     @patch("apps.maintenance.services.maintenance_service._post")
     def test_kpis_zero_unplanned_requests_returns_no_mtbf(self, post):

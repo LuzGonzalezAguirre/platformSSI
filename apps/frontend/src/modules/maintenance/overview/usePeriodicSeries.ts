@@ -21,6 +21,7 @@ export function usePeriodicSeries<T>(
   dayRange: DateRange,
   dayData: T,
   fetchFn: (start: string, end: string) => Promise<T>,
+  filterKey = "",
 ) {
   const [fetchedData, setFetchedData] = useState<T>(dayData);
   const [loading, setLoading] = useState(false);
@@ -39,10 +40,10 @@ export function usePeriodicSeries<T>(
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-    // Depende únicamente de `period` — cambiar el rango global no debe
+    // Depende de periodo y filtros aplicados — cambiar el rango global no debe
     // re-disparar el fetch de un chart que ya está en modo week/month.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period]);
+  }, [period, filterKey]);
 
   if (period === "day") {
     return { data: dayData, loading: false, error: null };

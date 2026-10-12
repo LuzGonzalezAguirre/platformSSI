@@ -144,8 +144,8 @@ def _oee_periods(start_date: str, end_date: str):
 class MaintenanceService:
 
     @staticmethod
-    def get_kpis(filter_ctx: FilterContext) -> dict:
-        cache_key = filter_ctx.cache_key("maint:kpis:v5")
+    def get_kpis(filter_ctx: FilterContext, *, global_mtbf: bool = False) -> dict:
+        cache_key = filter_ctx.cache_key("maint:kpis:v6:" + ("global" if global_mtbf else "scoped"))
         cached = cache.get(cache_key)
         if cached:
             return cached
@@ -188,15 +188,19 @@ class MaintenanceService:
                     bu_totals[bu]["total_failures"] += int(row.get("unplanned_failures") or 0)
 
         kpis = _aggregate_kpi_rows(scoped_rows)
-        # Existing scoped MTTR continues using Down events. MTBF and its
-        # failure count are plant-wide, independent of workcenter and BU.
+        # MTTR still uses Down events. The MTBF card and Unplanned WR count
+        # follow the selected BU(s), except when the user chooses All BUs.
         kpis["down_events"] = kpis["total_failures"]
-        kpis["total_failures"] = global_unplanned_failures
-        kpis["mtbf_operating_hours"] = _round2(global_operating_hours)
+        selected_failures = sum(item["total_failures"] for item in bu_totals.values())
+        selected_operating = sum(item["operating_hours"] for item in bu_totals.values())
+        mtbf_failures = global_unplanned_failures if global_mtbf else selected_failures
+        mtbf_operating = global_operating_hours if global_mtbf else selected_operating
+        kpis["total_failures"] = mtbf_failures
+        kpis["mtbf_operating_hours"] = _round2(mtbf_operating)
         kpis["mtbf_hours"] = (
-            _round2(global_operating_hours / global_unplanned_failures)
-            if global_unplanned_failures else None
+            _round2(mtbf_operating / mtbf_failures) if mtbf_failures else None
         )
+        kpis["mtbf_scope"] = "plant" if global_mtbf else "selected_bu"
         kpis["mtbf_by_bu"] = [
             {
                 "bu": bu,

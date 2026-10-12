@@ -7,6 +7,7 @@ export interface MaintenanceBU_MTBF {
 
 export interface MaintenanceKPIs {
   mtbf_by_bu?: MaintenanceBU_MTBF[];
+  mtbf_scope?: "plant" | "selected_bu";
   operating_hours:  number;
   downtime_hours:   number;
   down_hours:       number;

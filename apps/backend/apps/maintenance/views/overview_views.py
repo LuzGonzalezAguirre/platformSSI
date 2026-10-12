@@ -30,7 +30,9 @@ class MaintenanceKPIView(APIView):
 
     def get(self, request):
         filter_ctx = _scoped_filter_context(request)
-        data = MaintenanceService.get_kpis(filter_ctx)
+        data = MaintenanceService.get_kpis(
+            filter_ctx, global_mtbf=not bool(request.query_params.getlist("bu"))
+        )
         return Response(data)
 
 

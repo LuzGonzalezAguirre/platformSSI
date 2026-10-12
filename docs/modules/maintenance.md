@@ -76,6 +76,8 @@ MTBF y `total_failures` del Overview son globales de planta (independientes del 
 
 El proxy también devuelve `unplanned_by_workcenter`: solicitudes por Workcenter, incluyendo registros sin correspondencia. Django clasifica tanto las horas Running como los WR mediante `resolve_maintenance_bu()`, agrega horas y fallas por BU y calcula `mtbf_by_bu[].mtbf_hours = operating_hours / total_failures`. El desglose respeta el alcance de BU del usuario; Work Requests sin Workcenter clasificable permanecen en el total global, sin atribuirse arbitrariamente a una BU. El indicador global de planta permanece independiente del desglose y no debe obtenerse promediando las razones individuales.
 
+Al seleccionar una o varias BU en Maintenance Overview, el KPI principal `mtbf_hours`, `mtbf_operating_hours` y `total_failures` utilizan la suma de las BU elegidas, sin promediar indicadores individuales. Sin selección de BU, esos tres campos conservan el alcance global de planta e incluyen WR sin Workcenter. El campo `mtbf_scope` identifica `selected_bu` o `plant`. `down_events` sigue siendo el denominador específico del MTTR. OEE actual, tendencia (incluidos períodos semana/mes), downtime mensual y Work Requests reciben la misma selección de BU desde el frontend. Los filtros Workcenter y Shift del Overview requieren una validación separada: no deben asumirse implementados en todos los endpoints.
+
 El caché de KPIs es de 600 segundos.
 
 ### Downtime reasons

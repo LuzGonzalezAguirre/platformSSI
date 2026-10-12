@@ -22,9 +22,9 @@ export function useMaintenanceData(filters: StandardFilters) {
           workcenter: filters.workcenter,
           shift: filters.shift,
         }),
-        MaintenanceService.getOEELive(filters.start, filters.end),
-        MaintenanceService.getOEETrend(filters.start, filters.end),
-        MaintenanceService.getDowntimeByMonth(filters.start, filters.end),
+        MaintenanceService.getOEELive(filters.start, filters.end, { bu: filters.bu }),
+        MaintenanceService.getOEETrend(filters.start, filters.end, { bu: filters.bu }),
+        MaintenanceService.getDowntimeByMonth(filters.start, filters.end, { bu: filters.bu }),
       ]);
       setKpis(kpiRes.data);
       setOee(oeeRes);
