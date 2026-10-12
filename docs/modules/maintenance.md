@@ -74,6 +74,8 @@ Para MTTR, `failure_hours` se calcula como downtime menos setup, con mínimo cer
 
 MTBF y `total_failures` del Overview son globales de planta (independientes del filtro BU). El proxy cuenta `COUNT(DISTINCT Work_Request_Key)` en `Maintenance_v_Work_Request` vinculado a `Maintenance_v_Work_Request_Type`, con `Work_Request_Type = Unplanned Maintenance` y `Request_Date` en la misma ventana de turno utilizada por el KPI de horas operativas. Incluye solicitudes sin Workcenter. El numerador utiliza las horas operativas globales del proxy, no las horas filtradas por BU. `down_events` conserva el recuento Down (5445) filtrado por BU y se utiliza internamente para MTTR; por ello, `total_failures` no corresponde al denominador del MTTR. Para rangos largos se suman ambas métricas por ventana y se recalcula la razón. Si el proxy no suministra `unplanned_failures`, el backend devuelve un error explícito en lugar de utilizar silenciosamente eventos Down. El conteo no excluye solicitudes canceladas, porque todavía no se ha definido esa regla.
 
+El proxy también devuelve `unplanned_by_workcenter`: solicitudes por Workcenter, incluyendo registros sin correspondencia. Django clasifica tanto las horas Running como los WR mediante `resolve_maintenance_bu()`, agrega horas y fallas por BU y calcula `mtbf_by_bu[].mtbf_hours = operating_hours / total_failures`. El desglose respeta el alcance de BU del usuario; Work Requests sin Workcenter clasificable permanecen en el total global, sin atribuirse arbitrariamente a una BU. El indicador global de planta permanece independiente del desglose y no debe obtenerse promediando las razones individuales.
+
 El caché de KPIs es de 600 segundos.
 
 ### Downtime reasons
