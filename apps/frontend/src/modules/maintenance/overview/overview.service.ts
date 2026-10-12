@@ -46,15 +46,15 @@ export const MaintenanceService = {
       .then((r: any) => r.data),
 
   // Reutiliza el mismo endpoint de OPS — mismo OEERecord en PostgreSQL
-  getOEELive: (start: string, end: string): Promise<OEEData | null> =>
+  getOEELive: (start: string, end: string, filters?: StandardFilterParams): Promise<OEEData | null> =>
     apiClient
-      .get(`${BASE}/oee-live/`, { params: { start_date: start, end_date: end } })
+      .get(`${BASE}/oee-live/`, { params: { start_date: start, end_date: end, bu: filters?.bu } })
       .then((r: any) => (Object.keys(r.data).length === 0 ? null : r.data))
       .catch(() => null),
 
-  getOEETrend: (start: string, end: string): Promise<{ data: OEETrendPoint[] }> =>
-    apiClient.get(`${BASE}/oee-trend/`, { params: { start_date: start, end_date: end } }).then((r: any) => r.data),
+  getOEETrend: (start: string, end: string, filters?: StandardFilterParams): Promise<{ data: OEETrendPoint[] }> =>
+    apiClient.get(`${BASE}/oee-trend/`, { params: { start_date: start, end_date: end, bu: filters?.bu } }).then((r: any) => r.data),
 
-  getDowntimeByMonth: (start: string, end: string): Promise<{ data: DowntimeByMonth[] }> =>
-    apiClient.get(`${BASE}/downtime-by-month/`, { params: { start_date: start, end_date: end } }).then((r: any) => r.data),
+  getDowntimeByMonth: (start: string, end: string, filters?: StandardFilterParams): Promise<{ data: DowntimeByMonth[] }> =>
+    apiClient.get(`${BASE}/downtime-by-month/`, { params: { start_date: start, end_date: end, bu: filters?.bu } }).then((r: any) => r.data),
 };
