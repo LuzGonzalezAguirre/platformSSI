@@ -1,4 +1,12 @@
+export interface MaintenanceBU_MTBF {
+  bu: string;
+  operating_hours: number;
+  total_failures: number;
+  mtbf_hours: number | null;
+}
+
 export interface MaintenanceKPIs {
+  mtbf_by_bu?: MaintenanceBU_MTBF[];
   operating_hours:  number;
   downtime_hours:   number;
   down_hours:       number;

@@ -157,6 +157,11 @@ class MaintenanceBUScopeServiceTests(SimpleTestCase):
     def test_kpi_aggregation_uses_only_allowed_bu(self, post):
         post.return_value = {
             "data": {"operating_hours": 28, "unplanned_failures": 7},
+            "unplanned_by_workcenter": [
+                {"workcenter": "HM Ensamble Final 2", "workcenter_group": "Heater Module", "unplanned_failures": 2},
+                {"workcenter": "HM Weld", "workcenter_group": "Heater Module", "unplanned_failures": 4},
+                {"workcenter": None, "workcenter_group": None, "unplanned_failures": 1},
+            ],
             "by_workcenter": [
                 {
                     "workcenter": "HM Ensamble Final 2",
@@ -190,6 +195,7 @@ class MaintenanceBUScopeServiceTests(SimpleTestCase):
         self.assertEqual(result["mttr_hours"], 2.0)
         self.assertEqual(result["mtbf_operating_hours"], 28.0)
         self.assertEqual(result["mtbf_hours"], 4.0)
+        self.assertEqual(result["mtbf_by_bu"], [{"bu": "VOLVO", "operating_hours": 8.0, "total_failures": 2, "mtbf_hours": 4.0}])
         self.assertEqual(result["availability_pct"], 80.0)
 
     @patch("apps.maintenance.services.maintenance_service._post")
@@ -197,6 +203,7 @@ class MaintenanceBUScopeServiceTests(SimpleTestCase):
         post.return_value = {
             "data": {"operating_hours": 100, "unplanned_failures": 0},
             "by_workcenter": [],
+            "unplanned_by_workcenter": [],
         }
 
         result = MaintenanceService.get_kpis(self.ctx)["data"]
