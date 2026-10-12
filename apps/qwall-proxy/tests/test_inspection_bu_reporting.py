@@ -13,13 +13,13 @@ class InspectionBuReportingTests(unittest.TestCase):
         self.db.executescript('''
             CREATE TABLE ssi_BusinessUnits(bu_id INT, bu_name TEXT);
             INSERT INTO ssi_BusinessUnits VALUES (3,'Cummins'),(10,'TULC');
-            CREATE TABLE ssi_PartNumbers(pn_id INT, bu_id INT);
-            INSERT INTO ssi_PartNumbers VALUES (1,10),(2,3);
+            CREATE TABLE ssi_PartNumbers(pn_id INT, bu_id INT, ssiPN TEXT);
+            INSERT INTO ssi_PartNumbers VALUES (1,10,'35482.2'),(2,3,'35496.2');
             CREATE TABLE ssi_Products(product_id INT, pn_id INT);
             INSERT INTO ssi_Products VALUES (1,1),(2,2),(3,1);
-            CREATE TABLE ssi_Inspections(inspection_id INT, product_id INT, bu_id INT, started_at TEXT);
+            CREATE TABLE ssi_Inspections(inspection_id INT, product_id INT, bu_id INT, pn_id INT, started_at TEXT);
             INSERT INTO ssi_Inspections VALUES
-                (1,1,3,'2026-10-07'),(2,2,10,'2026-10-07'),(3,3,NULL,'2026-10-07');
+                (1,1,3,2,'2026-10-07'),(2,2,10,NULL,'2026-10-07'),(3,3,NULL,NULL,'2026-10-07');
             CREATE TABLE ssi_FailModes(fail_mode_id INT, fail_code TEXT, description TEXT);
             INSERT INTO ssi_FailModes VALUES (179,'D-1','Daño en tubo');
             CREATE TABLE ssi_PieceFlagRecords(flag_id INT, inspection_id INT, product_id INT,
@@ -35,11 +35,12 @@ class InspectionBuReportingTests(unittest.TestCase):
                 if 'STUFF(' in sql:
                     # Use the actual SELECT expression and filter emitted by the endpoint.
                     expr = re.search(r'(COALESCE\([^\n]+?\))\s+AS bu_id', sql)[1]
+                    model = re.search(r'ON (COALESCE\(i.pn_id, p.pn_id\)|p.pn_id)\s*=\s*pn.pn_id', sql)[1]
                     scope = re.search(r'(AND COALESCE\(i.bu_id, pn.bu_id\) IN \([^\n]+\))', sql)
-                    sql = f'''SELECT i.inspection_id, {expr} AS bu_id, bu.bu_name
+                    sql = f'''SELECT i.inspection_id, {expr} AS bu_id, bu.bu_name, pn.ssiPN AS part_number
                         FROM ssi_Inspections i
                         JOIN ssi_Products p ON i.product_id=p.product_id
-                        JOIN ssi_PartNumbers pn ON p.pn_id=pn.pn_id
+                        JOIN ssi_PartNumbers pn ON {model}=pn.pn_id
                         LEFT JOIN ssi_BusinessUnits bu ON bu.bu_id={expr}
                         WHERE i.started_at BETWEEN ? AND ? {scope[1] if scope else ''}'''
                 else:
@@ -86,6 +87,13 @@ class InspectionBuReportingTests(unittest.TestCase):
         rows = self.inspections([3])
         self.assertEqual([(r['inspection_id'],r['bu_id'],r['bu_name']) for r in rows],
                          [(1,3,'Cummins')])
+
+    def test_model_override_preserves_other_inspection_of_same_product(self):
+        self.db.execute("INSERT INTO ssi_Inspections VALUES (4,1,10,NULL,'2026-10-07')")
+        rows = {r['inspection_id']: r for r in self.inspections(None)}
+        self.assertEqual(rows[1]['part_number'], '35496.2')
+        self.assertEqual(rows[4]['part_number'], '35482.2')
+        self.assertEqual(self.db.execute('SELECT pn_id FROM ssi_Products WHERE product_id=1').fetchone()[0], 1)
 
     def test_tulc_includes_override_and_legacy_null(self):
         rows = self.inspections([10])
