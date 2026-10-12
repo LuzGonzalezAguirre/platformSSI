@@ -8,6 +8,7 @@ import { useStandardFilters } from "../../../components/common/useStandardFilter
 import FilterBar from "../../../components/common/FilterBar";
 import KPISection from "./KPISection";
 import ProductionMetrics from "./ProductionMetrics";
+import MTBFByBU from "./MTBFByBU";
 import OEETrendChart from "./OEETrendChart";
 import DashboardTargetsPanel from "./DashboardTargetsPanel";
 import { useWorkRequestsData } from "../work-requests/useWorkRequestsData";
@@ -71,6 +72,7 @@ export default function OverviewPage() {
         <>
           <KPISection kpis={kpis} oee={oee} lang={lang} getTarget={getTarget} />
           <ProductionMetrics kpis={kpis} lang={lang} getTarget={getTarget} />
+          <MTBFByBU data={kpis?.mtbf_by_bu ?? []} lang={lang} />
           <div style={{ display: "grid", gridTemplateColumns: narrowCharts ? "1fr" : "1fr 1fr", gap: "1rem" }}>
             <OEETrendChart data={oeeTrend} lang={lang} compact dayRange={applied} />
             {wrLoading ? (
