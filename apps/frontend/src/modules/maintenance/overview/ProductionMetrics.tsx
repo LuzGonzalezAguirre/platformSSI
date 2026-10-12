@@ -64,7 +64,7 @@ export default function ProductionMetrics({ kpis, lang, getTarget }: Props) {
     { label: lang === "es" ? "Horas de Paro"  : "Downtime Hours",  value: kpis?.down_hours  ?? null, accent: "#ef4444" },
     { label: lang === "es" ? "Horas Planeadas" : "Planned Hours",  value: planHours,                 accent: "#3b82f6" },
     { label: "Idle Hours",  value: kpis?.idle_hours   ?? null, accent: "#6b7280" },
-    { label: lang === "es" ? "WR Mantenimiento No Planeado (Planta)" : "Unplanned Maintenance WRs (Plant)", value: kpis?.total_failures ?? null, unit: "", accent: "#8b5cf6" },
+    { label: lang === "es" ? (kpis?.mtbf_scope === "selected_bu" ? "WR Mantenimiento No Planeado (BU)" : "WR Mantenimiento No Planeado (Planta)") : (kpis?.mtbf_scope === "selected_bu" ? "Unplanned Maintenance WRs (BU)" : "Unplanned Maintenance WRs (Plant)"), value: kpis?.total_failures ?? null, unit: "", accent: "#8b5cf6" },
   ];
 
   const mtItems = [
@@ -76,8 +76,8 @@ export default function ProductionMetrics({ kpis, lang, getTarget }: Props) {
     {
       label: "MTBF", value: kpis?.mtbf_hours ?? null, accent: mtbfColor, valueColor: mtbfColor,
       tooltip: lang === "es"
-        ? `Global planta: ${(kpis?.mtbf_operating_hours ?? 0).toFixed(2)} hrs / ${kpis?.total_failures ?? 0} WR Unplanned Maintenance. Meta: ≥ ${mtbfTarget} hrs`
-        : `Plant-wide: ${(kpis?.mtbf_operating_hours ?? 0).toFixed(2)} hrs / ${kpis?.total_failures ?? 0} Unplanned Maintenance WRs. Target: ≥ ${mtbfTarget} hrs`,
+        ? `${kpis?.mtbf_scope === "selected_bu" ? "BU seleccionadas" : "Global planta"}: ${(kpis?.mtbf_operating_hours ?? 0).toFixed(2)} hrs / ${kpis?.total_failures ?? 0} WR Unplanned Maintenance. Meta: ≥ ${mtbfTarget} hrs`
+        : `${kpis?.mtbf_scope === "selected_bu" ? "Selected BUs" : "Plant-wide"}: ${(kpis?.mtbf_operating_hours ?? 0).toFixed(2)} hrs / ${kpis?.total_failures ?? 0} Unplanned Maintenance WRs. Target: ≥ ${mtbfTarget} hrs`,
     },
   ];
 
