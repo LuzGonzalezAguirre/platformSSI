@@ -74,7 +74,7 @@ export default function OverviewPage() {
           <ProductionMetrics kpis={kpis} lang={lang} getTarget={getTarget} />
           <MTBFByBU data={kpis?.mtbf_by_bu ?? []} lang={lang} />
           <div style={{ display: "grid", gridTemplateColumns: narrowCharts ? "1fr" : "1fr 1fr", gap: "1rem" }}>
-            <OEETrendChart data={oeeTrend} lang={lang} compact dayRange={applied} />
+            <OEETrendChart data={oeeTrend} lang={lang} compact dayRange={applied} bu={applied.bu} />
             {wrLoading ? (
               <div style={s.chartLoading}>{lang === "es" ? "Cargando Pareto de equipos..." : "Loading equipment Pareto..."}</div>
             ) : (
