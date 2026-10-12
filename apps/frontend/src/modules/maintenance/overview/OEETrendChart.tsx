@@ -4,7 +4,7 @@ import { OEETrendPoint, DateRange } from "./types";
 import { usePeriodicSeries, ChartPeriod } from "./usePeriodicSeries";
 import { MaintenanceService } from "./overview.service";
 
-interface Props { data: OEETrendPoint[]; lang: string; compact?: boolean; dayRange: DateRange; }
+interface Props { data: OEETrendPoint[]; lang: string; compact?: boolean; dayRange: DateRange; bu?: string[]; }
 
 type ActiveField  = "oee_pct" | "availability_pct" | "performance_pct" | "quality_pct";
 type GroupMode    = "daily" | "weekly" | "monthly";
@@ -152,7 +152,7 @@ function LineChart({
   );
 }
 
-export default function OEETrendChart({ data: dayData, lang, compact = false, dayRange }: Props) {
+export default function OEETrendChart({ data: dayData, lang, compact = false, dayRange, bu = [] }: Props) {
   const [active,  setActive]  = useState<ActiveField>("oee_pct");
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [period,  setPeriod]  = useState<ChartPeriod>("day");
@@ -160,7 +160,8 @@ export default function OEETrendChart({ data: dayData, lang, compact = false, da
 
   const { data, loading: periodLoading } = usePeriodicSeries(
     period, dayRange, dayData,
-    (start, end) => MaintenanceService.getOEETrend(start, end).then((r) => r.data)
+    (start, end) => MaintenanceService.getOEETrend(start, end, { bu }).then((r) => r.data),
+    [...bu].sort().join(",")
   );
 
   // El period gobierna ambas cosas: de dónde vienen los datos (day = rango
