@@ -180,7 +180,7 @@ export default function DemandPage() {
                         backgroundColor: row.PO_Status === "Open" ? "rgba(22,163,74,0.1)" : "rgba(107,114,128,0.1)",
                         color: row.PO_Status === "Open" ? "var(--color-running)" : "var(--color-text-secondary)",
                       }}>
-                        {t(`warehouse.demand.status${row.PO_Status === "Open"?"Open":row.PO_Status === "History"?"History":"All"}`,{defaultValue:row.PO_Status||"Open"})}
+                        {row.PO_Status === "Open" ? t("warehouse.demand.statusOpen") : (row.PO_Status || "—")}
                       </span>
                     </td>
                     <td style={styles.td}>{row.Ship_To_Carrier || "—"}</td>
@@ -204,7 +204,7 @@ export default function DemandPage() {
                         backgroundColor: row.Rel_Status === "Open" ? "rgba(22,163,74,0.1)" : "rgba(107,114,128,0.1)",
                         color: row.Rel_Status === "Open" ? "var(--color-running)" : "var(--color-text-secondary)",
                       }}>
-                        {t(`warehouse.demand.status${row.Rel_Status==="Open"?"Open":row.Rel_Status==="History"?"History":"All"}`,{defaultValue:row.Rel_Status||""})}
+                        {row.Rel_Status === "Open" ? t("warehouse.demand.statusOpen") : row.Rel_Status}
                       </span>
                     </td>
                     <td style={{ ...styles.td, fontSize: "0.775rem", color: "var(--color-text-secondary)" }}>{row.Rel_Type}</td>
