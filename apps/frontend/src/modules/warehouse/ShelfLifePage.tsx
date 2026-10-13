@@ -26,6 +26,28 @@ export default function ShelfLifePage(){
  useEffect(()=>{void refresh()},[horizon,asOf]);
  const locations=useMemo(()=>Array.from(new Set(data?.containers.map(x=>x.location)??[])).sort(),[data]);
  const rows=useMemo(()=>data?.containers.filter(x=>(!location||x.location===location)&&(!status||x.status===status)&&(!search||[x.serial_no,x.part_key,x.location].some(v=>v.toLowerCase().includes(search.toLowerCase()))))??[],[data,location,status,search]);
+ const analytics=useMemo(()=>{
+  const items=data?.containers??[];
+  const buckets=[
+   {id:"expired",label:t("warehouse.shelfLife.bucketExpired"),min:-Infinity,max:-1,color:colors.expired},
+   {id:"today7",label:t("warehouse.shelfLife.bucket7"),min:0,max:7,color:"#dc8a18"},
+   {id:"day815",label:t("warehouse.shelfLife.bucket15"),min:8,max:15,color:"#e3aa36"},
+   {id:"day1630",label:t("warehouse.shelfLife.bucket30"),min:16,max:30,color:"#eabf69"},
+   {id:"day3160",label:t("warehouse.shelfLife.bucket60"),min:31,max:60,color:"#3b82f6"},
+   {id:"day6190",label:t("warehouse.shelfLife.bucket90"),min:61,max:90,color:"#6478c8"},
+   {id:"later",label:t("warehouse.shelfLife.bucketLater"),min:91,max:Infinity,color:"#16a34a"},
+  ];
+  const counts=buckets.map(b=>({...b,count:items.filter(x=>x.days_remaining!==null&&x.days_remaining>=b.min&&x.days_remaining<=b.max).length}));
+  const risks=items.filter(x=>x.days_remaining!==null&&x.days_remaining<=30);
+  const next=items.filter(x=>x.days_remaining!==null&&x.days_remaining>=0).sort((a,b)=>(a.days_remaining??0)-(b.days_remaining??0)).slice(0,5);
+  const at90=items.filter(x=>x.days_remaining!==null&&x.days_remaining>=0&&x.days_remaining<=90).length;
+  const areas=Array.from(new Set(items.map(x=>x.location))).map(name=>({name,items:items.filter(x=>x.location===name)})).map(x=>({name:x.name,total:x.items.length,risk:x.items.filter(y=>y.days_remaining!==null&&y.days_remaining<=30).length})).sort((a,b)=>b.risk-a.risk||b.total-a.total).slice(0,8);
+  const material=Array.from(new Set(risks.map(x=>x.part_key))).map(name=>({name,count:risks.filter(x=>x.part_key===name).length})).sort((a,b)=>b.count-a.count).slice(0,8);
+  const checked=items.filter(x=>x.days_remaining!==null).length;
+  const held=items.filter(x=>x.container_status&&x.container_status.toLowerCase()!=="ok").length;
+  return {counts,next,at90,areas,material,checked,held};
+ },[data,t]);
+ const chartBars=(values:{name:string;value:number;color?:string}[],empty:string)=>values.length===0||values.every(x=>x.value===0)?<p style={{color:"var(--color-text-secondary)",fontSize:13}}>{empty}</p>:<div style={{display:"grid",gap:12}}>{values.map(x=><div key={x.name} style={{display:"grid",gap:5}}><div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:12}}><span>{x.name}</span><strong>{x.value}</strong></div><div style={{height:11,background:"var(--color-bg)",borderRadius:6,overflow:"hidden"}}><div style={{height:"100%",width:`${100*x.value/Math.max(1,...values.map(y=>y.value))}%`,background:x.color??"#6478c8",borderRadius:6}}/></div></div>)}</div>;
  const metric=(label:string,value:string,sub:string,color?:string)=><div style={panel}><span style={{fontSize:12,color:"var(--color-text-secondary)"}}>{label}</span><div style={{fontSize:27,fontWeight:750,color:color||"var(--color-text-primary)",marginTop:6}}>{value}</div><small style={{color:"var(--color-text-secondary)"}}>{sub}</small></div>;
  return <div style={{display:"grid",gap:16,color:"var(--color-text-primary)"}}>
   <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
@@ -50,7 +72,25 @@ export default function ShelfLifePage(){
    <section style={panel}><h2 style={{fontSize:16,marginTop:0}}>{t("warehouse.shelfLife.riskByLocation")}</h2>{data.locations.filter(x=>x.expired+x.expiring>0).sort((a,b)=>(b.expired+b.expiring)-(a.expired+a.expiring)).slice(0,10).map(x=><div key={x.location} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid var(--color-border)"}}><b>{x.location}</b><span>{t("warehouse.shelfLife.atRiskLabels",{expired:x.expired,expiring:x.expiring})}</span></div>)}{!data.locations.some(x=>x.expired+x.expiring>0)&&<p>{t("warehouse.shelfLife.noLocationHasAContainerAtRisk")}</p>}</section>
    <section style={panel}><h2 style={{fontSize:16,marginTop:0}}>{t("warehouse.shelfLife.riskByPartKey")}</h2>{data.parts.filter(x=>x.expired+x.expiring>0).slice(0,10).map(x=><div key={x.part_key} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid var(--color-border)"}}><b>{x.part_key}</b><span>{t("warehouse.shelfLife.atRiskLabels",{expired:x.expired,expiring:x.expiring})}</span></div>)}{!data.parts.some(x=>x.expired+x.expiring>0)&&<p>{t("warehouse.shelfLife.noPartHasAContainerAtRisk")}</p>}</section>
   </div>
-  <section style={panel}><h2 style={{fontSize:16,margin:"0 0 12px"}}>{t("warehouse.shelfLife.containerDetails")}<span style={{fontSize:12,fontWeight:400}}>({rows.length})</span></h2><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:12}}>
+   {metric(t("warehouse.shelfLife.expiring7"),String(analytics.counts[1].count),t("warehouse.shelfLife.immediateAttention"),"#dc8a18")}
+   {metric(t("warehouse.shelfLife.expiring90"),String(analytics.at90),t("warehouse.shelfLife.planConsumption"),"#6478c8")}
+   {metric(t("warehouse.shelfLife.coverage"),data.summary.total?(100*analytics.checked/data.summary.total).toFixed(1)+"%":"—",t("warehouse.shelfLife.knownExpiration"))}
+   {metric(t("warehouse.shelfLife.nonOkPlex"),String(analytics.held),t("warehouse.shelfLife.separateFromExpiration"))}
+  </div>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,420px),1fr))",gap:14}}>
+   <section style={panel}><h2 style={{fontSize:16,margin:"0 0 6px"}}>{t("warehouse.shelfLife.expirationBuckets")}</h2><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:"0 0 16px"}}>{t("warehouse.shelfLife.fixedHorizonNote")}</p>
+    {chartBars(analytics.counts.map(x=>({name:x.label,value:x.count,color:x.color})),t("warehouse.shelfLife.noData"))}</section>
+   <section style={panel}><h2 style={{fontSize:16,margin:"0 0 6px"}}>{t("warehouse.shelfLife.locationConcentration")}</h2><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:"0 0 16px"}}>{t("warehouse.shelfLife.locationScope")}</p>
+    {chartBars(analytics.areas.map(x=>({name:`${x.name} · ${x.total} ${t("warehouse.shelfLife.containersShort")}`,value:x.risk,color:"#d97706"})),t("warehouse.shelfLife.noRiskWithin30"))}</section>
+  </div>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,350px),1fr))",gap:14}}>
+   <section style={panel}><h2 style={{fontSize:16,margin:"0 0 12px"}}>{t("warehouse.shelfLife.materialConcentration")}</h2>
+    {chartBars(analytics.material.map(x=>({name:x.name,value:x.count,color:"#d97706"})),t("warehouse.shelfLife.noRiskWithin30"))}</section>
+   <section style={panel}><h2 style={{fontSize:16,margin:"0 0 12px"}}>{t("warehouse.shelfLife.nextExpirations")}</h2>
+    {analytics.next.length===0?<p style={{fontSize:13,color:"var(--color-text-secondary)"}}>{t("warehouse.shelfLife.noUpcoming")}</p>:<div style={{display:"grid",gap:9}}>{analytics.next.map(x=><button key={x.serial_no} type="button" onClick={()=>{setSearch(x.serial_no);setLocation("");setStatus("");document.getElementById("shelf-life-details")?.scrollIntoView({behavior:"smooth"})}} style={{...control,textAlign:"left",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}><span><strong>{x.serial_no}</strong><small style={{display:"block",color:"var(--color-text-secondary)"}}>{x.location} · {x.expired_date}</small></span><strong style={{color:x.days_remaining!==null&&x.days_remaining<=30?"#d97706":"var(--color-text-primary)"}}>{x.days_remaining} {t("warehouse.shelfLife.days")}</strong></button>)}</div>}</section>
+  </div>
+  <section id="shelf-life-details" style={panel}><h2 style={{fontSize:16,margin:"0 0 12px"}}>{t("warehouse.shelfLife.containerDetails")}<span style={{fontSize:12,fontWeight:400}}>({rows.length})</span></h2><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
    <label style={{display:"flex",gap:5,alignItems:"center",...control}}><Search size={16}/><input aria-label={t("warehouse.shelfLife.searchContainerOrPart")} placeholder={t("warehouse.shelfLife.serialPartKeyLocation")} value={search} onChange={e=>setSearch(e.target.value)} style={{border:0,background:"transparent",color:"inherit",outline:0}}/></label>
    <select aria-label={t("warehouse.shelfLife.locationFilter")} style={control} value={location} onChange={e=>setLocation(e.target.value)}><option value="">{t("warehouse.shelfLife.allLocations")}</option>{locations.map(v=><option key={v} value={v}>{v}</option>)}</select>
    <select aria-label={t("warehouse.shelfLife.statusFilter")} style={control} value={status} onChange={e=>setStatus(e.target.value)}><option value="">{t("warehouse.shelfLife.allStatuses")}</option>{(["expired","expiring","ok","unknown"] as Status[]).map(v=><option key={v} value={v}>{titles[v]}</option>)}</select>
