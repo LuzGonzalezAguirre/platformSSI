@@ -3,8 +3,8 @@
 ## Estado de integración
 
 La rama implementa frontend React y `GET /api/v1/warehouse/shelf-life/` en Django.
-El código fuente del proxy ODBC de Plex **no está incluido en este repositorio**.
-La ruta `POST /shelf-life` debe incorporarse al FastAPI `plex-proxy` real antes de activar la página en producción. Hasta entonces Django devolverá 502 y el frontend mostrará el error, sin datos ficticios.
+El código fuente del proxy ODBC de Plex está en el repositorio independiente `LuzGonzalezAguirre/plex-proxyO`.
+La ruta `POST /shelf-life` se agregó en `plex-proxyO` mediante PR #11. Se debe actualizar el proxy instalado localmente y verificar la consulta real antes de utilizar el dashboard en producción. Ante fallos de conexión Django devolverá 502 y el frontend mostrará el error, sin datos ficticios.
 
 ## Contrato
 
