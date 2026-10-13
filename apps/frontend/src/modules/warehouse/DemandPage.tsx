@@ -146,7 +146,7 @@ export default function DemandPage() {
         Requested Ship Date and Total Rel Due remain unavailable pending reconciliation.
       </div>
 
-      {error && <div style={styles.errorMsg}>{error}</div>
+      {error && <div style={styles.errorMsg}>{error}</div>}
 
       {Object.entries(grouped).map(([customer, customerRows]) => (
         <div key={customer} style={styles.tableWrap}>
