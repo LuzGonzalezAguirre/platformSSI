@@ -24,20 +24,11 @@ OVERRIDES = {
     (54, 1): 0, (54, 3): 50,
     (55, 3): 0,
 }
-# Las ubicaciones de 50% requieren pallet estándar para representar la fuente.
-STANDARD_RACKS = {22, 31, 45, 47, 54}
-
-
-def capacity(rack):
-    return 2 if rack.pallet_type == StorageRack.STANDARD else 3
-
 
 def serialize_rack(rack):
-    cap = capacity(rack)
     locations = sorted(rack.locations.all(), key=lambda loc: loc.level)
     return {
         "number": rack.number,
-        "pallet_type": rack.pallet_type,
         "x": rack.x,
         "y": rack.y,
         "width": rack.width,
@@ -60,17 +51,23 @@ def ensure_initial_data():
         for number in range(1, 56):
             if number in existing:
                 continue
-            rack = StorageRack.objects.create(
-                number=number,
-                pallet_type=StorageRack.STANDARD if number in STANDARD_RACKS else StorageRack.EURO,
-            )
-            cap = capacity(rack)
+            rack = StorageRack.objects.create(number=number)
             for level in range(1, 5):
                 pct = OVERRIDES.get((number, level), 100)
-                count = round(pct * cap / 100)
-                StorageLocation.objects.create(rack=rack, level=level, pallet_count=count,
-                    standard_pallets=count if rack.pallet_type == StorageRack.STANDARD else 0,
-                    euro_pallets=count if rack.pallet_type == StorageRack.EURO else 0)
+                if pct == 50:
+                    standard, euro = 1, 0
+                elif pct == 67:
+                    standard, euro = 0, 2
+                elif pct == 33:
+                    standard, euro = 0, 1
+                elif pct == 0:
+                    standard, euro = 0, 0
+                else:
+                    standard, euro = 0, 3
+                StorageLocation.objects.create(
+                    rack=rack, level=level,
+                    standard_pallets=standard, euro_pallets=euro,
+                )
 
 
 class StorageUtilizationView(APIView):
