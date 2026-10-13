@@ -155,7 +155,7 @@ export default function ShelfLifePage() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart><Pie data={pieData.filter(x => x.value > 0)} dataKey="value" innerRadius="68%" outerRadius="91%" paddingAngle={1} stroke="none" isAnimationActive={false}>
                   {pieData.filter(x => x.value > 0).map(x => <Cell key={x.key} fill={STATUS_COLORS[x.key]} />)}
-                </Pie><Tooltip formatter={(value: number | string) => [value, tr("containersShort")]} /></PieChart>
+                </Pie><Tooltip formatter={value => [value ?? 0, tr("containersShort")]} /></PieChart>
               </ResponsiveContainer>
               <div style={{ pointerEvents: "none", position: "absolute", inset: 0, display: "grid", alignContent: "center", justifyItems: "center" }}>
                 <strong style={{ fontSize: 28, ...mono }}>{data.summary.total}</strong><small style={{ color: "var(--color-text-secondary)" }}>{tr("containersShort")}</small>
@@ -178,7 +178,7 @@ export default function ShelfLifePage() {
                 <CartesianGrid stroke="var(--color-border)" strokeOpacity={0.6} horizontal={false} />
                 <XAxis type="number" allowDecimals={false} tick={{ fill: "var(--color-text-secondary)", fontSize: 11 }} />
                 <YAxis type="category" dataKey="name" width={100} tick={{ fill: "var(--color-text-secondary)", fontSize: 11 }} />
-                <Tooltip formatter={(value: number | string) => [value, tr("containersShort")]} />
+                <Tooltip formatter={value => [value ?? 0, tr("containersShort")]} />
                 <Bar dataKey="count" name={tr("containersShort")} radius={[0, 4, 4, 0]} isAnimationActive={false}>
                   {metrics.windows.map(x => <Cell key={x.name} fill={x.color} />)}
                 </Bar>
