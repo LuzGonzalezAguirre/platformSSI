@@ -60,7 +60,8 @@
       "maintenanceDownEquipment": "Down Equipment",
       "qwallDesigner": "Inspection Designer",
       "warehouseStorageUtilization": "WH Storage Utilization",
-      "warehouseStorageDesigner": "Warehouse Designer"
+      "warehouseStorageDesigner": "Warehouse Designer",
+      "warehouseShelfLife": "WH Shelf Life"
     }
   },
   "scrapRate": {
