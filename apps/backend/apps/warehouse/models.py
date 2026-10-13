@@ -36,7 +36,9 @@ class StorageLocation(models.Model):
 
     rack = models.ForeignKey(StorageRack, related_name="locations", on_delete=models.CASCADE)
     level = models.PositiveSmallIntegerField()
-    pallet_count = models.PositiveSmallIntegerField(default=0)
+    pallet_count = models.PositiveSmallIntegerField(default=0)  # Legacy: migrated to split counts
+    standard_pallets = models.PositiveSmallIntegerField(default=0)
+    euro_pallets = models.PositiveSmallIntegerField(default=0)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
