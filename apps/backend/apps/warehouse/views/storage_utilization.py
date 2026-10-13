@@ -105,12 +105,12 @@ class StorageUtilizationView(APIView):
                         return Response({"detail": "Invalid rack number."}, status=400)
                     rack = StorageRack.objects.select_for_update().get(number=number)
                     pallet_type = data.get("pallet_type", rack.pallet_type)
-                    if pallet_type not in ("euro", "standard"):
+                    if type(pallet_type) is not str or pallet_type not in ("euro", "standard"):
                         return Response({"detail": "Invalid pallet type."}, status=400)
                     cap = 2 if pallet_type == "standard" else 3
                     if "levels" in data:
                         levels = data["levels"]
-                        if not isinstance(levels, list) or len(levels) != 4 or {row.get("level") for row in levels if isinstance(row, dict)} != {1, 2, 3, 4}:
+                        if not isinstance(levels, list) or len(levels) != 4 or any(not isinstance(row, dict) for row in levels) or {row.get("level") for row in levels} != {1, 2, 3, 4}:
                             return Response({"detail": "Four unique levels (1-4) are required."}, status=400)
                         if any(type(row.get("pallet_count")) is not int or not 0 <= row["pallet_count"] <= cap for row in levels):
                             return Response({"detail": "Invalid pallet count."}, status=400)
