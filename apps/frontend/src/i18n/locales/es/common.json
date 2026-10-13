@@ -772,7 +772,14 @@
       "materialConcentration": "Contenedores en riesgo por número de parte",
       "nextExpirations": "Próximos vencimientos · FEFO",
       "noUpcoming": "No hay vencimientos próximos.",
-      "partNumberRevision": "Número de parte / Revisión"
+      "partNumberRevision": "Número de parte / Revisión",
+      "timelineDescription": "Contenedores por ventana de vencimiento, contados desde la fecha de referencia.",
+      "locationChartDescription": "Contenedores por caducar frente al total de cada ubicación.",
+      "totalByLocation": "Total en ubicación",
+      "upcomingExpirations": "Próximas caducidades",
+      "upcomingDescription": "Contenedores ordenados por la fecha de caducidad más cercana.",
+      "dayAbbr": "d",
+      "distributionDescription": "Estado de los {{count}} contenedores según la ventana elegida."
     },
     "storage": {
       "wHStorageUtilization": "Utilización del almacén",
