@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { WarehouseService, DemandRow, CUSTOMERS } from "./services/warehouse.service";
+import { WarehouseService, DemandRow, CUSTOMERS, DEMAND_RELEASE_TYPES, type DemandFilters } from "./services/warehouse.service";
 
 const STATUS_OPTIONS = [
   { label: "Open",    value: "Open"    },
@@ -18,17 +18,38 @@ export default function DemandPage() {
   const { t }                         = useTranslation();
   const [customerNo, setCustomerNo]   = useState<number | null>(null);
   const [status, setStatus]           = useState("Open");
+  const [shipDateFrom, setShipDateFrom] = useState("");
+  const [shipDateTo, setShipDateTo] = useState("");
+  const [po, setPo]                 = useState("");
+  const [customerPartNo, setCustomerPartNo] = useState("");
+  const [releaseTypes, setReleaseTypes] = useState<string[]>([]);
   const [rows, setRows]               = useState<DemandRow[]>([]);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
   const fetchDemand = async () => {
+    if (Boolean(shipDateFrom) !== Boolean(shipDateTo)) {
+      setError("Enter both Ship Date From and Ship Date To.");
+      return;
+    }
+    if (shipDateFrom && shipDateTo) {
+      const days = (Date.parse(shipDateTo + "T00:00:00Z") - Date.parse(shipDateFrom + "T00:00:00Z")) / 86400000;
+      if (!Number.isFinite(days) || days < 0 || days > 180) {
+        setError("Ship Date range must be between 0 and 180 days.");
+        return;
+      }
+    }
     setLoading(true);
     setError(null);
     try {
-      const data = await WarehouseService.getDemand(customerNo, status);
+      const filters: DemandFilters = {
+        customerNo, status: status as DemandFilters["status"], shipDateFrom,
+        shipDateTo, po, customerPartNo, releaseTypes,
+      };
+      const data = await WarehouseService.getDemand(filters);
       setRows(data);
     } catch {
+      setRows([]);
       setError(t("warehouse.demand.errorFetching"));
     } finally {
       setLoading(false);
@@ -58,6 +79,30 @@ export default function DemandPage() {
               <option key={c.label} value={c.value ?? ""}>{c.label}</option>
             ))}
           </select>
+        </div>
+
+        <div style={styles.filterGroup}>
+          <label style={styles.filterLabel}>Ship Date From</label>
+          <input type="date" value={shipDateFrom} onChange={(e) => setShipDateFrom(e.target.value)} style={styles.input} />
+        </div>
+        <div style={styles.filterGroup}>
+          <label style={styles.filterLabel}>Ship Date To</label>
+          <input type="date" value={shipDateTo} onChange={(e) => setShipDateTo(e.target.value)} style={styles.input} />
+        </div>
+        <div style={styles.filterGroup}>
+          <label style={styles.filterLabel}>PO</label>
+          <input type="text" value={po} maxLength={100} onChange={(e) => setPo(e.target.value)} style={styles.input} placeholder="PO number" />
+        </div>
+        <div style={styles.filterGroup}>
+          <label style={styles.filterLabel}>Customer Part No</label>
+          <input type="text" value={customerPartNo} maxLength={100} onChange={(e) => setCustomerPartNo(e.target.value)} style={styles.input} placeholder="Customer part" />
+        </div>
+        <div style={styles.filterGroup}>
+          <label style={styles.filterLabel}>Release Type</label>
+          <select multiple size={3} value={releaseTypes} onChange={(e) => setReleaseTypes(Array.from(e.target.selectedOptions, (option) => option.value))} style={styles.select} aria-label="Release Type">
+            {DEMAND_RELEASE_TYPES.map((releaseType) => <option key={releaseType} value={releaseType}>{releaseType}</option>)}
+          </select>
+          <span style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)" }}>Ctrl + click to select multiple; none means all.</span>
         </div>
 
         <div style={styles.filterGroup}>
@@ -96,7 +141,12 @@ export default function DemandPage() {
         )}
       </div>
 
-      {error && <div style={styles.errorMsg}>{error}</div>}
+      <div style={styles.notice}>
+        Qty Ready and WIP are part-level inventory estimates, not Plex release allocations.
+        Requested Ship Date and Total Rel Due remain unavailable pending reconciliation.
+      </div>
+
+      {error && <div style={styles.errorMsg}>{error}</div>
 
       {Object.entries(grouped).map(([customer, customerRows]) => (
         <div key={customer} style={styles.tableWrap}>
@@ -111,10 +161,10 @@ export default function DemandPage() {
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {["PO", "Status", t("warehouse.demand.colPart"), t("warehouse.demand.colCustPart"),
-                    t("warehouse.demand.colQtyReady"), "WIP", t("warehouse.demand.colShipDate"),
-                    t("warehouse.demand.colDueDate"), t("warehouse.demand.colRelQty"),
-                    t("warehouse.demand.colShipped"), t("warehouse.demand.colBalance"),
+                  {["PO", "Status", "Ship To / Carrier", t("warehouse.demand.colPart"), t("warehouse.demand.colCustPart"),
+                    "Qty Ready (inventory)", "WIP (inventory)", t("warehouse.demand.colShipDate"), "Shipper No",
+                    t("warehouse.demand.colDueDate"), "Requested Ship Date", t("warehouse.demand.colRelQty"),
+                    t("warehouse.demand.colShipped"), t("warehouse.demand.colBalance"), "Total Rel Due",
                     t("warehouse.demand.colRelStatus"), t("warehouse.demand.colRelType"),
                   ].map((h) => (
                     <th key={h} style={styles.th}>{h}</th>
@@ -134,17 +184,21 @@ export default function DemandPage() {
                         {row.PO_Status || "Open"}
                       </span>
                     </td>
+                    <td style={styles.td}>{row.Ship_To_Carrier || "—"}</td>
                     <td style={{ ...styles.td, fontFamily: "monospace", fontSize: "0.8rem" }}>{row.Part_No_Rev}</td>
                     <td style={styles.td}>{row.Cust_Part || "—"}</td>
                     <td style={{ ...styles.td, textAlign: "right", fontWeight: "600" }}>{row.Qty_Ready?.toLocaleString()}</td>
                     <td style={{ ...styles.td, textAlign: "right" }}>{row.Qty_WIP?.toLocaleString()}</td>
                     <td style={styles.td}>{formatDate(row.Ship_Date)}</td>
+                    <td style={styles.td}>{row.Shipper_No || "—"}</td>
                     <td style={styles.td}>{formatDate(row.Due_Date)}</td>
+                    <td style={styles.td}>{formatDate(row.Requested_Ship_Date ?? null)}</td>
                     <td style={{ ...styles.td, textAlign: "right" }}>{row.Rel_Qty?.toLocaleString()}</td>
                     <td style={{ ...styles.td, textAlign: "right" }}>{row.Shipped?.toLocaleString()}</td>
                     <td style={{ ...styles.td, textAlign: "right", fontWeight: "600", color: row.Rel_Bal > 0 ? "var(--color-primary)" : "var(--color-text-secondary)" }}>
                       {row.Rel_Bal?.toLocaleString()}
                     </td>
+                    <td style={{ ...styles.td, textAlign: "right" }}>{row.Total_Rel_Due == null ? "—" : row.Total_Rel_Due.toLocaleString()}</td>
                     <td style={styles.td}>
                       <span style={{
                         padding: "0.15rem 0.5rem", borderRadius: "999px", fontSize: "0.72rem", fontWeight: "600",
@@ -171,12 +225,14 @@ const styles: Record<string, React.CSSProperties> = {
   filterBar:     { display: "flex", flexWrap: "wrap", gap: "1.25rem", alignItems: "flex-end", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1.25rem 1.5rem" },
   filterGroup:   { display: "flex", flexDirection: "column", gap: "0.375rem" },
   filterLabel:   { fontSize: "0.75rem", fontWeight: "600", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" },
+  input:         { padding: "0.55rem 0.75rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", fontSize: "0.875rem", color: "var(--color-text-primary)", backgroundColor: "var(--color-bg)", minWidth: "160px" },
   select:        { padding: "0.55rem 0.75rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", fontSize: "0.875rem", color: "var(--color-text-primary)", backgroundColor: "var(--color-bg)", minWidth: "200px" },
   segmentGroup:  { display: "flex", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", overflow: "hidden" },
   segmentBtn:    { padding: "0.55rem 1rem", border: "none", borderRight: "1px solid var(--color-border)", backgroundColor: "var(--color-bg)", color: "var(--color-text-secondary)", cursor: "pointer", fontSize: "0.875rem", fontWeight: "500" },
   segmentActive: { backgroundColor: "var(--color-primary)", color: "#fff" },
   loadBtn:       { display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.55rem 1.25rem", backgroundColor: "var(--color-primary)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "0.875rem", fontWeight: "600" },
   summaryBadge:  { display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.4rem 0.875rem", borderRadius: "999px", backgroundColor: "rgba(10,110,189,0.08)", color: "var(--color-primary)", fontSize: "0.8rem", fontWeight: "600", marginTop: "1.5rem" },
+  notice:        { padding: "0.75rem 1rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", color: "var(--color-text-secondary)", fontSize: "0.8rem" },
   errorMsg:      { padding: "0.75rem 1rem", borderRadius: "var(--radius-md)", backgroundColor: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "var(--color-stopped)", fontSize: "0.875rem" },
   tableWrap:     { backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" },
   tableHeader:   { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1rem 1.5rem", borderBottom: "1px solid var(--color-border)" },

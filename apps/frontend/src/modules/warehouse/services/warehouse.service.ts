@@ -41,6 +41,10 @@ export interface DemandRow {
   Customer: string;
   PO_Rel: string;
   PO_Status: string;
+  Ship_To_Carrier?: string;
+  Shipper_No?: string;
+  Requested_Ship_Date?: string | null;
+  Total_Rel_Due?: number | null;
   Part_No_Rev: string;
   Cust_Part: string;
   Qty_Ready: number;
@@ -53,6 +57,21 @@ export interface DemandRow {
   Rel_Status: string;
   Rel_Type: string;
 }
+
+export interface DemandFilters {
+  customerNo: number | null;
+  status: "Open" | "History" | "All";
+  shipDateFrom?: string;
+  shipDateTo?: string;
+  po?: string;
+  customerPartNo?: string;
+  releaseTypes?: string[];
+}
+
+export const DEMAND_RELEASE_TYPES = [
+  "Firm (862)", "CZ Ship", "Forecast", "HOLD", "Non-MRP Release",
+  "Pass Through", "Planning (830)", "Projected", "Ramp Plan",
+];
 
 export const CUSTOMERS = [
   { label: "All Customers", value: null },
@@ -87,10 +106,19 @@ export const WarehouseService = {
     return res.data;
   },
 
-  async getDemand(customerNo: number | null, status: string): Promise<DemandRow[]> {
-    const params: Record<string, any> = { status };
-    if (customerNo !== null) params.customer_no = customerNo;
-    const res = await apiClient.get(`/warehouse/demand/`, { params });
+  async getDemand(filters: DemandFilters): Promise<DemandRow[]> {
+    const params = new URLSearchParams({ status: filters.status });
+    if (filters.customerNo !== null) params.set("customer_no", String(filters.customerNo));
+    if (filters.shipDateFrom && filters.shipDateTo) {
+      params.set("ship_date_from", filters.shipDateFrom);
+      params.set("ship_date_to", filters.shipDateTo);
+    }
+    if (filters.po?.trim()) params.set("po", filters.po.trim());
+    if (filters.customerPartNo?.trim()) params.set("customer_part_no", filters.customerPartNo.trim());
+    for (const releaseType of filters.releaseTypes ?? []) {
+      params.append("release_types", releaseType);
+    }
+    const res = await apiClient.get(`/warehouse/demand/?${params.toString()}`);
     return res.data;
   },
 };
