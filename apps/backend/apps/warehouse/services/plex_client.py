@@ -76,8 +76,18 @@ class PlexClient:
             "max_levels": max_levels,
         })
 
-    def get_demand(self, customer_no: int | None = None, release_status: str = "Open") -> list:
+    def get_demand(
+        self, customer_no: int | None = None, release_status: str = "Open",
+        ship_date_from: str | None = None, ship_date_to: str | None = None,
+        po: str | None = None, customer_part_no: str | None = None,
+        release_types: list[str] | None = None,
+    ) -> list:
         return self._post("demand", {
-            "customer_no":    customer_no,
+            "customer_no": customer_no,
             "release_status": release_status,
+            "ship_date_from": ship_date_from,
+            "ship_date_to": ship_date_to,
+            "po": po,
+            "customer_part_no": customer_part_no,
+            "release_types": release_types,
         })
