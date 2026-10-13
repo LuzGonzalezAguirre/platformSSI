@@ -707,7 +707,14 @@
       "materialConcentration": "At-risk containers by part number",
       "nextExpirations": "Upcoming expirations · FEFO",
       "noUpcoming": "No upcoming expiration dates.",
-      "partNumberRevision": "Part Number / Revision"
+      "partNumberRevision": "Part Number / Revision",
+      "timelineDescription": "Containers by expiration time window, counted from the reference date.",
+      "locationChartDescription": "At-risk containers compared with the total in each location.",
+      "totalByLocation": "Total in location",
+      "upcomingExpirations": "Upcoming expirations",
+      "upcomingDescription": "Containers ordered by their upcoming expiration date.",
+      "dayAbbr": "d",
+      "distributionDescription": "Status of {{count}} containers for the selected window."
     },
     "storage": {
       "wHStorageUtilization": "WH Storage Utilization",
