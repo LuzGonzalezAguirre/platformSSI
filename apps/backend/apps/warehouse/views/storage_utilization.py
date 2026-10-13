@@ -85,6 +85,9 @@ class StorageUtilizationView(APIView):
     def patch(self, request):
         ensure_initial_data()
         data = request.data
+        from apps.permissions.services import PermissionService
+        if not PermissionService.has_permission(request.user, "warehouse", "edit"):
+            return Response({"detail": "Warehouse edit permission required."}, status=403)
         if not isinstance(data, dict):
             return Response({"detail": "Expected an object."}, status=400)
         allowed = {"designer_enabled", "number", "pallet_type", "levels", "x", "y", "width", "height", "rotation"}
