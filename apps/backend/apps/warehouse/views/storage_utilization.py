@@ -24,28 +24,20 @@ OVERRIDES = {
     (54, 1): 0, (54, 3): 50,
     (55, 3): 0,
 }
-# Las ubicaciones de 50% requieren pallet estándar para representar la fuente.
-STANDARD_RACKS = {22, 31, 45, 47, 54}
-
-
-def capacity(rack):
-    return 2 if rack.pallet_type == StorageRack.STANDARD else 3
-
 
 def serialize_rack(rack):
-    cap = capacity(rack)
     locations = sorted(rack.locations.all(), key=lambda loc: loc.level)
     return {
         "number": rack.number,
-        "pallet_type": rack.pallet_type,
         "x": rack.x,
         "y": rack.y,
         "width": rack.width,
         "height": rack.height,
         "rotation": rack.rotation,
         "levels": [
-            {"level": location.level, "pallet_count": location.pallet_count,
-             "utilization": round(location.pallet_count * 100 / cap, 2)}
+            {"level": location.level, "standard_pallets": location.standard_pallets,
+             "euro_pallets": location.euro_pallets,
+             "utilization": round((location.standard_pallets / 2 + location.euro_pallets / 3) * 100, 2)}
             for location in locations
         ],
     }
@@ -59,15 +51,23 @@ def ensure_initial_data():
         for number in range(1, 56):
             if number in existing:
                 continue
-            rack = StorageRack.objects.create(
-                number=number,
-                pallet_type=StorageRack.STANDARD if number in STANDARD_RACKS else StorageRack.EURO,
-            )
-            cap = capacity(rack)
+            rack = StorageRack.objects.create(number=number)
             for level in range(1, 5):
                 pct = OVERRIDES.get((number, level), 100)
-                count = round(pct * cap / 100)
-                StorageLocation.objects.create(rack=rack, level=level, pallet_count=count)
+                if pct == 50:
+                    standard, euro = 1, 0
+                elif pct == 67:
+                    standard, euro = 0, 2
+                elif pct == 33:
+                    standard, euro = 0, 1
+                elif pct == 0:
+                    standard, euro = 0, 0
+                else:
+                    standard, euro = 0, 3
+                StorageLocation.objects.create(
+                    rack=rack, level=level,
+                    standard_pallets=standard, euro_pallets=euro,
+                )
 
 
 class StorageUtilizationView(APIView):
@@ -90,7 +90,7 @@ class StorageUtilizationView(APIView):
         ensure_initial_data()
         if not isinstance(data, dict):
             return Response({"detail": "Expected an object."}, status=400)
-        allowed = {"designer_enabled", "number", "pallet_type", "levels", "x", "y", "width", "height", "rotation"}
+        allowed = {"designer_enabled", "number", "levels", "x", "y", "width", "height", "rotation"}
         if set(data) - allowed:
             return Response({"detail": "Unsupported fields."}, status=400)
 
@@ -104,18 +104,17 @@ class StorageUtilizationView(APIView):
                     if type(number) is not int or not 1 <= number <= 55:
                         return Response({"detail": "Invalid rack number."}, status=400)
                     rack = StorageRack.objects.select_for_update().get(number=number)
-                    pallet_type = data.get("pallet_type", rack.pallet_type)
-                    if type(pallet_type) is not str or pallet_type not in ("euro", "standard"):
-                        return Response({"detail": "Invalid pallet type."}, status=400)
-                    cap = 2 if pallet_type == "standard" else 3
+                    if "pallet_type" in data:
+                        return Response({"detail": "Pallet type is configured per location, not per rack."}, status=400)
                     if "levels" in data:
                         levels = data["levels"]
                         if not isinstance(levels, list) or len(levels) != 4 or any(not isinstance(row, dict) for row in levels) or {row.get("level") for row in levels} != {1, 2, 3, 4}:
                             return Response({"detail": "Four unique levels (1-4) are required."}, status=400)
-                        if any(type(row.get("pallet_count")) is not int or not 0 <= row["pallet_count"] <= cap for row in levels):
-                            return Response({"detail": "Invalid pallet count."}, status=400)
-                    elif pallet_type != rack.pallet_type and rack.locations.filter(pallet_count__gt=cap).exists():
-                        return Response({"detail": "Reduce pallet counts before changing pallet type."}, status=400)
+                        for row in levels:
+                            standard = row.get("standard_pallets")
+                            euro = row.get("euro_pallets")
+                            if type(standard) is not int or type(euro) is not int or standard < 0 or euro < 0 or standard * 3 + euro * 2 > 6:
+                                return Response({"detail": "Mixed pallets exceed location capacity."}, status=400)
                     for name in ("x", "y", "width", "height"):
                         if name in data:
                             value = data[name]
@@ -130,13 +129,12 @@ class StorageUtilizationView(APIView):
                         if type(data["rotation"]) is not int or data["rotation"] not in (0, 90, 180, 270):
                             return Response({"detail": "Invalid rotation."}, status=400)
                         rack.rotation = data["rotation"]
-                    rack.pallet_type = pallet_type
                     rack.save()
                     if "levels" in data:
                         for row in data["levels"]:
-                            StorageLocation.objects.filter(rack=rack, level=row["level"]).update(pallet_count=row["pallet_count"])
+                            StorageLocation.objects.filter(rack=rack, level=row["level"]).update(standard_pallets=row["standard_pallets"], euro_pallets=row["euro_pallets"])
                 else:
-                    if any(field in data for field in ("pallet_type", "levels", "x", "y", "width", "height", "rotation")):
+                    if any(field in data for field in ("levels", "x", "y", "width", "height", "rotation")):
                         return Response({"detail": "Rack number is required."}, status=400)
                 if "designer_enabled" in data:
                     settings = StorageLayout.objects.select_for_update().get(pk=1)

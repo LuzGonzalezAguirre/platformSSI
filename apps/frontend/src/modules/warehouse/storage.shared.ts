@@ -1,0 +1,15 @@
+import type { CSSProperties } from "react";
+import apiClient from "../../services/api.client";
+export type Level = {level:number; standard_pallets:number; euro_pallets:number; utilization:number};
+export type Rack = {number:number; levels:Level[]; x:number|null; y:number|null; width:number; height:number; rotation:number};
+export type Warehouse = {designer_enabled:boolean; racks:Rack[]};
+export type Patch = {number?:number; designer_enabled?:boolean; x?:number|null; y?:number|null; width?:number; height?:number; rotation?:number; levels?:Pick<Level,"level"|"standard_pallets"|"euro_pallets">[]};
+export const validMix = (standard:number,euro:number) => Number.isInteger(standard)&&Number.isInteger(euro)&&standard>=0&&euro>=0&&3*standard+2*euro<=6;
+export const utilization = (level: Pick<Level,"standard_pallets"|"euro_pallets">) => 100*(level.standard_pallets/2+level.euro_pallets/3);
+export const rackUtilization = (rack:Rack) => rack.levels.reduce((sum,level)=>sum+utilization(level),0)/Math.max(rack.levels.length,1);
+export const locationName = (rack:number,level:number) => `TJR${rack}-${String(level).padStart(2,"0")}`;
+export const fetchStorage = async ():Promise<Warehouse> => (await apiClient.get<Warehouse>("/warehouse/storage-utilization/")).data;
+export const saveStorage = async (patch:Patch):Promise<Warehouse> => (await apiClient.patch<Warehouse>("/warehouse/storage-utilization/",patch)).data;
+export const surface:CSSProperties={background:"var(--color-surface)",color:"var(--color-text-primary)",border:"1px solid var(--color-border)",borderRadius:12,padding:14};
+export const button:React.CSSProperties={background:"var(--color-surface)",color:"var(--color-text-primary)",border:"1px solid var(--color-border)",borderRadius:8,padding:"8px 12px",cursor:"pointer"};
+export const tone=(pct:number)=>pct>=99.99?"#ef4444":pct>0?"#eab308":"#22c55e";

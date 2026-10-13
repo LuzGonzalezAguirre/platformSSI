@@ -236,6 +236,13 @@ export const sidebarConfig: NavSection[] = [
         path: "/warehouse/storage-utilization",
         icon: "PanelsTopLeft",
       },
+      {
+        id: "warehouse.storage-layout-designer",
+        labelKey: "nav.items.warehouseStorageDesigner",
+        path: "/warehouse/storage-layout-designer",
+        icon: "PencilRuler",
+        requiredAction: "edit",
+      },
     ],
   },
   {

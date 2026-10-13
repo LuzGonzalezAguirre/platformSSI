@@ -1,281 +1,53 @@
-import { useEffect, useRef, useState } from "react";
-import { Maximize2, RotateCw, Save, Settings2 } from "lucide-react";
-import { useAuthStore } from "../../store/authStore";
-import apiClient from "../../services/api.client";
+import {useEffect,useState} from "react";
+import {useNavigate} from "react-router-dom";
+import {Settings2,Maximize2,Save} from "lucide-react";
+import {useAuthStore} from "../../store/authStore";
+import {button,fetchStorage,locationName,rackUtilization,saveStorage,surface,tone,utilization,validMix,type Level,type Rack,type Warehouse} from "./storage.shared";
 
-type PalletType = "euro" | "standard";
-type Level = { level: number; pallet_count: number; utilization: number };
-type Rack = {
-  number: number; pallet_type: PalletType; levels: Level[];
-  x: number | null; y: number | null; width: number; height: number; rotation: number;
-};
-type Payload = { designer_enabled: boolean; racks: Rack[] };
-type Patch = Partial<Pick<Rack, "pallet_type" | "x" | "y" | "width" | "height" | "rotation">> & {
-  number?: number; levels?: { level: number; pallet_count: number }[]; designer_enabled?: boolean;
-};
-
-const endpoint = "/warehouse/storage-utilization/";
-const cap = (type: PalletType) => type === "standard" ? 2 : 3;
-const rackLabel = (n: number) => `TJR${n}`;
-const locationLabel = (n: number, level: number) => `TJR${n}-${String(level).padStart(2, "0")}`;
-
-async function callApi(patch?: Patch): Promise<Payload> {
-  const response = patch
-    ? await apiClient.patch<Payload>(endpoint, patch)
-    : await apiClient.get<Payload>(endpoint);
-  return response.data;
+const GROUPS=[[1,13],[14,26],[27,37],[38,48],[49,55]];
+export default function StorageUtilizationPage(){
+ const navigate=useNavigate();
+ const canEdit=useAuthStore(s=>s.hasPermission("warehouse","edit"));
+ const [data,setData]=useState<Warehouse|null>(null);
+ const [error,setError]=useState("");
+ const [busy,setBusy]=useState(false);
+ const [selected,setSelected]=useState<number|null>(null);
+ const [draft,setDraft]=useState<Level[]|null>(null);
+ const [settings,setSettings]=useState(false);
+ const [full,setFull]=useState(false);
+ useEffect(()=>{fetchStorage().then(setData).catch(e=>setError(String(e)))},[]);
+ const racks=data?.racks??[];
+ const locations=racks.flatMap(r=>r.levels);
+ const overall=locations.length?locations.reduce((sum,l)=>sum+utilization(l),0)/locations.length:0;
+ const active=racks.find(r=>r.number===selected);
+ const openRack=(rack:Rack)=>{setSelected(rack.number);setDraft(rack.levels.map(l=>({...l})))};
+ const update=(level:number,field:"standard_pallets"|"euro_pallets",value:number)=>{
+  setDraft(old=>old?.map(l=>l.level===level?{...l,[field]:value}:l)??null);
+ };
+ const save=async()=>{
+  if(!selected||!draft||draft.some(l=>!validMix(l.standard_pallets,l.euro_pallets)))return;
+  setBusy(true);
+  try{setData(await saveStorage({number:selected,levels:draft.map(({level,standard_pallets,euro_pallets})=>({level,standard_pallets,euro_pallets}))}));setError("");}
+  catch(e){setError(String(e));}finally{setBusy(false);}
+ };
+ return <div style={{display:"grid",gap:16,color:"var(--color-text-primary)"}}>
+  <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+   <div><h1 style={{fontSize:24,margin:0}}>WH Storage Utilization</h1><p style={{color:"var(--color-text-secondary)",margin:"4px 0"}}>55 racks · Four locations per rack · Mixed pallets</p></div>
+   <div style={{display:"flex",gap:8}}><button style={button} onClick={()=>setFull(v=>!v)}><Maximize2 size={15}/> {full?"Normal view":"Expanded view"}</button>{canEdit&&<button style={button} onClick={()=>setSettings(v=>!v)}><Settings2 size={15}/> Settings</button>}</div>
+  </header>
+  {error&&<p role="alert" style={{color:"#dc2626"}}>{error}</p>}
+  {settings&&canEdit&&data&&<section style={surface}><label style={{display:"flex",alignItems:"center",gap:8}}><input type="checkbox" checked={data.designer_enabled} onChange={async e=>{try{setData(await saveStorage({designer_enabled:e.target.checked}));setError("");}catch(err){setError(String(err))}}}/> Enable physical warehouse layout</label><p style={{color:"var(--color-text-secondary)",fontSize:13}}>The automatic map is always available. Enabling the designer allows you to create a physical map in a separate page.</p>{data.designer_enabled&&<button style={button} onClick={()=>navigate("/warehouse/storage-layout-designer")}>Open Warehouse Designer</button>}</section>}
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>{[["Utilization",overall.toFixed(2)+"%"],["Racks",String(racks.length)],["Locations",String(locations.length)],["Mixed",String(locations.filter(l=>l.standard_pallets>0&&l.euro_pallets>0).length)]].map(([label,val])=><div key={label} style={surface}><span style={{fontSize:12,color:"var(--color-text-secondary)"}}>{label}</span><div style={{fontSize:26,fontWeight:700}}>{val}</div></div>)}</div>
+  {data&&data.designer_enabled&&racks.some(r=>r.x!==null&&r.y!==null)&&<section style={surface}><h2 style={{fontSize:16,margin:"0 0 12px"}}>Physical layout</h2><div style={{height:full?700:360,position:"relative",background:"var(--color-bg)",border:"1px solid var(--color-border)",borderRadius:9}}>{racks.filter(r=>r.x!==null&&r.y!==null).map(r=><button key={r.number} onClick={()=>openRack(r)} style={{position:"absolute",left:r.x+"%",top:r.y+"%",width:r.width+"%",height:r.height+"%",transform:`rotate(${r.rotation}deg)`,border:"1px solid var(--color-border)",borderRadius:5,background:tone(rackUtilization(r)),color:"#111827",cursor:"pointer",fontWeight:700,fontSize:11}}>TJR{r.number}</button>)}</div></section>}
+  {!data&&!error&&<p>Loading locations…</p>}
+  {data&&<section style={surface}><h2 style={{fontSize:17,margin:"0 0 12px"}}>Automatic rack map</h2>
+   <p style={{fontSize:12,color:"var(--color-text-secondary)",margin:"0 0 16px"}}>Green: empty · Yellow: partly occupied · Red: full. Select any rack to edit its four locations.</p>
+   <div style={{display:"grid",gap:20}}>{GROUPS.map(([from,to],index)=><div key={from}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8,fontWeight:700,fontSize:13}}><span>ZONE {index+1} · TJR{from}–TJR{to}</span><span style={{color:"var(--color-text-secondary)"}}>{to-from+1} racks</span></div>
+    <div style={{display:"grid",gridTemplateColumns:`repeat(${to-from+1},minmax(${full?82:67}px,1fr))`,gap:6,overflowX:"auto",paddingBottom:6}}>
+    {racks.filter(r=>r.number>=from&&r.number<=to).map(r=><button key={r.number} title={`TJR${r.number}: ${rackUtilization(r).toFixed(1)}%`} onClick={()=>openRack(r)} style={{border:selected===r.number?"2px solid var(--color-primary)":"1px solid var(--color-border)",borderRadius:8,background:"var(--color-bg)",padding:"8px 4px",cursor:"pointer",minWidth:0,color:"var(--color-text-primary)"}}>
+     <strong style={{fontSize:12}}>TJR{r.number}</strong><div style={{display:"grid",gap:4,marginTop:7}}>{r.levels.map(l=><div key={l.level} style={{borderLeft:`4px solid ${tone(utilization(l))}`,background:"var(--color-surface)",borderRadius:4,padding:"5px 1px",fontSize:10}}><div>{String(l.level).padStart(2,"0")}</div><b>{Math.round(utilization(l))}%</b></div>)}</div><div style={{fontSize:11,marginTop:6,fontWeight:700}}>{Math.round(rackUtilization(r))}%</div>
+    </button>)}</div></div>)}</div>
+  </section>}
+  {active&&draft&&<section style={surface}><h2 style={{margin:"0 0 12px",fontSize:18}}>TJR{active.number} · Location details</h2><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:12}}>{draft.map(l=><div key={l.level} style={{background:"var(--color-bg)",borderRadius:9,border:"1px solid var(--color-border)",padding:12}}><strong>{locationName(active.number,l.level)}</strong><div style={{color:"var(--color-text-secondary)",fontSize:13,margin:"8px 0"}}>Utilization: {utilization(l).toFixed(2)}%</div>{(["standard_pallets","euro_pallets"] as const).map(field=><label key={field} style={{display:"grid",gap:4,fontSize:12,marginBottom:8}}>{field==="standard_pallets"?"Standard pallets (50% each)":"Euro pallets (33.33% each)"}<select disabled={!canEdit||busy} value={l[field]} onChange={e=>update(l.level,field,Number(e.target.value))} style={{padding:7,background:"var(--color-surface)",color:"var(--color-text-primary)",border:"1px solid var(--color-border)",borderRadius:6}}>{Array.from({length:field==="standard_pallets"?3:4},(_,n)=><option key={n} value={n}>{n}</option>)}</select></label>)}{!validMix(l.standard_pallets,l.euro_pallets)&&<span style={{fontSize:12,color:"#dc2626"}}>Capacity exceeds 100%</span>}</div>)}</div>{canEdit&&<button style={{...button,marginTop:12}} disabled={busy||draft.some(l=>!validMix(l.standard_pallets,l.euro_pallets))} onClick={save}><Save size={15}/> {busy?"Saving…":"Save occupancy"}</button>}</section>}
+ </div>;
 }
-
-const buttonStyle: React.CSSProperties = {
-  padding: "0.55rem 0.85rem", borderRadius: 9, border: "1px solid var(--color-border)",
-  background: "var(--color-surface)", color: "var(--color-text-primary)", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600,
-};
-
-export default function StorageUtilizationPage() {
-  const canEdit = useAuthStore((state) => state.hasPermission("warehouse", "edit"));
-  const [data, setData] = useState<Payload | null>(null);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [selected, setSelected] = useState<number>(1);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [designer, setDesigner] = useState(false);
-  const [draft, setDraft] = useState<Rack | null>(null);
-  const floorRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ number: number; offsetX: number; offsetY: number } | null>(null);
-
-  const reload = async () => {
-    try { setData(await callApi()); setError(""); }
-    catch (e) { setError(e instanceof Error ? e.message : "Unable to load warehouse."); }
-  };
-  useEffect(() => { void reload(); }, []);
-  useEffect(() => {
-    if (!data) return;
-    setDraft(data.racks.find((rack) => rack.number === selected) ?? null);
-  }, [selected, data]);
-
-  const racks = data?.racks ?? [];
-  const slots = racks.flatMap((rack) => rack.levels.map((level) => ({
-    ...level, capacity: cap(rack.pallet_type),
-  })));
-  const used = slots.reduce((sum, slot) => sum + slot.utilization, 0);
-  const utilization = slots.length ? used / slots.length : 0;
-  const placed = racks.filter((rack) => rack.x !== null && rack.y !== null);
-  const rack = racks.find((item) => item.number === selected);
-  const hasPlaced = placed.length > 0;
-
-  const save = async (patch: Patch) => {
-    if (!canEdit) return;
-    setBusy(true);
-    try { const updated = await callApi(patch); setData(updated); setError(""); }
-    catch (e) { setError(e instanceof Error ? e.message : "Unable to save changes."); }
-    finally { setBusy(false); }
-  };
-
-  const changeType = (type: PalletType) => {
-    if (!draft) return;
-    const limit = cap(type);
-    setDraft({ ...draft, pallet_type: type,
-      levels: draft.levels.map((item) => ({ ...item, pallet_count: Math.min(item.pallet_count, limit) })) });
-  };
-
-  const startDrag = (event: React.PointerEvent<HTMLDivElement>, item: Rack) => {
-    if (!designer || !canEdit || !floorRef.current) return;
-    const rect = floorRef.current.getBoundingClientRect();
-    dragRef.current = {
-      number: item.number,
-      offsetX: (event.clientX - rect.left) / rect.width * 100 - (item.x ?? 0),
-      offsetY: (event.clientY - rect.top) / rect.height * 100 - (item.y ?? 0),
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setSelected(item.number);
-  };
-
-  const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current || !floorRef.current || !data) return;
-    const rect = floorRef.current.getBoundingClientRect();
-    const current = data.racks.find((item) => item.number === dragRef.current?.number);
-    if (!current) return;
-    const x = Math.max(0, Math.min(100 - current.width, (event.clientX - rect.left) / rect.width * 100 - dragRef.current.offsetX));
-    const y = Math.max(0, Math.min(100 - current.height, (event.clientY - rect.top) / rect.height * 100 - dragRef.current.offsetY));
-    setData({ ...data, racks: data.racks.map((item) => item.number === current.number ? { ...item, x, y } : item) });
-  };
-
-  const stopDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    const dragging = dragRef.current;
-    dragRef.current = null;
-    if (!dragging) return;
-    try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* pointer already released */ }
-    const item = data?.racks.find((r) => r.number === dragging.number);
-    if (item) void save({ number: item.number, x: item.x, y: item.y });
-  };
-
-  const unplaced = racks.filter((item) => item.x === null || item.y === null);
-  const selectedRack = draft && draft.number === selected ? draft : rack;
-  const percent = (item: Rack) => item.levels.reduce((sum, level) => sum + level.pallet_count / cap(item.pallet_type) * 100, 0) / 4;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: "calc(100vh - 150px)" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: "1.45rem", color: "var(--color-text-primary)" }}>WH Storage Utilization</h1>
-          <p style={{ margin: "5px 0 0", color: "var(--color-text-secondary)", fontSize: 13 }}>Warehouse occupancy by location and pallet type</p>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <button style={buttonStyle} onClick={() => floorRef.current?.requestFullscreen?.()}><Maximize2 size={16} /> Full screen</button>
-          {canEdit && <button style={buttonStyle} onClick={() => setSettingsOpen(!settingsOpen)}><Settings2 size={16} /> Settings</button>}
-        </div>
-      </header>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(155px, 1fr))", gap: 12 }}>
-        {[
-          ["Total utilization", `${utilization.toFixed(2)}%`],
-          ["Storage locations", String(slots.length)],
-          ["Racks", String(racks.length)],
-          ["Racks on layout", String(placed.length)],
-        ].map(([label, value]) => (
-          <div key={label} style={{ ...panel, padding: "13px 16px" }}>
-            <div style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{label}</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)", marginTop: 5 }}>{value}</div>
-          </div>
-        ))}
-      </div>
-
-      {error && <div role="alert" style={{ padding: 12, background: "#fee2e2", color: "#991b1b", borderRadius: 8 }}>{error}</div>}
-      {!data && !error && <p>Loading warehouse...</p>}
-
-      {settingsOpen && canEdit && data && (
-        <section style={{ ...panel, padding: 16 }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 16 }}>Warehouse settings</h2>
-          <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <input type="checkbox" checked={data.designer_enabled}
-              onChange={(e) => void save({ designer_enabled: e.target.checked })} disabled={busy} />
-            Enable warehouse layout designer
-          </label>
-          {data.designer_enabled && (
-            <button style={buttonStyle} onClick={() => setDesigner((value) => !value)}>
-              {designer ? "Finish editing layout" : "Edit rack layout"}
-            </button>
-          )}
-          <p style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>
-            Rack coordinates are saved on the server. Unplaced racks remain accessible in the list below.
-          </p>
-        </section>
-      )}
-
-      {data && (
-        <div ref={floorRef} style={{ ...panel, padding: 16, width: "100%", minHeight: "min(70vh, 760px)", boxSizing: "border-box", background: "var(--color-surface)", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-            <strong style={{ color: "var(--color-text-primary)" }}>Warehouse layout</strong>
-            <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{designer ? "Drag racks to position them" : "Select a rack to manage utilization"}</span>
-          </div>
-          <div style={{ position: "relative", flex: 1, minHeight: 420, overflow: "hidden", border: "1px solid var(--color-border)", borderRadius: 12,
-            backgroundColor: "var(--color-bg)", backgroundImage: "linear-gradient(to right, var(--color-border) 1px, transparent 1px), linear-gradient(to bottom, var(--color-border) 1px, transparent 1px)", backgroundSize: "5% 5%" }}>
-            {!hasPlaced && (
-              <div style={{ position: "absolute", inset: 0, display: "grid", placeContent: "center", textAlign: "center", padding: 20, pointerEvents: "none" }}>
-                <strong style={{ fontSize: 20, color: "var(--color-text-primary)" }}>Warehouse layout not configured</strong>
-                <span style={{ color: "var(--color-text-secondary)", marginTop: 8 }}>Activate the designer in Settings and place racks from the rack list.</span>
-              </div>
-            )}
-            {placed.map((item) => (
-              <div key={item.number} role="button" tabIndex={0} aria-label={rackLabel(item.number)}
-                onKeyDown={(event) => { if (event.key === "Enter") setSelected(item.number); }}
-                onPointerDown={(event) => startDrag(event, item)} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}
-                onClick={() => setSelected(item.number)}
-                style={{ position: "absolute", left: `${item.x}%`, top: `${item.y}%`, width: `${item.width}%`, height: `${item.height}%`,
-                  transform: `rotate(${item.rotation}deg)`, borderRadius: 8, border: selected === item.number ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
-                  background: percent(item) >= 99.9 ? "#fee2e2" : percent(item) > 0 ? "#fef3c7" : "#dcfce7",
-                  color: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column",
-                  cursor: designer ? "grab" : "pointer", userSelect: "none", touchAction: "none", boxSizing: "border-box", fontSize: 12 }}>
-                <strong>{rackLabel(item.number)}</strong><span>{Math.round(percent(item))}%</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12, color: "var(--color-text-secondary)" }}>
-            <span>Green: Empty</span><span>Yellow: Partial</span><span>Red: Full</span>
-            <span style={{ marginLeft: "auto" }}>Placed: {placed.length} / {racks.length}</span>
-          </div>
-        </div>
-      )}
-
-      {data && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 16 }}>
-          <section style={{ ...panel, padding: 16 }}>
-            <h2 style={{ margin: "0 0 12px", fontSize: 16 }}>Rack selection</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(69px, 1fr))", gap: 7, maxHeight: 310, overflowY: "auto" }}>
-              {racks.map((item) => (
-                <button key={item.number} onClick={() => setSelected(item.number)}
-                  style={{ ...buttonStyle, justifyContent: "center", padding: "10px 5px", borderColor: selected === item.number ? "var(--color-primary)" : "var(--color-border)",
-                    background: selected === item.number ? "var(--color-bg)" : "var(--color-surface)", fontSize: 12 }}>
-                  {rackLabel(item.number)}
-                </button>
-              ))}
-            </div>
-            <p style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>Unplaced racks: {unplaced.length}. All 55 racks remain available independently of the visual layout.</p>
-          </section>
-
-          {selectedRack && (
-            <section style={{ ...panel, padding: 16 }}>
-              <h2 style={{ margin: "0 0 12px", fontSize: 16 }}>{rackLabel(selectedRack.number)} · {percent(selectedRack).toFixed(1)}%</h2>
-              <label style={fieldLabel}>Pallet type</label>
-              <select disabled={!canEdit || busy} value={selectedRack.pallet_type}
-                onChange={(event) => changeType(event.target.value as PalletType)} style={field}>
-                <option value="euro">Euro pallet — 3 per location</option>
-                <option value="standard">Standard pallet — 2 per location</option>
-              </select>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
-                {selectedRack.levels.map((level) => (
-                  <label key={level.level} style={{ fontSize: 13, color: "var(--color-text-primary)" }}>
-                    {locationLabel(selectedRack.number, level.level)}
-                    <select style={{ ...field, marginTop: 5 }} disabled={!canEdit || busy} value={level.pallet_count}
-                      onChange={(event) => setDraft({ ...selectedRack,
-                        levels: selectedRack.levels.map((item) => item.level === level.level ? { ...item, pallet_count: Number(event.target.value) } : item),
-                      })}>
-                      {Array.from({ length: cap(selectedRack.pallet_type) + 1 }, (_, count) => (
-                        <option key={count} value={count}>{count} / {cap(selectedRack.pallet_type)} — {(count / cap(selectedRack.pallet_type) * 100).toFixed(0)}%</option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
-              {designer && canEdit && (
-                <div style={{ marginTop: 14 }}>
-                  <label style={fieldLabel}>Position (X / Y) and size (% of canvas)</label>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 7 }}>
-                    {(["x", "y", "width", "height"] as const).map((key) => (
-                      <label key={key} style={{ fontSize: 12 }}>{key.toUpperCase()}
-                        <input type="number" min={0} max={100} step={0.5} style={{ ...field, width: "100%", boxSizing: "border-box" }}
-                          value={selectedRack[key] ?? ""} onChange={(event) => setDraft({ ...selectedRack, [key]: event.target.value === "" ? null : Number(event.target.value) })} />
-                      </label>
-                    ))}
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                    <button style={buttonStyle} onClick={() => setDraft({ ...selectedRack, rotation: (selectedRack.rotation + 90) % 360 })}><RotateCw size={14} /> Rotate</button>
-                    <button style={buttonStyle} onClick={() => void save({ number: selectedRack.number, x: null, y: null })}>Remove from layout</button>
-                  </div>
-                </div>
-              )}
-              {canEdit && (
-                <button disabled={busy} style={{ ...buttonStyle, marginTop: 16, background: "var(--color-primary)", color: "#fff" }}
-                  onClick={() => void save({ number: selectedRack.number, pallet_type: selectedRack.pallet_type,
-                    levels: selectedRack.levels.map((level) => ({ level: level.level, pallet_count: level.pallet_count })),
-                    ...(designer ? { x: selectedRack.x, y: selectedRack.y, width: selectedRack.width, height: selectedRack.height, rotation: selectedRack.rotation } : {}),
-                  })}>
-                  <Save size={15} /> {busy ? "Saving..." : "Save changes"}
-                </button>
-              )}
-            </section>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const panel: React.CSSProperties = {
-  background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 12,
-  boxSizing: "border-box",
-};
-const fieldLabel: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5, color: "var(--color-text-secondary)" };
-const field: React.CSSProperties = { display: "block", width: "100%", padding: "8px", borderRadius: 8, background: "var(--color-bg)",
-  border: "1px solid var(--color-border)", color: "var(--color-text-primary)" };

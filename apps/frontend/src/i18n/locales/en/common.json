@@ -59,7 +59,8 @@
       "maintenancePmp": "PM Program",
       "maintenanceDownEquipment": "Down Equipment",
       "qwallDesigner": "Inspection Designer",
-      "warehouseStorageUtilization": "WH Storage Utilization"
+      "warehouseStorageUtilization": "WH Storage Utilization",
+      "warehouseStorageDesigner": "Warehouse Designer"
     }
   },
   "scrapRate": {

@@ -2,33 +2,44 @@
 
 ## Alcance
 
-El módulo Materials / Materiales incluye el nuevo acceso WH Storage Utilization sin cambiar rutas de Demand ni Clear To Build.
+Materials / Materiales contiene dos pantallas independientes: WH Storage Utilization y WH Storage Designer. El módulo controla 55 racks TJR1–TJR55, cada uno con cuatro localidades TJRn-01…04 (220 en total). Las funciones de Demand y Clear To Build no se modifican.
 
-La vista contiene 55 racks (TJR1–TJR55) y cuatro ubicaciones por rack (01–04), total 220 ubicaciones. Las cifras entregadas en el Excel se utilizan como estado inicial, con los racks aún sin posiciones asignadas sobre el plano.
+## Vista automática
 
-## Cálculo
+La vista operativa siempre muestra los racks, agrupados en cinco zonas (1–13, 14–26, 27–37, 38–48 y 49–55). Cada rack presenta sus cuatro localidades coloreadas por ocupación y puede seleccionarse para editar cantidades. No es necesario configurar el diseñador para consultar o modificar el inventario manual.
 
-Cada rack define un tipo de pallet. Euro: capacidad 3 por ubicación (1=33.33%, 2=66.67%, 3=100%). Standard: capacidad 2 (1=50%, 2=100%). Una ubicación vacía equivale a 0%. La ocupación global es el promedio del porcentaje exacto de ocupación de las 220 ubicaciones.
+Cuando el diseñador está activado y se han ubicado racks, la vista operativa presenta también el plano físico guardado. No reemplaza la vista automática.
 
-Los porcentajes 67% se interpretan inicialmente como dos euro pallets. Se asigna tipo estándar a los racks con ubicaciones en 50%: TJR22, TJR31, TJR45, TJR47, TJR54. Esta es una inferencia operacional de los datos y requiere confirmación física antes de utilizarse como inventario oficial. Los valores 100% por sí solos no identifican el tipo de pallet.
+## Pallets mixtos
 
-La cifra del Excel (95%) sirve como referencia, no como cálculo forzado; el porcentaje en pantalla se calcula siempre a partir de los conteos persistidos.
+Los conteos se mantienen a nivel de localidad:
+
+- `standard_pallets`: cada uno ocupa 1/2 de localidad.
+- `euro_pallets`: cada uno ocupa 1/3 de localidad.
+
+La utilización exacta es `100 * (standard_pallets / 2 + euro_pallets / 3)`. El servidor rechaza valores negativos, no enteros o cuya combinación exceda 100%. Son válidos dos estándar, tres europeos, uno de cada uno (83.33%), o una localidad vacía. La ocupación global se calcula promediando los porcentajes de las 220 localidades.
+
+Los porcentajes históricos de Excel se interpretaron como conteos iniciales. Los datos existentes se migran conservando la interpretación anterior por rack para evitar pérdida de información. Los porcentajes históricos no permiten confirmar qué tipo físico de pallet está almacenado; esta información debe verificarse en planta.
 
 ## API y almacenamiento
 
-- GET /api/v1/warehouse/storage-utilization/: configuración, racks y conteos.
-- PATCH /api/v1/warehouse/storage-utilization/: actualiza un rack (number, pallet_type, levels, x/y, width/height, rotation) o designer_enabled.
+- `GET /api/v1/warehouse/storage-utilization/`: devuelve configuración, racks y localidades.
+- `PATCH /api/v1/warehouse/storage-utilization/`: actualiza ocupación por localidad, coordenadas de un rack o preferencia del diseñador.
 
-Los datos se guardan en PostgreSQL mediante `warehouse_storage_layout`, `warehouse_storage_rack`, `warehouse_storage_location`. Aplicar `python manage.py migrate` antes de habilitar la página.
+Django/PostgreSQL: tablas `warehouse_storage_layout`, `warehouse_storage_rack`, `warehouse_storage_location`. La migración `0002_mixed_pallets` copia los conteos heredados a los nuevos campos y `0003_remove_legacy_pallet_fields` retira las columnas antiguas. Ejecutar `python manage.py migrate` al desplegar.
 
-El permiso `warehouse.view` permite consultar; `warehouse.edit` es obligatorio para modificar conteos, tipo de pallet y layout. Los datos iniciales se generan una sola vez por rack si no existen; volver a cargar la página no sobrescribe las modificaciones.
+Permisos: `warehouse.view` para lectura y `warehouse.edit` para alterar layout y cantidades. La validación se realiza también en el servidor.
 
-## Diseñador
+## Diseñador independiente
 
-La pantalla de Settings permite activar el diseñador. Sin configuración visual, la página muestra un canvas vacío estilizado y la lista de racks. El usuario con permiso de edición puede seleccionar un rack, definir posición y tamaño porcentual, arrastrarlo y rotarlo. El botón de pantalla completa amplía el área del almacén.
+Ruta: `/warehouse/storage-layout-designer`. Con el diseñador habilitado en Settings, una persona con permiso de edición puede arrastrar un rack de la biblioteca de localidades TJR al canvas, posicionarlo, redimensionarlo, rotarlo o retirarlo del plano sin borrar sus conteos. Los cambios se guardan en PostgreSQL.
 
-La distribución por defecto no pretende representar un plano físico real. Para reproducir la posición y proporciones exactas del almacén se requiere una imagen/plano del almacén.
+El plano representa una configuración manual, no la geografía real hasta que se mapeen las ubicaciones físicas. La página operativa conserva siempre el mapa automático. No existe sincronización de conteos con Plex, actualización push multiusuario, ni un plano de fondo cargado.
 
-## Limitaciones
+## Validaciones recomendadas
 
-La utilización es manual y no se sincroniza automáticamente con el inventario Plex. Las modificaciones se comparten vía API, aunque la página no tiene actualización push entre sesiones. La coexistencia de pallets de distintos formatos en una misma ubicación requiere extender el modelo: actualmente el tipo se define por rack.
+1. Ejecutar migraciones y verificar que los registros antiguos mantienen su ocupación.
+2. Probar un estándar + un euro (83.33%), dos estándar (100%), tres euro (100%), y combinaciones inválidas (>100%).
+3. Comprobar permisos de lectura y edición desde la API.
+4. Probar drag & drop y guardado del diseñador en escritorio.
+5. Verificar renderizado y compilación del frontend antes del despliegue.

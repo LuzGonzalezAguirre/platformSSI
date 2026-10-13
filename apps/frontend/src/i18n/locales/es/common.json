@@ -59,7 +59,8 @@
       "maintenancePmp": "Programa PM",
       "maintenanceDownEquipment": "Equipos caídos",
       "qwallDesigner": "Diseñador de inspecciones",
-      "warehouseStorageUtilization": "WH Storage Utilization"
+      "warehouseStorageUtilization": "WH Storage Utilization",
+      "warehouseStorageDesigner": "Diseñador de Almacén"
     }
   },
   "pmp": {
