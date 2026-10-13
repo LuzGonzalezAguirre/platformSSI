@@ -224,13 +224,6 @@ export default function ShelfLifePage() {
         </section>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 12 }}>
-        {kpi(tr("expiring7"), String(metrics.week), tr("immediateAttention"), STATUS_COLORS.expiring)}
-        {kpi(tr("expiring90"), String(metrics.quarter), tr("planConsumption"), "#83a7d4")}
-        {kpi(tr("coverage"), metrics.coverage.toFixed(0) + "%", tr("knownExpiration"), STATUS_COLORS.ok)}
-        {kpi(tr("unknown"), String(metrics.unknown), tr("missingExpirationData"), "#83a7d4")}
-      </div>
-
       <section style={panel} id="shelf-life-details">
         <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>{tr("containerDetails")} <small style={{ fontWeight: 400 }}>({rows.length})</small></h2>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
