@@ -49,6 +49,7 @@ export default function DemandPage() {
       const data = await WarehouseService.getDemand(filters);
       setRows(data);
     } catch {
+      setRows([]);
       setError(t("warehouse.demand.errorFetching"));
     } finally {
       setLoading(false);
@@ -140,7 +141,12 @@ export default function DemandPage() {
         )}
       </div>
 
-      {error && <div style={styles.errorMsg}>{error}</div>}
+      <div style={styles.notice}>
+        Qty Ready and WIP are part-level inventory estimates, not Plex release allocations.
+        Requested Ship Date and Total Rel Due remain unavailable pending reconciliation.
+      </div>
+
+      {error && <div style={styles.errorMsg}>{error}</div>
 
       {Object.entries(grouped).map(([customer, customerRows]) => (
         <div key={customer} style={styles.tableWrap}>
@@ -226,6 +232,7 @@ const styles: Record<string, React.CSSProperties> = {
   segmentActive: { backgroundColor: "var(--color-primary)", color: "#fff" },
   loadBtn:       { display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.55rem 1.25rem", backgroundColor: "var(--color-primary)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "0.875rem", fontWeight: "600" },
   summaryBadge:  { display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.4rem 0.875rem", borderRadius: "999px", backgroundColor: "rgba(10,110,189,0.08)", color: "var(--color-primary)", fontSize: "0.8rem", fontWeight: "600", marginTop: "1.5rem" },
+  notice:        { padding: "0.75rem 1rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", color: "var(--color-text-secondary)", fontSize: "0.8rem" },
   errorMsg:      { padding: "0.75rem 1rem", borderRadius: "var(--radius-md)", backgroundColor: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "var(--color-stopped)", fontSize: "0.875rem" },
   tableWrap:     { backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" },
   tableHeader:   { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1rem 1.5rem", borderBottom: "1px solid var(--color-border)" },
