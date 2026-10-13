@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import apiClient from "../../services/api.client";
 export type Level = {level:number; standard_pallets:number; euro_pallets:number; utilization:number};
 export type Rack = {number:number; levels:Level[]; x:number|null; y:number|null; width:number; height:number; rotation:number};
@@ -9,6 +10,6 @@ export const rackUtilization = (rack:Rack) => rack.levels.reduce((sum,level)=>su
 export const locationName = (rack:number,level:number) => `TJR${rack}-${String(level).padStart(2,"0")}`;
 export const fetchStorage = async ():Promise<Warehouse> => (await apiClient.get<Warehouse>("/warehouse/storage-utilization/")).data;
 export const saveStorage = async (patch:Patch):Promise<Warehouse> => (await apiClient.patch<Warehouse>("/warehouse/storage-utilization/",patch)).data;
-export const surface:React.CSSProperties={background:"var(--color-surface)",color:"var(--color-text-primary)",border:"1px solid var(--color-border)",borderRadius:12,padding:14};
+export const surface:CSSProperties={background:"var(--color-surface)",color:"var(--color-text-primary)",border:"1px solid var(--color-border)",borderRadius:12,padding:14};
 export const button:React.CSSProperties={background:"var(--color-surface)",color:"var(--color-text-primary)",border:"1px solid var(--color-border)",borderRadius:8,padding:"8px 12px",cursor:"pointer"};
 export const tone=(pct:number)=>pct>=99.99?"#ef4444":pct>0?"#eab308":"#22c55e";
