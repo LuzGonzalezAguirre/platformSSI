@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Maximize2, RotateCw, Save, Settings2 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
+import apiClient from "../../services/api.client";
 
 type PalletType = "euro" | "standard";
 type Level = { level: number; pallet_count: number; utilization: number };
@@ -13,27 +14,16 @@ type Patch = Partial<Pick<Rack, "pallet_type" | "x" | "y" | "width" | "height" |
   number?: number; levels?: { level: number; pallet_count: number }[]; designer_enabled?: boolean;
 };
 
-const endpoint = "/api/v1/warehouse/storage-utilization/";
+const endpoint = "/warehouse/storage-utilization/";
 const cap = (type: PalletType) => type === "standard" ? 2 : 3;
 const rackLabel = (n: number) => `TJR${n}`;
 const locationLabel = (n: number, level: number) => `TJR${n}-${String(level).padStart(2, "0")}`;
 
-function requestHeaders() {
-  const token = localStorage.getItem("mes_access_token");
-  return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
-}
-
 async function callApi(patch?: Patch): Promise<Payload> {
-  const response = await fetch(endpoint, {
-    method: patch ? "PATCH" : "GET",
-    headers: requestHeaders(),
-    ...(patch ? { body: JSON.stringify(patch) } : {}),
-  });
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.detail || `HTTP ${response.status}`);
-  }
-  return response.json();
+  const response = patch
+    ? await apiClient.patch<Payload>(endpoint, patch)
+    : await apiClient.get<Payload>(endpoint);
+  return response.data;
 }
 
 const buttonStyle: React.CSSProperties = {
