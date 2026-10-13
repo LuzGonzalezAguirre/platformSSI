@@ -1,3 +1,4 @@
+import type { DragEvent, PointerEvent } from "react";
 import {useEffect,useRef,useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {ArrowLeft,RotateCw,Save,Trash2} from "lucide-react";
@@ -20,11 +21,11 @@ export default function StorageLayoutDesignerPage(){
  const persist=async(number:number,props:Partial<Rack>)=>{
   setBusy(true);try{setData(await saveStorage({number,...props}));setError("");}catch(e){setError(String(e));}finally{setBusy(false)}
  };
- const getPosition=(event:React.PointerEvent)=>{
+ const getPosition=(event:PointerEvent)=>{
   const bounds=canvas.current!.getBoundingClientRect();
   return {x:(event.clientX-bounds.left)*100/bounds.width,y:(event.clientY-bounds.top)*100/bounds.height};
  };
- const place=(event:React.DragEvent)=>{
+ const place=(event:DragEvent)=>{
   event.preventDefault();
   if(!data||!canEdit||!data.designer_enabled)return;
   const number=Number(event.dataTransfer.getData("text/plain"));
@@ -35,20 +36,20 @@ export default function StorageLayoutDesignerPage(){
   const y=Math.max(0,Math.min(100-rack.height,(event.clientY-bounds.top)*100/bounds.height-rack.height/2));
   setSelected(number);void persist(number,{x,y});
  };
- const start=(event:React.PointerEvent<HTMLButtonElement>,rack:Rack)=>{
+ const start=(event:PointerEvent<HTMLButtonElement>,rack:Rack)=>{
   if(!canEdit||!data?.designer_enabled||!canvas.current)return;
   const pos=getPosition(event);
   drag.current={number:rack.number,dx:pos.x-(rack.x??0),dy:pos.y-(rack.y??0)};
   event.currentTarget.setPointerCapture(event.pointerId);setSelected(rack.number);
  };
- const move=(event:React.PointerEvent<HTMLButtonElement>)=>{
+ const move=(event:PointerEvent<HTMLButtonElement>)=>{
   if(!drag.current||!data||!canvas.current)return;
   const rack=racks.find(r=>r.number===drag.current!.number);
   if(!rack)return;
   const pos=getPosition(event);
   change(rack.number,{x:Math.max(0,Math.min(100-rack.width,pos.x-drag.current.dx)),y:Math.max(0,Math.min(100-rack.height,pos.y-drag.current.dy))});
  };
- const stop=(event:React.PointerEvent<HTMLButtonElement>)=>{
+ const stop=(event:PointerEvent<HTMLButtonElement>)=>{
   const moving=drag.current;drag.current=null;
   if(!moving)return;
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
