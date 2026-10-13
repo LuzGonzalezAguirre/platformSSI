@@ -6,9 +6,9 @@ Materials / Materiales contiene dos pantallas independientes: WH Storage Utiliza
 
 ## Vista automática
 
-La vista operativa siempre muestra los racks, agrupados en cinco zonas (1–13, 14–26, 27–37, 38–48 y 49–55). Cada rack presenta sus cuatro localidades coloreadas por ocupación y puede seleccionarse para editar cantidades. No es necesario configurar el diseñador para consultar o modificar el inventario manual.
+Cuando el diseñador está deshabilitado, la vista operativa muestra los racks agrupados automáticamente en cinco zonas (1–13, 14–26, 27–37, 38–48 y 49–55). Cada rack presenta sus cuatro localidades coloreadas por ocupación y puede seleccionarse para editar cantidades. Los selectores guardan cada cambio válido inmediatamente en PostgreSQL, sin botón de confirmación. No es necesario configurar el diseñador para consultar o modificar el inventario manual.
 
-Cuando el diseñador está activado y se han ubicado racks, la vista operativa presenta también el plano físico guardado. No reemplaza la vista automática.
+Cuando el diseñador está habilitado, el plano físico guardado reemplaza por completo el mapa automático. Cada rack colocado presenta sus cuatro localidades (01 a 04), cada una con su ocupación individual. Si todavía no se ha ubicado ningún rack, se presenta un estado vacío con instrucciones para abrir el diseñador.
 
 ## Pallets mixtos
 
@@ -32,7 +32,7 @@ Permisos: `warehouse.view` para lectura y `warehouse.edit` para alterar layout y
 
 ## Diseñador independiente
 
-Ruta: `/warehouse/storage-layout-designer`. Con el diseñador habilitado en Settings, una persona con permiso de edición puede arrastrar un rack de la biblioteca de localidades TJR al canvas, posicionarlo, redimensionarlo, rotarlo o retirarlo del plano sin borrar sus conteos. Los cambios se guardan en PostgreSQL.
+Ruta: `/warehouse/storage-layout-designer`. Con el diseñador habilitado en Settings, una persona con permiso de edición puede arrastrar un rack de la biblioteca de localidades TJR al canvas, posicionarlo, redimensionarlo, rotarlo o retirarlo del plano sin borrar sus conteos. Las posiciones se guardan al terminar el arrastre, los cambios de dimensiones al salir del campo y la rotación al pulsar el botón. Los cambios se guardan en PostgreSQL.
 
 El plano representa una configuración manual, no la geografía real hasta que se mapeen las ubicaciones físicas. La página operativa conserva siempre el mapa automático. No existe sincronización de conteos con Plex, actualización push multiusuario, ni un plano de fondo cargado.
 
