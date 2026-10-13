@@ -52,10 +52,23 @@ class WarehouseService:
             need=need,
         )
 
-    def get_demand(self, customer_no: int | None, release_status: str) -> list:
+    def get_demand(
+        self, customer_no: int | None, release_status: str,
+        ship_date_from: str | None = None, ship_date_to: str | None = None,
+        po: str | None = None, customer_part_no: str | None = None,
+        release_types: list[str] | None = None,
+    ) -> list:
+        params = {
+            "customer_no": customer_no,
+            "release_status": release_status,
+            "ship_date_from": ship_date_from,
+            "ship_date_to": ship_date_to,
+            "po": po,
+            "customer_part_no": customer_part_no,
+            "release_types": sorted(set(release_types or [])),
+        }
         return self._get_or_fetch(
             "demand",
-            lambda: self.client.get_demand(customer_no, release_status),
-            customer_no=customer_no,
-            release_status=release_status,
+            lambda: self.client.get_demand(**params),
+            **params,
         )
