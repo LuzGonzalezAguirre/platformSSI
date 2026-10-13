@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Maximize2, Minimize2, RotateCw, Save, Settings2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Maximize2, RotateCw, Save, Settings2 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 
 type PalletType = "euro" | "standard";
@@ -50,7 +50,6 @@ export default function StorageUtilizationPage() {
   const [selected, setSelected] = useState<number>(1);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [designer, setDesigner] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
   const [draft, setDraft] = useState<Rack | null>(null);
   const floorRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ number: number; offsetX: number; offsetY: number } | null>(null);
@@ -83,9 +82,6 @@ export default function StorageUtilizationPage() {
     finally { setBusy(false); }
   };
 
-  const levelsFor = (r: Rack, level: number, quantity: number) =>
-    r.levels.map((item) => ({ level: item.level, pallet_count: item.level === level ? quantity : item.pallet_count }));
-
   const changeType = (type: PalletType) => {
     if (!draft) return;
     const limit = cap(type);
@@ -93,7 +89,7 @@ export default function StorageUtilizationPage() {
       levels: draft.levels.map((item) => ({ ...item, pallet_count: Math.min(item.pallet_count, limit) })) });
   };
 
-  const startDrag = (event: React.PointerEvent, item: Rack) => {
+  const startDrag = (event: React.PointerEvent<HTMLDivElement>, item: Rack) => {
     if (!designer || !canEdit || !floorRef.current) return;
     const rect = floorRef.current.getBoundingClientRect();
     dragRef.current = {
@@ -105,7 +101,7 @@ export default function StorageUtilizationPage() {
     setSelected(item.number);
   };
 
-  const moveDrag = (event: React.PointerEvent) => {
+  const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current || !floorRef.current || !data) return;
     const rect = floorRef.current.getBoundingClientRect();
     const current = data.racks.find((item) => item.number === dragRef.current?.number);
@@ -115,7 +111,7 @@ export default function StorageUtilizationPage() {
     setData({ ...data, racks: data.racks.map((item) => item.number === current.number ? { ...item, x, y } : item) });
   };
 
-  const stopDrag = (event: React.PointerEvent) => {
+  const stopDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     const dragging = dragRef.current;
     dragRef.current = null;
     if (!dragging) return;
