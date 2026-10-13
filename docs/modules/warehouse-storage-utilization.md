@@ -43,3 +43,7 @@ El plano representa una configuración manual, no la geografía real hasta que s
 3. Comprobar permisos de lectura y edición desde la API.
 4. Probar drag & drop y guardado del diseñador en escritorio.
 5. Verificar renderizado y compilación del frontend antes del despliegue.
+
+## Mejoras de visualización
+
+Los racks del plano físico tienen un tamaño mínimo de lectura y muestran los porcentajes por nivel con tipografía ampliada. Expanded view muestra la pantalla completa de trabajo con controles visibles. Al seleccionar un rack se abre un panel lateral derecho; al seleccionar un nivel, el panel se enfoca en esa localidad. La edición sigue guardando automáticamente sin desplazarse al final de la página.
