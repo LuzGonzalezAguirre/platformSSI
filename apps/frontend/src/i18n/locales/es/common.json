@@ -4,7 +4,7 @@
       "production": "Produccion",
       "quality": "Calidad",
       "maintenance": "Mantenimiento",
-      "warehouse": "Almacen",
+      "warehouse": "Materiales",
       "administration": "Administracion",
       "ssi": "SSI - Ley Silla",
       "warehouseBom": "BOM Explorer",
@@ -58,7 +58,8 @@
       "qualityScrapRate": "Scrap Rate",
       "maintenancePmp": "Programa PM",
       "maintenanceDownEquipment": "Equipos caídos",
-      "qwallDesigner": "Diseñador de inspecciones"
+      "qwallDesigner": "Diseñador de inspecciones",
+      "warehouseStorageUtilization": "WH Storage Utilization"
     }
   },
   "pmp": {

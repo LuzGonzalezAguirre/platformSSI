@@ -230,6 +230,12 @@ export const sidebarConfig: NavSection[] = [
         icon: "ClipboardList",
 
       },
+      {
+        id: "warehouse.storage-utilization",
+        labelKey: "nav.items.warehouseStorageUtilization",
+        path: "/warehouse/storage-utilization",
+        icon: "PanelsTopLeft",
+      },
     ],
   },
   {
