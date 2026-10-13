@@ -29,13 +29,13 @@ export default function DemandPage() {
 
   const fetchDemand = async () => {
     if (Boolean(shipDateFrom) !== Boolean(shipDateTo)) {
-      setError("Enter both Ship Date From and Ship Date To.");
+      setError(t("warehouse.demand.bothDatesRequired"));
       return;
     }
     if (shipDateFrom && shipDateTo) {
       const days = (Date.parse(shipDateTo + "T00:00:00Z") - Date.parse(shipDateFrom + "T00:00:00Z")) / 86400000;
       if (!Number.isFinite(days) || days < 0 || days > 180) {
-        setError("Ship Date range must be between 0 and 180 days.");
+        setError(t("warehouse.demand.invalidDateRange"));
         return;
       }
     }
@@ -82,27 +82,27 @@ export default function DemandPage() {
         </div>
 
         <div style={styles.filterGroup}>
-          <label style={styles.filterLabel}>Ship Date From</label>
+          <label style={styles.filterLabel}>{t("warehouse.demand.shipDateFrom")}</label>
           <input type="date" value={shipDateFrom} onChange={(e) => setShipDateFrom(e.target.value)} style={styles.input} />
         </div>
         <div style={styles.filterGroup}>
-          <label style={styles.filterLabel}>Ship Date To</label>
+          <label style={styles.filterLabel}>{t("warehouse.demand.shipDateTo")}</label>
           <input type="date" value={shipDateTo} onChange={(e) => setShipDateTo(e.target.value)} style={styles.input} />
         </div>
         <div style={styles.filterGroup}>
           <label style={styles.filterLabel}>PO</label>
-          <input type="text" value={po} maxLength={100} onChange={(e) => setPo(e.target.value)} style={styles.input} placeholder="PO number" />
+          <input type="text" value={po} maxLength={100} onChange={(e) => setPo(e.target.value)} style={styles.input} placeholder={t("warehouse.demand.poPlaceholder")} />
         </div>
         <div style={styles.filterGroup}>
-          <label style={styles.filterLabel}>Customer Part No</label>
-          <input type="text" value={customerPartNo} maxLength={100} onChange={(e) => setCustomerPartNo(e.target.value)} style={styles.input} placeholder="Customer part" />
+          <label style={styles.filterLabel}>{t("warehouse.demand.customerPartNo")}</label>
+          <input type="text" value={customerPartNo} maxLength={100} onChange={(e) => setCustomerPartNo(e.target.value)} style={styles.input} placeholder={t("warehouse.demand.customerPartPlaceholder")} />
         </div>
         <div style={styles.filterGroup}>
-          <label style={styles.filterLabel}>Release Type</label>
-          <select multiple size={3} value={releaseTypes} onChange={(e) => setReleaseTypes(Array.from(e.target.selectedOptions, (option) => option.value))} style={styles.select} aria-label="Release Type">
+          <label style={styles.filterLabel}>{t("warehouse.demand.releaseType")}</label>
+          <select multiple size={3} value={releaseTypes} onChange={(e) => setReleaseTypes(Array.from(e.target.selectedOptions, (option) => option.value))} style={styles.select} aria-label={t("warehouse.demand.releaseType")}>
             {DEMAND_RELEASE_TYPES.map((releaseType) => <option key={releaseType} value={releaseType}>{releaseType}</option>)}
           </select>
-          <span style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)" }}>Ctrl + click to select multiple; none means all.</span>
+          <span style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)" }}>{t("warehouse.demand.multiSelectHelp")}</span>
         </div>
 
         <div style={styles.filterGroup}>
@@ -117,7 +117,7 @@ export default function DemandPage() {
                 }}
                 onClick={() => setStatus(opt.value)}
               >
-                {opt.label}
+                {t(`warehouse.demand.status${opt.value}`)}
               </button>
             ))}
           </div>
@@ -142,8 +142,7 @@ export default function DemandPage() {
       </div>
 
       <div style={styles.notice}>
-        Qty Ready and WIP are part-level inventory estimates, not Plex release allocations.
-        Requested Ship Date and Total Rel Due remain unavailable pending reconciliation.
+        {t("warehouse.demand.inventoryNotice")}
       </div>
 
       {error && <div style={styles.errorMsg}>{error}</div>}
@@ -154,17 +153,17 @@ export default function DemandPage() {
             <div style={styles.customerHeader}>
               <Icons.Building2 size={16} style={{ color: "var(--color-primary)" }} />
               <span style={styles.tableTitle}>{customer}</span>
-              <span style={styles.tableCount}>{customerRows.length} releases</span>
+              <span style={styles.tableCount}>{customerRows.length} {t("warehouse.demand.releases")}</span>
             </div>
           </div>
           <div style={{ overflowX: "auto" }}>
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {["PO", "Status", "Ship To / Carrier", t("warehouse.demand.colPart"), t("warehouse.demand.colCustPart"),
-                    "Qty Ready (inventory)", "WIP (inventory)", t("warehouse.demand.colShipDate"), "Shipper No",
-                    t("warehouse.demand.colDueDate"), "Requested Ship Date", t("warehouse.demand.colRelQty"),
-                    t("warehouse.demand.colShipped"), t("warehouse.demand.colBalance"), "Total Rel Due",
+                  {["PO", t("warehouse.demand.status"), t("warehouse.demand.shipToCarrier"), t("warehouse.demand.colPart"), t("warehouse.demand.colCustPart"),
+                    t("warehouse.demand.qtyReadyInventory"), t("warehouse.demand.wipInventory"), t("warehouse.demand.colShipDate"), t("warehouse.demand.shipperNo"),
+                    t("warehouse.demand.colDueDate"), t("warehouse.demand.requestedShipDate"), t("warehouse.demand.colRelQty"),
+                    t("warehouse.demand.colShipped"), t("warehouse.demand.colBalance"), t("warehouse.demand.totalRelDue"),
                     t("warehouse.demand.colRelStatus"), t("warehouse.demand.colRelType"),
                   ].map((h) => (
                     <th key={h} style={styles.th}>{h}</th>
@@ -181,7 +180,7 @@ export default function DemandPage() {
                         backgroundColor: row.PO_Status === "Open" ? "rgba(22,163,74,0.1)" : "rgba(107,114,128,0.1)",
                         color: row.PO_Status === "Open" ? "var(--color-running)" : "var(--color-text-secondary)",
                       }}>
-                        {row.PO_Status || "Open"}
+                        {t(`warehouse.demand.status${row.PO_Status === "Open"?"Open":row.PO_Status === "History"?"History":"All"}`,{defaultValue:row.PO_Status||"Open"})}
                       </span>
                     </td>
                     <td style={styles.td}>{row.Ship_To_Carrier || "—"}</td>
@@ -205,7 +204,7 @@ export default function DemandPage() {
                         backgroundColor: row.Rel_Status === "Open" ? "rgba(22,163,74,0.1)" : "rgba(107,114,128,0.1)",
                         color: row.Rel_Status === "Open" ? "var(--color-running)" : "var(--color-text-secondary)",
                       }}>
-                        {row.Rel_Status}
+                        {t(`warehouse.demand.status${row.Rel_Status==="Open"?"Open":row.Rel_Status==="History"?"History":"All"}`,{defaultValue:row.Rel_Status||""})}
                       </span>
                     </td>
                     <td style={{ ...styles.td, fontSize: "0.775rem", color: "var(--color-text-secondary)" }}>{row.Rel_Type}</td>
