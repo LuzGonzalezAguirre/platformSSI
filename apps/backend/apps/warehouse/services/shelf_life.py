@@ -22,7 +22,7 @@ def _date(value):
 
 def shelf_life_report(as_of=None, horizon=30):
     reference = as_of or date.today()
-    key = "warehouse:shelf-life:v1"
+    key = "warehouse:shelf-life:v2"
     rows = cache.get(key)
     if rows is None:
         rows = PlexClient().get_shelf_life()
@@ -51,10 +51,15 @@ def shelf_life_report(as_of=None, horizon=30):
                  "expiring" if days <= horizon else "ok")
         totals[state] += 1
         locations[location][state] += 1
-        part = str(record.get("Part_Key") or "")
+        part_key = str(record.get("Part_Key") or "")
+        part_no = str(record.get("Part_No") or "").strip()
+        revision = str(record.get("Revision") or "").strip()
+        part = f"{part_no} Rev:{revision}" if part_no and revision else part_no or part_key
+        part_name = str(record.get("Part_Name") or "").strip()
         parts[part][state] += 1
         detail.append({
-            "serial_no": serial, "part_key": part, "location": location,
+            "serial_no": serial, "part_key": part_key, "part_no_revision": part,
+            "part_name": part_name, "location": location,
             "quantity": qty, "container_status": record.get("Container_Status"),
             "shelf_date": shelf.isoformat() if shelf else None,
             "expired_date": expiry.isoformat() if expiry else None,
@@ -79,9 +84,9 @@ def shelf_life_report(as_of=None, horizon=30):
             for name, count in sorted(locations.items())
         ],
         "parts": sorted([
-            {"part_key": part, "expired": count["expired"], "expiring": count["expiring"],
+            {"part_no_revision": part, "expired": count["expired"], "expiring": count["expiring"],
              "total": sum(count.values())}
             for part, count in parts.items()
-        ], key=lambda item: (-item["expired"], -item["expiring"], item["part_key"])),
+        ], key=lambda item: (-item["expired"], -item["expiring"], item["part_no_revision"])),
         "containers": detail,
     }

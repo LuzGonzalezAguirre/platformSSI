@@ -769,9 +769,10 @@
       "locationScope": "Ubicaciones con material vencido o por vencer en 30 días.",
       "containersShort": "contenedores",
       "noRiskWithin30": "No hay contenedores caducados ni por vencer en 30 días.",
-      "materialConcentration": "Contenedores en riesgo por clave de parte",
+      "materialConcentration": "Contenedores en riesgo por número de parte",
       "nextExpirations": "Próximos vencimientos · FEFO",
-      "noUpcoming": "No hay vencimientos próximos."
+      "noUpcoming": "No hay vencimientos próximos.",
+      "partNumberRevision": "Número de parte / Revisión"
     },
     "storage": {
       "wHStorageUtilization": "Utilización del almacén",

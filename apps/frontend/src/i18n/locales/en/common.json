@@ -659,7 +659,7 @@
       "shelfLifeDistribution": "Shelf life distribution",
       "riskByLocation": "Risk by location",
       "noLocationHasAContainerAtRisk": "No location has a container at risk.",
-      "riskByPartKey": "Risk by part key",
+      "riskByPartKey": "Risk by part number",
       "noPartHasAContainerAtRisk": "No part has a container at risk.",
       "containerDetails": "Container details",
       "searchContainerOrPart": "Search container or part",
@@ -704,9 +704,10 @@
       "locationScope": "Top locations with overdue or expiring within 30 days.",
       "containersShort": "containers",
       "noRiskWithin30": "No overdue or expiring containers within 30 days.",
-      "materialConcentration": "At-risk containers by part key",
+      "materialConcentration": "At-risk containers by part number",
       "nextExpirations": "Upcoming expirations · FEFO",
-      "noUpcoming": "No upcoming expiration dates."
+      "noUpcoming": "No upcoming expiration dates.",
+      "partNumberRevision": "Part Number / Revision"
     },
     "storage": {
       "wHStorageUtilization": "WH Storage Utilization",
