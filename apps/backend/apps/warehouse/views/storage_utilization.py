@@ -1,4 +1,5 @@
 from django.db import transaction
+import math
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -115,11 +116,13 @@ class StorageUtilizationView(APIView):
                     for name in ("x", "y", "width", "height"):
                         if name in data:
                             value = data[name]
-                            if value is not None and (type(value) not in (int, float) or not 0 <= value <= 100):
+                            if value is not None and (type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 100):
                                 return Response({"detail": f"Invalid {name}."}, status=400)
                             if name in ("width", "height") and (value is None or value < 2):
                                 return Response({"detail": f"{name} must be at least 2."}, status=400)
                             setattr(rack, name, value)
+                    if rack.x is not None and rack.x + rack.width > 100 or rack.y is not None and rack.y + rack.height > 100:
+                        return Response({"detail": "Rack must fit inside the warehouse canvas."}, status=400)
                     if "rotation" in data:
                         if type(data["rotation"]) is not int or data["rotation"] not in (0, 90, 180, 270):
                             return Response({"detail": "Invalid rotation."}, status=400)
