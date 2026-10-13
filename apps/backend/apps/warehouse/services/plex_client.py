@@ -58,6 +58,9 @@ class PlexClient:
         except Exception as e:
             raise PlexProxyError(f"Unexpected error calling Plex proxy: {str(e)}")
 
+    def get_shelf_life(self) -> list:
+        return self._post("shelf-life", {})
+
     def get_part_revisions(self, part_no: str) -> list:
         return self._post("part-revisions", {"part_no": part_no})
 

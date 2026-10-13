@@ -60,7 +60,8 @@
       "maintenanceDownEquipment": "Equipos caídos",
       "qwallDesigner": "Diseñador de inspecciones",
       "warehouseStorageUtilization": "WH Storage Utilization",
-      "warehouseStorageDesigner": "Diseñador de Almacén"
+      "warehouseStorageDesigner": "Diseñador de Almacén",
+      "warehouseShelfLife": "WH Shelf Life"
     }
   },
   "pmp": {

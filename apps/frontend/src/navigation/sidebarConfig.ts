@@ -231,6 +231,12 @@ export const sidebarConfig: NavSection[] = [
 
       },
       {
+        id: "warehouse.shelf-life",
+        labelKey: "nav.items.warehouseShelfLife",
+        path: "/warehouse/shelf-life",
+        icon: "CalendarClock",
+      },
+      {
         id: "warehouse.storage-utilization",
         labelKey: "nav.items.warehouseStorageUtilization",
         path: "/warehouse/storage-utilization",
