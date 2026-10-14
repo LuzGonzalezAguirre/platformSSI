@@ -46,3 +46,10 @@ class FlagReportViewTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["data"][0]["photo_id"], 123)
         get_photos.assert_called_once_with(53)
+
+    @patch("apps.quality.views.flag_views.QWallRepository.get_piece_flags")
+    def test_proxy_missing_columns_error_is_explained(self, get_flags):
+        get_flags.side_effect = ValueError("Q-Wall Proxy /piece-flags: Columnas faltantes: part_number")
+        response = FlagReportView().get(self.request(start_date="2026-10-01", end_date="2026-10-14"))
+        self.assertEqual(response.status_code, 502)
+        self.assertIn("part_number", response.data["detail"])
