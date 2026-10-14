@@ -70,7 +70,7 @@ def stage_weekly_maintenance_offenders(reference_date: date) -> dict:
                     "physical_area": item["physical_area"],
                     "department": item["department"],
                     "maintenance_hours": str(item["hours"]),
-                    "work_request_count": item["work_request_count"],
+                    "work_request_count": item["count"],
                     "rank_no": rank,
                 }
             )
@@ -83,10 +83,10 @@ def stage_weekly_maintenance_offenders(reference_date: date) -> dict:
         "equipment": [
             {
                 "equipment_id": item["equipment_id"],
-                "maintenance_hours": str(item["maintenance_hours"]),
+                "maintenance_hours": str(item["hours"]),
                 "rank_no": rank,
             }
-            for rank, item in enumerate(top3, start=1)
+            for rank, item in enumerate(top8, start=1)
             if item["hours"] > 0
         ],
         "source_keys": [row["source_key"] for row in staged],
