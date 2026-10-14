@@ -83,6 +83,10 @@ La exportación PDF incorpora fotografías cuando existen.
 
 El frontend tiene una vista dedicada `RejectionReportPage.tsx`.
 
+## Piezas Flageadas
+
+La ruta `/quality/flags` permite consultar cada registro de `ssi_PieceFlagRecords` sin operaciones de escritura. Incluye fecha, trazabilidad, comentario y la fotografía de inspección cuando hay una vinculada en `ssi_RejectionPhotos`. Véase `quality-flags.md` para el contrato y la limitación sobre fotografías propias de Flags.
+
 ## Catálogo de fallas
 
 `FailureCatalogService` puede construir un catálogo a partir de inspecciones históricas o solicitar la estructura completa al proxy mediante `/catalog/structure`.
