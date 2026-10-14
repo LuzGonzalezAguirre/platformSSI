@@ -16,13 +16,21 @@ Los filtros soportados son `start_date`, `end_date` y `bu_id`. Cada registro cor
 
 El endpoint Django aplica `quality.view` y acepta solo GET/HEAD/OPTIONS. No existen métodos para editar, eliminar o aprobar flags.
 
-## Fotografías: límite actual
+## Fotografías confirmadas y consulta corregida
 
-La única fuente fotográfica verificada en el repositorio es `ssi_RejectionPhotos`, asociada por `inspection_id`. El listado utiliza `has_photo` cuando existe una foto de rechazo vinculada, y la consulta del detalle reutiliza `GET /quality/rejection-photo/{inspection_id}/`.
+Se confirmó mediante una consulta directa a CCS que los 53 Flags verificados tienen una fotografía relacionada en `dbo.ssi_RejectionPhotos` por `inspection_id`.
 
-**No se ha confirmado el nombre o contrato de almacenamiento de imágenes propias de Flags.** Una pieza flageada sin foto vinculada en `ssi_RejectionPhotos` se presenta como "Sin fotografía vinculada". Esto no significa que la pieza no tenga fotografías en otro sistema. Para soportar todas las imágenes de Flags hace falta validar tabla/columnas y la asociación al `flag_id` en CCS.
+El endpoint `GET /piece-flags` usa las relaciones confirmadas entre `ssi_PieceFlagRecords`, `ssi_Products`, `ssi_PartNumbers` y `ssi_RejectionPhotos`. Agrupa por `flag_id` y devuelve `part_number`, seriales, `total_photos` y `has_photo` sin repetir flags por número de fotos.
 
-No se guardan ni modifican fotos, comentarios o estados desde platformSSI.
+`GET /piece-flags/{flag_id}/photos` recupera las fotografías de la inspección asociada a un Flag; Django las entrega al frontend mediante `GET /api/v1/quality/flags/{flag_id}/photos/`. Esta ruta tiene únicamente permiso de lectura `quality.view`.
+
+El frontend obtiene las fotografías al abrir el detalle, evitando transferir imágenes de los 53 registros al cargar el listado.
+
+## Despliegue requerido en Windows
+
+El Q-Wall Proxy se ejecuta **fuera de Docker** en el host Windows. Fusionar GitHub y reiniciar únicamente Django no aplica nuevas consultas SQL del proxy: hay que hacer `git pull origin main` y **reiniciar el proceso Uvicorn** que ejecuta `apps/qwall-proxy/main.py`.
+
+El caché de Flags se versionó para evitar reutilizar payloads antiguos. El endpoint Django rechaza una respuesta de proxy obsoleta con un mensaje explícito en vez de presentar fotos y números de parte vacíos.
 
 ## Verificación pendiente en el entorno
 
