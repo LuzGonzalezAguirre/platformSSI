@@ -69,7 +69,7 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang, plannedTot
     <div style={card}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap" }}>
         <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-text-primary)" }}>
-          {l ? "Top 8 Equipos — Pareto de Horas" : "Top 8 Equipment by Maintenance Hours — Pareto"}
+          {l ? "Top 8 Equipos — Horas de Mantenimiento Planeado" : "Top 8 Equipment by Planned Maintenance Hours — Pareto"}
         </div>
         <div style={{ display: "flex", gap: "1rem", fontSize: "0.72rem", color: "var(--color-text-secondary)" }}>
           <span>■ {l ? "Horas" : "Hours"}</span>
