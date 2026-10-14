@@ -6,7 +6,7 @@ from datetime import date, timedelta
 import requests
 from django.conf import settings
 
-from apps.maintenance.services.work_requests_service import WorkRequestsService, aggregate_unplanned_equipment
+from apps.maintenance.services.work_requests_service import WorkRequestsService, aggregate_planned_equipment
 from apps.ssi_common.filters.base import FilterContext
 
 logger = logging.getLogger(__name__)
@@ -52,12 +52,12 @@ def stage_weekly_maintenance_offenders(reference_date: date) -> dict:
     )
     rows = dashboard.get("rows") or []
 
-    # Identical unplanned WR ranking to Maintenance Overview Pareto.
+    # Identical planned WR ranking to Maintenance Overview Pareto.
     # `rows` are already deduplicated and scoped by WorkRequestsService.
-    top8 = aggregate_unplanned_equipment(rows)[:8]
+    top3 = aggregate_planned_equipment(rows)[:3]
 
     staged = []
-    for rank, item in enumerate(top8, start=1):
+    for rank, item in enumerate(top3, start=1):
         if item["hours"] <= 0:
             continue
         staged.append(
@@ -86,7 +86,7 @@ def stage_weekly_maintenance_offenders(reference_date: date) -> dict:
                 "maintenance_hours": str(item["hours"]),
                 "rank_no": rank,
             }
-            for rank, item in enumerate(top8, start=1)
+            for rank, item in enumerate(top3, start=1)
             if item["hours"] > 0
         ],
         "source_keys": [row["source_key"] for row in staged],
