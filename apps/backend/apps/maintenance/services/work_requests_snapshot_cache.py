@@ -23,7 +23,6 @@ SCHEMA_VERSION = 1
 CACHE_DIR = Path(os.getenv("PLEX_WR_CACHE_DIR", "/var/cache/platformssi/plex_wr"))
 CURRENT_TTL_SECONDS = int(os.getenv("PLEX_WR_CACHE_CURRENT_TTL_SECONDS", "900"))
 HISTORY_TTL_SECONDS = int(os.getenv("PLEX_WR_CACHE_HISTORY_TTL_SECONDS", "2592000"))
-MAX_WR_LOOKBACK_DAYS = 180
 
 
 def _months(start: date, end: date):
@@ -66,6 +65,7 @@ def _load(path: Path, period_start: date, period_end: date, today: date) -> list
             or snapshot.get("end_date") != period_end.isoformat()
             or not isinstance(rows, list)
             or any(not isinstance(row, dict) for row in rows)
+            or snapshot.get("row_count") != len(rows)
             or snapshot.get("sha256") != _checksum(rows)
         ):
             return None
@@ -136,6 +136,12 @@ def get_work_requests(
                     page = fetch(chunk_start, chunk_end)
                     if not isinstance(page, list) or any(not isinstance(row, dict) for row in page):
                         raise ValueError("Incomplete Plex Work Requests response; snapshot not written")
+                    for row in page:
+                        if not str(row.get("work_request_no") or "").strip():
+                            raise ValueError("Plex Work Request without work_request_no; snapshot not written")
+                        when = str(row.get("request_date") or "")[:10]
+                        if not (chunk_start.isoformat() <= when <= chunk_end.isoformat()):
+                            raise ValueError("Plex Work Request outside requested dates; snapshot not written")
                     rows.extend(page)
                 # Only after all requested chunks succeed do we persist the month.
                 _store(path, month_start, period_end, rows)
