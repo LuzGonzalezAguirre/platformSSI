@@ -22,47 +22,59 @@ type Flag = {
   fail_mode_code: string | null;
   fail_mode_name: string | null;
   has_photo: boolean | number;
+  total_photos: number;
 };
 
+type FlagPhoto = { photo_id: number; photo_b64: string | null; taken_at: string | null };
+
 function EvidencePhoto({ flag, english }: { flag: Flag; english: boolean }) {
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<FlagPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
-    if (!flag.inspection_id || !flag.has_photo) {
+    setPhotos([]);
+    setFailed(false);
+    if (!flag.inspection_id || !flag.total_photos) {
       setLoading(false);
       return;
     }
     setLoading(true);
-    setFailed(false);
-    apiClient.get(`/quality/rejection-photo/${flag.inspection_id}/`)
-      .then(({ data }) => { if (active) setPhoto(data.photo_b64 ?? null); })
+    apiClient.get(`/quality/flags/${flag.flag_id}/photos/`)
+      .then(({ data }) => { if (active) setPhotos(data.data ?? []); })
       .catch(() => { if (active) setFailed(true); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [flag.inspection_id, flag.has_photo]);
+  }, [flag.flag_id, flag.inspection_id, flag.total_photos]);
 
-  if (!flag.has_photo || !flag.inspection_id) return <p>{english ? "No linked photo" : "Sin fotografía vinculada"}</p>;
-  if (loading) return <p>{english ? "Loading photo..." : "Cargando fotografía..."}</p>;
-  if (failed || !photo) return <p>{english ? "Photo unavailable" : "Fotografía no disponible"}</p>;
+  if (!flag.total_photos) return <p>{english ? "No linked photos" : "Sin fotografías vinculadas"}</p>;
+  if (loading) return <p>{english ? "Loading photos..." : "Cargando fotografías..."}</p>;
+  if (failed) return <p role="alert">{english ? "Could not load photos" : "No se pudieron cargar las fotografías"}</p>;
+  if (!photos.length) return <p>{english ? "No photo data returned" : "No se recibieron fotografías"}</p>;
 
-  const src = `data:image/jpeg;base64,${photo}`;
-  const download = () => {
-    const link = document.createElement("a");
-    link.href = src;
-    link.download = `flag_${flag.flag_id}.jpg`;
-    link.click();
-  };
   return (
-    <div>
-      <img src={src} alt={english ? "Inspection evidence" : "Evidencia de inspección"}
-        style={{ display: "block", maxWidth: "100%", maxHeight: 500, objectFit: "contain", borderRadius: 8 }} />
-      <button onClick={download} style={{ marginTop: 10, padding: "0.5rem 0.75rem", cursor: "pointer" }}>
-        <Download size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />
-        {english ? "Download photo" : "Descargar foto"}
-      </button>
+    <div style={{ display: "grid", gap: 16 }}>
+      {photos.map((photo, index) => {
+        if (!photo.photo_b64) return <p key={photo.photo_id}>{english ? "Photo unavailable" : "Foto no disponible"} #{photo.photo_id}</p>;
+        const src = `data:image/jpeg;base64,${photo.photo_b64}`;
+        const download = () => {
+          const link = document.createElement("a");
+          link.href = src;
+          link.download = `flag_${flag.flag_id}_foto_${index + 1}.jpg`;
+          link.click();
+        };
+        return (
+          <div key={photo.photo_id}>
+            <img src={src} alt={english ? `Flag evidence ${index + 1}` : `Evidencia ${index + 1}`}
+              style={{ display: "block", maxWidth: "100%", maxHeight: 500, objectFit: "contain", borderRadius: 8 }} />
+            <button type="button" onClick={download} style={{ marginTop: 10, padding: "0.5rem 0.75rem", cursor: "pointer" }}>
+              <Download size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />
+              {english ? `Download photo ${index + 1}` : `Descargar foto ${index + 1}`}
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -147,7 +159,7 @@ export default function FlagReportPage() {
                 <strong style={{ fontFamily: "monospace" }}>{printable(flag.serial_number || flag.frame_sn || flag.fpca_sn || flag.work_order)}</strong>
                 <div style={label}>{printable(flag.part_number)} · {printable(flag.bu_name)} · {dateTime(flag.created_at)}</div>
               </div>
-              {Boolean(flag.has_photo) && <Camera size={17} aria-label="Foto" />}
+              {Number(flag.total_photos) > 0 && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Camera size={17} aria-label="Foto" />{flag.total_photos}</span>}
               <button type="button" onClick={() => setSelected(flag)} style={{ ...input, cursor: "pointer" }}>
                 <Info size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />{english ? "Details" : "Ver detalle"}
               </button>
@@ -176,6 +188,7 @@ export default function FlagReportPage() {
             {detail("Frame SN", selected.frame_sn)}
             {detail("FPCA SN", selected.fpca_sn)}
             {detail("Work Order", selected.work_order)}
+            {detail(english ? "Photos" : "Fotografías", selected.total_photos)}
             {detail(english ? "Inspector" : "Inspector", selected.inspector_name)}
             {detail(english ? "Failure mode" : "Modo de falla", selected.fail_mode_name || selected.fail_mode_code)}
             <h3 style={{ marginBottom: 6 }}>{english ? "Comment" : "Comentario"}</h3>
