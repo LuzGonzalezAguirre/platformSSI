@@ -245,6 +245,8 @@ export default function FlagReportPage() {
             {detail("Inspector", selected.inspector_name)}
             {detail("Date", dateTime(selected.inspection_started_at || selected.created_at).slice(0, 16))}
             {detail("Work Order", selected.work_order)}
+            {detail("Serial SSI", selected.frame_sn)}
+            {detail("Serial Client", selected.serial_number)}
             <h3 style={{ marginBottom: 6 }}>{english ? "Comment" : "Comentario"}</h3>
             <p style={{ whiteSpace: "pre-wrap" }}>{selected.comment || (english ? "No comment" : "Sin comentarios")}</p>
             <h3>{english ? "Linked inspection photo" : "Fotografía vinculada a inspección"}</h3>

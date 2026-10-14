@@ -18,7 +18,7 @@ El endpoint Django aplica `quality.view` y acepta solo GET/HEAD/OPTIONS. No exis
 
 ## Detalle de inspección
 
-El detalle visual presenta únicamente Point, BU, Inspector, Date y Work Order, además de los comentarios y fotografías ya existentes. Serial Number, Frame SN y FPCA SN dejan de mostrarse en la interfaz.
+El detalle visual presenta Point, BU, Inspector, Date, Work Order, **Serial SSI** (campo CCS `ssi_Products.frameSN`) y **Serial Client** (campo CCS `ssi_Products.volvoSerialNumber`), además de los comentarios y fotografías. Se mantiene oculto FPCA SN. Los seriales solo se presentan con nombres de negocio; no se cambia su origen de datos.
 
 Point procede del último resultado de inspección enlazado a `inspection_id`, usando `ssi_InspectionResults` y `ssi_InspectionPoints` sin multiplicar filas de Flags. Date utiliza `ssi_Inspections.started_at` y, si no existe inspección vinculada, recurre a `ssi_PieceFlagRecords.created_at`. El dato de punto queda vacío cuando no existe resultado de inspección.
 
