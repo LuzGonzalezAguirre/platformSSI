@@ -28,6 +28,7 @@ import QWallPage from "./modules/quality/qwall/QWallPage";
 import QWallDesignerPage from "./modules/quality/qwall/designer/QWallDesignerPage";
 import QWallDashboardPage from "./modules/quality/qwall/QWallDashboardPage";
 import RejectionReportPage from "./modules/quality/RejectionReportPage";
+import FlagReportPage from "./modules/quality/FlagReportPage";
 import CogpDashboardPage from "./modules/quality/cogp/CogpDashboardPage";
 import CogpMappingPage from "./modules/quality/cogp/CogpMappingPage";
 import DowntimeSettingsPage from "./modules/quality/downtime-settings/DowntimeSettingsPage";
@@ -128,6 +129,7 @@ function AppRoutes() {
         <Route path="/quality/qwall/designer" element={withPermission("quality", <QWallDesignerPage />, "edit")} />
         <Route path="/quality/qwall-dashboard" element={withPermission("quality", <QWallDashboardPage />)} />
         <Route path="/quality/rejections" element={withPermission("quality", <RejectionReportPage />)} />
+        <Route path="/quality/flags" element={withPermission("quality", <FlagReportPage />)} />
         <Route path="/quality/downtime" element={withPermission("quality", <DowntimePage />)} />
 
         <Route path="/quality/problems" element={withPermission("quality", <ProblemListPage />)} />
