@@ -300,16 +300,32 @@ def piece_flags(start_date: str, end_date: str, bu_id: int | None = None,
         SELECT
             pfr.flag_id,
             pfr.inspection_id,
+            pfr.created_at,
             pfr.comment,
-            fm.fail_code   AS fail_mode_code,
-            fm.description AS fail_mode_name
+            p.workOrder AS work_order,
+            p.volvoSerialNumber AS serial_number,
+            p.frameSN AS frame_sn,
+            p.fpcaSN AS fpca_sn,
+            pn.ssiPN AS part_number,
+            COALESCE(i.bu_id, pn.bu_id) AS bu_id,
+            bu.bu_name,
+            u.name AS inspector_name,
+            fm.fail_code AS fail_mode_code,
+            fm.description AS fail_mode_name,
+            CASE WHEN EXISTS (
+                SELECT 1 FROM ssi_RejectionPhotos rp
+                WHERE rp.inspection_id = pfr.inspection_id
+            ) THEN 1 ELSE 0 END AS has_photo
         FROM ssi_PieceFlagRecords pfr
         LEFT JOIN ssi_Inspections i ON pfr.inspection_id = i.inspection_id
-        INNER JOIN ssi_Products    p  ON pfr.product_id  = p.product_id
-        INNER JOIN ssi_PartNumbers pn ON p.pn_id          = pn.pn_id
-        LEFT JOIN  ssi_FailModes   fm ON pfr.fail_mode_id = fm.fail_mode_id
+        INNER JOIN ssi_Products p ON pfr.product_id = p.product_id
+        INNER JOIN ssi_PartNumbers pn ON p.pn_id = pn.pn_id
+        LEFT JOIN ssi_BusinessUnits bu ON COALESCE(i.bu_id, pn.bu_id) = bu.bu_id
+        LEFT JOIN ssi_Users u ON i.user_id = u.user_id
+        LEFT JOIN ssi_FailModes fm ON pfr.fail_mode_id = fm.fail_mode_id
         WHERE CAST(pfr.created_at AS DATE) BETWEEN ? AND ?
         {bu_filter}
+        ORDER BY pfr.created_at DESC, pfr.flag_id DESC
     """
     try:
         conn = get_conn()
