@@ -3,7 +3,7 @@ import requests
 from datetime import date as date_type
 from django.core.cache import cache
 from apps.ssi_common.filters.base import FilterContext
-from apps.ssi_common.plex_ranges import date_chunks
+from apps.maintenance.services.work_requests_snapshot_cache import get_work_requests
 from apps.ssi_common.bu_classification import (
     resolve_bu_from_workcenter,
     resolve_customer_from_workcenter,
@@ -136,19 +136,29 @@ class WorkRequestsService:
 
     @staticmethod
     def get_dashboard(filter_ctx: FilterContext) -> dict:
-        cache_key = filter_ctx.cache_key("maint:wr_dashboard:v4:unplanned_equipment")
+        cache_key = filter_ctx.cache_key("maint:wr_dashboard:v5:monthly_snapshots")
         cached = cache.get(cache_key)
         if cached:
             return WorkRequestsService._with_action_refs(cached, filter_ctx)
 
+        # Fetch only missing or expired months; snapshots contain raw Plex rows
+        # and are never filtered by BU (scoping happens after read).
+        def fetch_wr(start, end):
+            response = _post("/work-requests", {
+                "start_date": start.isoformat(),
+                "end_date": end.isoformat(),
+            }, timeout=120)
+            if not isinstance(response, dict) or not isinstance(response.get("data"), list):
+                raise ValueError("Plex /work-requests returned an incomplete payload")
+            return response["data"]
+
+        raw_rows = get_work_requests(filter_ctx.start_date, filter_ctx.end_date, fetch_wr)
         by_number: dict = {}
-        for chunk_start, chunk_end in date_chunks(filter_ctx.start_date, filter_ctx.end_date):
-            raw = _post("/work-requests", {
-                "start_date": chunk_start.isoformat(),
-                "end_date": chunk_end.isoformat(),
-            })
-            for row in raw.get("data", []):
-                by_number[row.get("work_request_no")] = row
+        for row in raw_rows:
+            number = row.get("work_request_no")
+            if number is None or str(number).strip() == "":
+                raise ValueError("Plex Work Request missing work_request_no")
+            by_number[str(number)] = row
         rows = list(by_number.values())
         rows = _apply_filters(rows, filter_ctx)
 
