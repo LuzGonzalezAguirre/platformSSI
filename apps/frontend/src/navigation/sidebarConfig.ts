@@ -137,6 +137,12 @@ export const sidebarConfig: NavSection[] = [
 
           },
           {
+            id: "quality.flags",
+            labelKey: "nav.items.qualityFlags",
+            path: "/quality/flags",
+            icon: "Flag",
+          },
+          {
             id: "quality.qwall-catalog",
             labelKey: "nav.items.qualityQwallCatalog",
             path: "/quality/qwall/catalog",
