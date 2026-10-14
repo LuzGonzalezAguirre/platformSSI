@@ -82,9 +82,9 @@ class QWallRepository:
     @staticmethod
     def get_piece_flags(start_date: date, end_date: date, bu_ids: int | list[int] | None = None) -> list[dict]:
         normalized = _normalize_bu_ids(bu_ids)
-        cache_key  = f"qwall:inspection-bu-v4:piece_flags:verified_contract:{_bu_cache_fragment(normalized)}:{start_date}:{end_date}"
+        cache_key  = f"qwall:inspection-bu-v5:piece_flags:inspection_point:{_bu_cache_fragment(normalized)}:{start_date}:{end_date}"
         cached     = cache.get(cache_key)
-        required_fields = {"part_number", "total_photos", "frame_sn", "created_at"}
+        required_fields = {"part_number", "total_photos", "point_name", "inspection_started_at", "created_at"}
         if cached is not None:
             if not cached or required_fields.issubset(cached[0]):
                 return cached
