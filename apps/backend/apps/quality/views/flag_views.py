@@ -26,6 +26,8 @@ class FlagReportView(APIView):
 
         try:
             rows = QWallRepository.get_piece_flags(start, end, bu_id)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=502)
         except Exception:
             return Response({"detail": "No fue posible consultar los flags en CCS."}, status=502)
         # A running older Windows proxy can still return only flag_id/comment.
