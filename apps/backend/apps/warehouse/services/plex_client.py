@@ -94,3 +94,5 @@ class PlexClient:
             "customer_part_no": customer_part_no,
             "release_types": release_types,
         })
+    def get_delivery_performance(self, start_date: str, end_date: str) -> list:
+        return self._post("delivery-performance", {"start_date": start_date, "end_date": end_date})

@@ -61,7 +61,8 @@
       "qwallDesigner": "Diseñador de inspecciones",
       "warehouseStorageUtilization": "WH Storage Utilization",
       "warehouseStorageDesigner": "Diseñador de Almacén",
-      "warehouseShelfLife": "WH Shelf Life"
+      "warehouseShelfLife": "WH Shelf Life",
+      "warehouseDeliveryPerformance": "Delivery Performance (OTD)"
     }
   },
   "pmp": {

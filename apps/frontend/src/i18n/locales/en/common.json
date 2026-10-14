@@ -61,7 +61,8 @@
       "qwallDesigner": "Inspection Designer",
       "warehouseStorageUtilization": "WH Storage Utilization",
       "warehouseStorageDesigner": "Warehouse Designer",
-      "warehouseShelfLife": "WH Shelf Life"
+      "warehouseShelfLife": "WH Shelf Life",
+      "warehouseDeliveryPerformance": "Delivery Performance (OTD)"
     }
   },
   "scrapRate": {
