@@ -55,23 +55,23 @@ def _apply_filters(rows: list, filter_ctx: FilterContext) -> list:
     return rows
 
 
-def is_planned_maintenance(row: dict) -> bool:
+def is_unplanned_maintenance(row: dict) -> bool:
     """Use the Plex work-request type, never the event/downtime reason."""
     work_type = " ".join(str(row.get("type") or "").strip().casefold().split())
-    return work_type in {"planned maintenance", "planned"}
+    return work_type == "unplanned maintenance"
 
 
-def aggregate_planned_equipment(rows: list[dict]) -> list[dict]:
+def aggregate_ununplanned_equipment(rows: list[dict]) -> list[dict]:
     """Sum actual maintenance hours once per work request and equipment.
 
     Input rows are already deduplicated by WorkRequest number and scoped by BU.
-    Equipment without an ID, nonpositive hours and non-planned requests are excluded.
+    Equipment without an ID, nonpositive hours and planned requests are excluded.
     The complete sorted result can feed both the Pareto and weekly action staging.
     """
     equipment: dict[str, dict] = {}
     for row in rows:
         equipment_id = str(row.get("equipment_id") or "").strip()
-        if not equipment_id or not is_planned_maintenance(row):
+        if not equipment_id or not is_unplanned_maintenance(row):
             continue
         hours = float(row.get("maintenance_hours") or 0)
         if hours <= 0:
@@ -136,7 +136,7 @@ class WorkRequestsService:
 
     @staticmethod
     def get_dashboard(filter_ctx: FilterContext) -> dict:
-        cache_key = filter_ctx.cache_key("maint:wr_dashboard:v3:planned_equipment")
+        cache_key = filter_ctx.cache_key("maint:wr_dashboard:v3:unplanned_equipment")
         cached = cache.get(cache_key)
         if cached:
             return WorkRequestsService._with_action_refs(cached, filter_ctx)
@@ -155,7 +155,7 @@ class WorkRequestsService:
         if not rows:
             result = {
                 "rows": [], "kpis": {}, "by_status": [], "by_type": [],
-                "by_equipment": [], "planned_total_hours": 0.0, "by_technician": [], "by_failure": [],
+                "by_equipment": [], "unplanned_total_hours": 0.0, "by_technician": [], "by_failure": [],
                 "by_day": [], "by_department": [], "equipment_grid": [],
             }
             cache.set(cache_key, result, CACHE_TTL)
@@ -231,11 +231,11 @@ class WorkRequestsService:
 
         by_status     = group_by("status")
         by_type       = group_by("type")
-        # Only planned maintenance WR hours feed the Equipment Pareto,
+        # Only unplanned maintenance WR hours feed the Equipment Pareto,
         # and this same ranking is used for weekly Action Tracker staging.
-        planned_equipment = aggregate_planned_equipment(rows)
-        planned_total_hours = sum(item["hours"] for item in planned_equipment)
-        by_equipment = planned_equipment[:8]
+        unplanned_equipment = aggregate_ununplanned_equipment(rows)
+        unplanned_total_hours = sum(item["hours"] for item in unplanned_equipment)
+        by_equipment = unplanned_equipment[:8]
         by_technician = _top(group_by("assigned_to"),  "hours")
         by_failure    = _top(group_by("failure"),       "count")
         by_department = group_by("department")
@@ -283,7 +283,7 @@ class WorkRequestsService:
             "by_status":      by_status,
             "by_type":        by_type,
             "by_equipment":   by_equipment,
-            "planned_total_hours": round(planned_total_hours, 2),
+            "unplanned_total_hours": round(unplanned_total_hours, 2),
             "by_technician":  by_technician,
             "by_failure":     by_failure,
             "by_day":         by_day,
