@@ -296,6 +296,8 @@ def piece_flags(start_date: str, end_date: str, bu_id: int | None = None,
     selected = bu_ids or ([bu_id] if bu_id is not None else [])
     placeholders = ", ".join(str(int(b)) for b in selected)
     bu_filter = f"AND COALESCE(i.bu_id, pn.bu_id) IN ({placeholders})" if selected else ""
+    # Same proven join and GROUP BY as the CCS verification query.
+    # Aggregate once per flag so multiple photos never duplicate the flag row.
     sql = f"""
         SELECT
             pfr.flag_id,
@@ -312,19 +314,23 @@ def piece_flags(start_date: str, end_date: str, bu_id: int | None = None,
             u.name AS inspector_name,
             fm.fail_code AS fail_mode_code,
             fm.description AS fail_mode_name,
-            CASE WHEN EXISTS (
-                SELECT 1 FROM ssi_RejectionPhotos rp
-                WHERE rp.inspection_id = pfr.inspection_id
-            ) THEN 1 ELSE 0 END AS has_photo
-        FROM ssi_PieceFlagRecords pfr
-        LEFT JOIN ssi_Inspections i ON pfr.inspection_id = i.inspection_id
-        INNER JOIN ssi_Products p ON pfr.product_id = p.product_id
-        INNER JOIN ssi_PartNumbers pn ON p.pn_id = pn.pn_id
-        LEFT JOIN ssi_BusinessUnits bu ON COALESCE(i.bu_id, pn.bu_id) = bu.bu_id
-        LEFT JOIN ssi_Users u ON i.user_id = u.user_id
-        LEFT JOIN ssi_FailModes fm ON pfr.fail_mode_id = fm.fail_mode_id
+            COUNT(rp.photo_id) AS total_photos,
+            CASE WHEN COUNT(rp.photo_id) > 0 THEN 1 ELSE 0 END AS has_photo
+        FROM dbo.ssi_PieceFlagRecords pfr
+        INNER JOIN dbo.ssi_Products p ON p.product_id = pfr.product_id
+        INNER JOIN dbo.ssi_PartNumbers pn ON pn.pn_id = p.pn_id
+        LEFT JOIN dbo.ssi_Inspections i ON i.inspection_id = pfr.inspection_id
+        LEFT JOIN dbo.ssi_BusinessUnits bu ON bu.bu_id = COALESCE(i.bu_id, pn.bu_id)
+        LEFT JOIN dbo.ssi_Users u ON u.user_id = i.user_id
+        LEFT JOIN dbo.ssi_FailModes fm ON fm.fail_mode_id = pfr.fail_mode_id
+        LEFT JOIN dbo.ssi_RejectionPhotos rp ON rp.inspection_id = pfr.inspection_id
         WHERE CAST(pfr.created_at AS DATE) BETWEEN ? AND ?
         {bu_filter}
+        GROUP BY
+            pfr.flag_id, pfr.inspection_id, pfr.created_at, pfr.comment,
+            p.workOrder, p.volvoSerialNumber, p.frameSN, p.fpcaSN,
+            pn.ssiPN, COALESCE(i.bu_id, pn.bu_id), bu.bu_name,
+            u.name, fm.fail_code, fm.description
         ORDER BY pfr.created_at DESC, pfr.flag_id DESC
     """
     try:
@@ -336,6 +342,34 @@ def piece_flags(start_date: str, end_date: str, bu_id: int | None = None,
         return {"data": rows}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/piece-flags/{flag_id}/photos", dependencies=[Depends(verify)])
+def piece_flag_photos(flag_id: int):
+    """All rejection evidence for the exact inspection attached to this flag."""
+    if flag_id <= 0:
+        raise HTTPException(status_code=400, detail="Invalid flag ID")
+    conn = get_conn()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT rp.photo_id, rp.photo_data, rp.taken_at
+            FROM dbo.ssi_PieceFlagRecords pfr
+            INNER JOIN dbo.ssi_RejectionPhotos rp
+                ON rp.inspection_id = pfr.inspection_id
+            WHERE pfr.flag_id = ?
+            ORDER BY rp.taken_at, rp.photo_id
+        """, flag_id)
+        photos = []
+        for row in cursor.fetchall():
+            photos.append({
+                "photo_id": int(row[0]),
+                "photo_b64": base64.b64encode(bytes(row[1])).decode("ascii") if row[1] is not None else None,
+                "taken_at": row[2].isoformat() if row[2] else None,
+            })
+        return {"data": photos}
+    finally:
+        conn.close()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
