@@ -43,6 +43,7 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./apps/backend:/app
+      - plex_wr_audit_cache:/var/cache/platformssi/plex_wr
     ports:
       - "8000:8000"
     environment:
@@ -57,6 +58,9 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       PLEX_PROXY_URL: ${PLEX_PROXY_URL:-http://host.docker.internal:8001}
       PLEX_PROXY_SECRET: ${PLEX_PROXY_SECRET:?PLEX_PROXY_SECRET is required}
+      PLEX_WR_CACHE_DIR: /var/cache/platformssi/plex_wr
+      PLEX_WR_CACHE_CURRENT_TTL_SECONDS: ${PLEX_WR_CACHE_CURRENT_TTL_SECONDS:-900}
+      PLEX_WR_CACHE_HISTORY_TTL_SECONDS: ${PLEX_WR_CACHE_HISTORY_TTL_SECONDS:-2592000}
       QWALL_DB_CONN_STR: ${QWALL_DB_CONN_STR:?QWALL_DB_CONN_STR is required}
       QWALL_PROXY_URL: ${QWALL_PROXY_URL:-http://host.docker.internal:8002}
       QWALL_PROXY_TOKEN: ${QWALL_PROXY_TOKEN:?QWALL_PROXY_TOKEN is required}
@@ -78,6 +82,7 @@ services:
     command: celery -A config worker --loglevel=info --concurrency=4
     volumes:
       - ./apps/backend:/app
+      - plex_wr_audit_cache:/var/cache/platformssi/plex_wr
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
@@ -90,6 +95,9 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       PLEX_PROXY_URL: ${PLEX_PROXY_URL:-http://host.docker.internal:8001}
       PLEX_PROXY_SECRET: ${PLEX_PROXY_SECRET:?PLEX_PROXY_SECRET is required}
+      PLEX_WR_CACHE_DIR: /var/cache/platformssi/plex_wr
+      PLEX_WR_CACHE_CURRENT_TTL_SECONDS: ${PLEX_WR_CACHE_CURRENT_TTL_SECONDS:-900}
+      PLEX_WR_CACHE_HISTORY_TTL_SECONDS: ${PLEX_WR_CACHE_HISTORY_TTL_SECONDS:-2592000}
       QWALL_DB_CONN_STR: ${QWALL_DB_CONN_STR:?QWALL_DB_CONN_STR is required}
       QWALL_PROXY_URL: ${QWALL_PROXY_URL:-http://host.docker.internal:8002}
       QWALL_PROXY_TOKEN: ${QWALL_PROXY_TOKEN:?QWALL_PROXY_TOKEN is required}
@@ -141,3 +149,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  plex_wr_audit_cache:

@@ -175,6 +175,25 @@ John Deere recibe un tratamiento especial: se clasifica como cliente del grupo S
 
 TTL del dataset del dashboard: 300 segundos.
 
+### Caché temporal de auditoría de Work Requests (JSON mensual)
+
+`WorkRequestsService.get_dashboard` usa `get_work_requests` en `services/work_requests_snapshot_cache.py` para consultar primero snapshots locales de **filas originales** de Plex. El dashboard de Redis conserva sus 300 segundos; al vencerse, se reconstruye desde los archivos JSON sin descargar de nuevo los meses válidos. Los filtros de BU, Workcenter y las agregaciones se aplican después de unir y deduplicar los registros, sin almacenar vistas filtradas.
+
+- Directorio privado predeterminado: `/var/cache/platformssi/plex_wr/`.
+- Archivos: `work_requests_YYYY_MM.json`, uno por mes de **fecha de solicitud (request_date)**.
+- Fuente: `POST /work-requests` del Plex Proxy. Los archivos incluyen `source`, `start_date`, `end_date`, `fetched_at` en UTC, `row_count`, `schema_version`, `sha256` y las filas tal como responde el proxy.
+- Se consulta **todo el mes**, o desde el primer día hasta hoy si es el mes actual; se entregan únicamente las filas comprendidas en las fechas pedidas. Las consultas al proxy se realizan en trozos de hasta 31 días. Si falla alguna consulta o el payload carece de `data`, `work_request_no` o fechas válidas, **no** se almacena ese mes.
+- El mes actual caduca cada **900 segundos (15 minutos)**. Los meses anteriores caducan a los **2,592,000 segundos (30 días)**; al expirar, el servidor vuelve a consultar Plex y reemplaza atómicamente el archivo. Un archivo con checksum incorrecto también se descarta y se vuelve a consultar.
+- Bloqueo `flock` para evitar descargas duplicadas de un mismo mes desde múltiples procesos Django/Celery. Escritura atómica con archivo temporal y `os.replace`. No se crean archivos cuando falla la consulta.
+- Docker Compose monta el volumen nombrado `plex_wr_audit_cache` **en backend y celery_worker**. No se almacenan los JSON en Git.
+- Variables opcionales en `.env`: `PLEX_WR_CACHE_CURRENT_TTL_SECONDS` y `PLEX_WR_CACHE_HISTORY_TTL_SECONDS`. El contenedor establece `PLEX_WR_CACHE_DIR`.
+- Para eliminar exclusivamente los snapshots, detener primero Django/Celery y borrar `work_requests_*.json` dentro del volumen; no borrar `redis_data` ni `postgres_data` para esta limpieza. Al eliminarlos, la próxima consulta vuelve a Plex.
+- Las referencias a acciones de Action Tracker continúan incorporándose después de leer el caché del dashboard, para que no dependan de snapshots históricos.
+
+**Límite del origen:** la integración Plex tiene una ventana histórica de consulta limitada (~180 días). El caché reduce lecturas repetidas de periodos obtenidos previamente, pero **no puede recuperar** enero u otros meses antiguos cuando Plex ya no los devuelve. También puede no capturar modificaciones históricas hasta que expire su vigencia; `fetched_at` permite auditar cuándo se obtuvo cada copia. Para una auditoría estricta, verificar en Plex la actualización de los meses necesarios antes de dar un histórico como definitivo.
+
+
+
 ### KPIs y agregaciones
 
 El servicio calcula, entre otros:
