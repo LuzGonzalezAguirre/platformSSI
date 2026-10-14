@@ -16,6 +16,12 @@ Los filtros soportados son `start_date`, `end_date` y `bu_id`. Cada registro cor
 
 El endpoint Django aplica `quality.view` y acepta solo GET/HEAD/OPTIONS. No existen métodos para editar, eliminar o aprobar flags.
 
+## Detalle de inspección
+
+El detalle visual presenta únicamente Point, BU, Inspector, Date y Work Order, además de los comentarios y fotografías ya existentes. Serial Number, Frame SN y FPCA SN dejan de mostrarse en la interfaz.
+
+Point procede del último resultado de inspección enlazado a `inspection_id`, usando `ssi_InspectionResults` y `ssi_InspectionPoints` sin multiplicar filas de Flags. Date utiliza `ssi_Inspections.started_at` y, si no existe inspección vinculada, recurre a `ssi_PieceFlagRecords.created_at`. El dato de punto queda vacío cuando no existe resultado de inspección.
+
 ## Filtros de consulta
 
 Los filtros de fecha y Business Unit determinan qué registros se obtienen desde CCS.
