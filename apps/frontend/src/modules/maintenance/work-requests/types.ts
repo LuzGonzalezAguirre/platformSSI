@@ -64,6 +64,7 @@ export interface WRDashboard {
   by_status:      GroupedItem[];
   by_type:        GroupedItem[];
   by_equipment:   GroupedItem[];
+  planned_total_hours: number;
   by_technician:  GroupedItem[];
   by_failure:     GroupedItem[];
   by_day:         DayItem[];

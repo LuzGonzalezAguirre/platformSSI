@@ -2,12 +2,11 @@
 import hashlib
 import logging
 from datetime import date, timedelta
-from decimal import Decimal
 
 import requests
 from django.conf import settings
 
-from apps.maintenance.services.work_requests_service import WorkRequestsService
+from apps.maintenance.services.work_requests_service import WorkRequestsService, aggregate_planned_equipment
 from apps.ssi_common.filters.base import FilterContext
 
 logger = logging.getLogger(__name__)
@@ -53,34 +52,13 @@ def stage_weekly_maintenance_offenders(reference_date: date) -> dict:
     )
     rows = dashboard.get("rows") or []
 
-    equipment: dict[str, dict] = {}
-    for row in rows:
-        equipment_id = str(row.get("equipment_id") or "").strip()
-        if not equipment_id:
-            continue
-        item = equipment.setdefault(
-            equipment_id,
-            {
-                "equipment_id": equipment_id,
-                "equipment_description": str(row.get("equipment_description") or "").strip(),
-                "physical_area": str(row.get("workcenter") or "").strip() or "SIN_AREA",
-                "department": str(row.get("department") or "").strip(),
-                "maintenance_hours": Decimal("0"),
-                "work_request_count": 0,
-            },
-        )
-        item["maintenance_hours"] += Decimal(str(row.get("maintenance_hours") or 0))
-        item["work_request_count"] += 1
-
-    top3 = sorted(
-        equipment.values(),
-        key=lambda item: item["maintenance_hours"],
-        reverse=True,
-    )[:3]
+    # Identical planned WR ranking to Maintenance Overview Pareto.
+    # `rows` are already deduplicated and scoped by WorkRequestsService.
+    top3 = aggregate_planned_equipment(rows)[:3]
 
     staged = []
     for rank, item in enumerate(top3, start=1):
-        if item["maintenance_hours"] <= 0:
+        if item["hours"] <= 0:
             continue
         staged.append(
             _stage(
@@ -91,8 +69,8 @@ def stage_weekly_maintenance_offenders(reference_date: date) -> dict:
                     "equipment_description": item["equipment_description"],
                     "physical_area": item["physical_area"],
                     "department": item["department"],
-                    "maintenance_hours": str(item["maintenance_hours"]),
-                    "work_request_count": item["work_request_count"],
+                    "maintenance_hours": str(item["hours"]),
+                    "work_request_count": item["count"],
                     "rank_no": rank,
                 }
             )
@@ -105,11 +83,11 @@ def stage_weekly_maintenance_offenders(reference_date: date) -> dict:
         "equipment": [
             {
                 "equipment_id": item["equipment_id"],
-                "maintenance_hours": str(item["maintenance_hours"]),
+                "maintenance_hours": str(item["hours"]),
                 "rank_no": rank,
             }
             for rank, item in enumerate(top3, start=1)
-            if item["maintenance_hours"] > 0
+            if item["hours"] > 0
         ],
         "source_keys": [row["source_key"] for row in staged],
     }

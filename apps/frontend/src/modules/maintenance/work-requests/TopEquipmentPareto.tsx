@@ -5,6 +5,7 @@ interface Props {
   byEquipment: GroupedItem[];
   rows: { equipment_id: string; equipment_description: string; maintenance_hours: number }[];
   lang: string;
+  plannedTotalHours: number;
 }
 
 const card: React.CSSProperties = {
@@ -18,7 +19,7 @@ function compactLabel(value: string, max = 18) {
   return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
 }
 
-export default function TopEquipmentPareto({ byEquipment, rows, lang }: Props) {
+export default function TopEquipmentPareto({ byEquipment, rows, lang, plannedTotalHours }: Props) {
   const l = lang === "es";
   const [hovered, setHovered] = useState<number | null>(null);
   const descriptions = new Map<string, string>();
@@ -27,8 +28,9 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang }: Props) {
   });
 
   const top = [...byEquipment].sort((a, b) => b.hours - a.hours).slice(0, 8);
-  const allEquipmentHours = rows.reduce((sum, row) => sum + (Number(row.maintenance_hours) || 0), 0);
-  const denominator = allEquipmentHours > 0 ? allEquipmentHours : top.reduce((sum, item) => sum + item.hours, 0);
+  // The denominator must contain planned WR hours only, across ALL
+  // ranked equipment (not just the eight shown), matching the API numerator.
+  const denominator = plannedTotalHours;
   let running = 0;
   const data = top.map((item) => {
     running += item.hours;
@@ -43,7 +45,7 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang }: Props) {
     return (
       <div style={card}>
         <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-text-primary)" }}>
-          {l ? "Top 8 Equipos — Pareto de Horas" : "Top 8 Equipment by Maintenance Hours — Pareto"}
+          {l ? "Top 8 Equipos — Horas de Mantenimiento Planeado" : "Top 8 Equipment by Planned Maintenance Hours — Pareto"}
         </div>
         <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.8rem" }}>
           {l ? "Sin datos" : "No data"}
@@ -67,7 +69,7 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang }: Props) {
     <div style={card}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap" }}>
         <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-text-primary)" }}>
-          {l ? "Top 8 Equipos — Pareto de Horas" : "Top 8 Equipment by Maintenance Hours — Pareto"}
+          {l ? "Top 8 Equipos — Horas de Mantenimiento Planeado" : "Top 8 Equipment by Planned Maintenance Hours — Pareto"}
         </div>
         <div style={{ display: "flex", gap: "1rem", fontSize: "0.72rem", color: "var(--color-text-secondary)" }}>
           <span>■ {l ? "Horas" : "Hours"}</span>
