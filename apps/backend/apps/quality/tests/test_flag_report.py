@@ -24,7 +24,7 @@ class FlagReportViewTests(SimpleTestCase):
 
     @patch("apps.quality.views.flag_views.QWallRepository.get_piece_flags")
     def test_returns_flag_records_without_mutation(self, get_flags):
-        get_flags.return_value = [{"flag_id": 17, "comment": "Visual check", "has_photo": 1, "part_number": "35496.2", "total_photos": 1, "frame_sn": "ABC", "created_at": "2026-10-07T10:00:00"}]
+        get_flags.return_value = [{"flag_id": 17, "comment": "Visual check", "has_photo": 1, "part_number": "35496.2", "total_photos": 1, "point_name": "Snapper Hose Clamp", "inspection_started_at": "2026-08-31T06:38:00", "created_at": "2026-10-07T10:00:00"}]
         response = FlagReportView().get(self.request(start_date="2026-10-01", end_date="2026-10-14"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["count"], 1)

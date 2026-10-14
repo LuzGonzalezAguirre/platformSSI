@@ -32,7 +32,7 @@ class FlagReportView(APIView):
             return Response({"detail": "No fue posible consultar los flags en CCS."}, status=502)
         # A running older Windows proxy can still return only flag_id/comment.
         # Never show misleading empty serials and photos in that case.
-        if rows and not {"part_number", "total_photos", "frame_sn", "created_at"}.issubset(rows[0]):
+        if rows and not {"part_number", "total_photos", "point_name", "inspection_started_at", "created_at"}.issubset(rows[0]):
             return Response({
                 "detail": "El Q-Wall Proxy sigue usando el contrato anterior de /piece-flags. Actualiza y reinicia el servicio del host Windows."
             }, status=502)
