@@ -309,6 +309,7 @@ def piece_flags(start_date: str, end_date: str, bu_id: int | None = None,
             p.frameSN AS frame_sn,
             p.fpcaSN AS fpca_sn,
             pn.ssiPN AS part_number,
+            pn.volvoProductNumber AS model,
             COALESCE(i.bu_id, pn.bu_id) AS bu_id,
             bu.bu_name,
             u.name AS inspector_name,
@@ -329,7 +330,7 @@ def piece_flags(start_date: str, end_date: str, bu_id: int | None = None,
         GROUP BY
             pfr.flag_id, pfr.inspection_id, pfr.created_at, pfr.comment,
             p.workOrder, p.volvoSerialNumber, p.frameSN, p.fpcaSN,
-            pn.ssiPN, COALESCE(i.bu_id, pn.bu_id), bu.bu_name,
+            pn.ssiPN, pn.volvoProductNumber, COALESCE(i.bu_id, pn.bu_id), bu.bu_name,
             u.name, fm.fail_code, fm.description
         ORDER BY pfr.created_at DESC, pfr.flag_id DESC
     """

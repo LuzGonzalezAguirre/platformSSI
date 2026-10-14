@@ -16,6 +16,7 @@ type Flag = {
   frame_sn: string | null;
   fpca_sn: string | null;
   part_number: string | null;
+  model?: string | null;
   bu_id: number;
   bu_name: string | null;
   inspector_name: string | null;
@@ -87,6 +88,9 @@ export default function FlagReportPage() {
   const english = !i18n.language.startsWith("es");
   const [dateRange, setDateRange] = useState<DateRange>(() => resolvePreset("today"));
   const [buId, setBuId] = useState("");
+  const [partFilter, setPartFilter] = useState("");
+  const [modelFilter, setModelFilter] = useState("");
+  const [woFilter, setWoFilter] = useState("");
   const [catalog, setCatalog] = useState<QWallPartNumber[]>([]);
   const [flags, setFlags] = useState<Flag[]>([]);
   const [selected, setSelected] = useState<Flag | null>(null);
@@ -100,6 +104,37 @@ export default function FlagReportPage() {
     catalog.forEach((part) => units.set(part.bu_id, part.bu_name));
     return [...units].sort((a, b) => a[1].localeCompare(b[1]));
   }, [catalog]);
+
+  // Model is the CCS part catalog's volvoProductNumber; support older proxy responses
+  // by falling back to that same catalog field for matching BU and part number.
+  const catalogModels = useMemo(() => {
+    const result = new Map<string, string>();
+    for (const item of catalog) {
+      if (item.volvoProductNumber) {
+        result.set(`${item.bu_id}|${item.ssiPN}`, item.volvoProductNumber);
+      }
+    }
+    return result;
+  }, [catalog]);
+
+  const modelFor = (flag: Flag) =>
+    flag.model || catalogModels.get(`${flag.bu_id}|${flag.part_number}`) || "";
+
+  const modelOptions = useMemo(
+    () => [...new Set(flags.map(modelFor).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [flags, catalogModels],
+  );
+
+  const filteredFlags = useMemo(() => {
+    const part = partFilter.trim().toLocaleLowerCase();
+    const model = modelFilter.trim().toLocaleLowerCase();
+    const wo = woFilter.trim().toLocaleLowerCase();
+    return flags.filter(flag =>
+      (!part || String(flag.part_number || "").toLocaleLowerCase().includes(part)) &&
+      (!model || modelFor(flag).toLocaleLowerCase().includes(model)) &&
+      (!wo || String(flag.work_order ?? "").toLocaleLowerCase().includes(wo))
+    );
+  }, [flags, partFilter, modelFilter, woFilter, catalogModels]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -143,21 +178,43 @@ export default function FlagReportPage() {
               {businessUnits.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             </select>
           </label>
+          <label style={label}>{english ? "Part number" : "Número de parte"}
+            <input type="search" value={partFilter} onChange={e => setPartFilter(e.target.value)}
+              placeholder={english ? "Search part..." : "Buscar parte..."}
+              style={{ ...input, display: "block", marginTop: 4, width: 145 }} />
+          </label>
+          <label style={label}>{english ? "Model" : "Modelo"}
+            <select value={modelFilter} onChange={e => setModelFilter(e.target.value)}
+              style={{ ...input, display: "block", marginTop: 4, maxWidth: 170 }}>
+              <option value="">{english ? "All models" : "Todos los modelos"}</option>
+              {modelOptions.map(model => <option key={model} value={model}>{model}</option>)}
+            </select>
+          </label>
+          <label style={label}>WO
+            <input type="search" value={woFilter} onChange={e => setWoFilter(e.target.value)}
+              placeholder={english ? "Work order..." : "Orden de trabajo..."}
+              style={{ ...input, display: "block", marginTop: 4, width: 145 }} />
+          </label>
+          <button type="button" onClick={() => { setPartFilter(""); setModelFilter(""); setWoFilter(""); }}
+            disabled={!partFilter && !modelFilter && !woFilter}
+            style={{ ...input, cursor: "pointer" }}>
+            {english ? "Clear filters" : "Limpiar filtros"}
+          </button>
           <button type="button" onClick={load} disabled={loading} style={{ ...input, cursor: "pointer", background: "#3b82f6", color: "white" }}>
             {loading ? (english ? "Loading..." : "Cargando...") : (english ? "Load" : "Consultar")}
           </button>
         </div>
       </div>
       {error && <p role="alert" style={{ color: "#ef4444" }}>{error}</p>}
-      {!loading && !error && queried && <p style={label}>{flags.length} {english ? "flag(s) found" : "flag(s) encontrados"}</p>}
-      {!loading && !error && queried && flags.length === 0 && <p>{english ? "No flags in the selected date range." : "Sin piezas flageadas en el período seleccionado."}</p>}
+      {!loading && !error && queried && <p style={label}>{filteredFlags.length} {english ? "flag(s) shown" : "flag(s) mostrados"} {filteredFlags.length !== flags.length && ` / ${flags.length}`}</p>}
+      {!loading && !error && queried && filteredFlags.length === 0 && <p>{english ? "No flags in the selected date range." : "Sin piezas flageadas en el período seleccionado."}</p>}
       <div style={{ display: "grid", gap: 12 }}>
-        {flags.map(flag => (
+        {filteredFlags.map(flag => (
           <article key={flag.flag_id} style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 180 }}>
                 <strong style={{ fontFamily: "monospace" }}>{printable(flag.serial_number || flag.frame_sn || flag.fpca_sn || flag.work_order)}</strong>
-                <div style={label}>{printable(flag.part_number)} · {printable(flag.bu_name)} · {dateTime(flag.created_at)}</div>
+                <div style={label}>{printable(flag.part_number)} · {printable(modelFor(flag))} · {printable(flag.bu_name)} · WO {printable(flag.work_order)} · {dateTime(flag.created_at)}</div>
               </div>
               {Number(flag.total_photos) > 0 && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Camera size={17} aria-label="Foto" />{flag.total_photos}</span>}
               <button type="button" onClick={() => setSelected(flag)} style={{ ...input, cursor: "pointer" }}>
@@ -187,6 +244,7 @@ export default function FlagReportPage() {
             {detail(english ? "Serial" : "Serie", selected.serial_number)}
             {detail("Frame SN", selected.frame_sn)}
             {detail("FPCA SN", selected.fpca_sn)}
+            {detail(english ? "Model" : "Modelo", modelFor(selected))}
             {detail("Work Order", selected.work_order)}
             {detail(english ? "Photos" : "Fotografías", selected.total_photos)}
             {detail(english ? "Inspector" : "Inspector", selected.inspector_name)}

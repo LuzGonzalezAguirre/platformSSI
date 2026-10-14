@@ -16,6 +16,17 @@ Los filtros soportados son `start_date`, `end_date` y `bu_id`. Cada registro cor
 
 El endpoint Django aplica `quality.view` y acepta solo GET/HEAD/OPTIONS. No existen métodos para editar, eliminar o aprobar flags.
 
+## Filtros de consulta
+
+Los filtros de fecha y Business Unit determinan qué registros se obtienen desde CCS.
+Sobre el conjunto cargado se aplican, de manera combinada y sin consultar SQL de nuevo:
+
+- **Número de parte:** búsqueda parcial sin distinguir mayúsculas y minúsculas sobre `part_number` (columna CCS `ssi_PartNumbers.ssiPN`).
+- **Modelo:** selector de los modelos presentes en el rango de Flags obtenido. El valor procede de `ssi_PartNumbers.volvoProductNumber`, también expuesto por el catálogo de partes del Q-Wall Proxy. Si un registro no tiene modelo, se mantiene en la lista cuando no hay filtro de modelo.
+- **WO:** búsqueda parcial sobre `work_order` (`ssi_Products.workOrder`). Se conserva como texto para aceptar órdenes con ceros a la izquierda.
+
+El botón «Limpiar filtros» reinicia exclusivamente parte/modelo/WO. El conteo mostrado corresponde a los resultados visibles. Estos filtros locales no modifican ni escriben datos de CCS.
+
 ## Fotografías confirmadas y consulta corregida
 
 Se confirmó mediante una consulta directa a CCS que los 53 Flags verificados tienen una fotografía relacionada en `dbo.ssi_RejectionPhotos` por `inspection_id`.
