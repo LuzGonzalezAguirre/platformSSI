@@ -193,6 +193,17 @@ El servicio calcula, entre otros:
 
 El frontend contiene tablas, Pareto de equipos, breakdown de fallas, grid de equipos y KPIs.
 
+### Top 8 equipos por horas de mantenimiento planeado
+
+El Pareto de Maintenance Overview usa exclusivamente Work Requests con tipo de Plex `Planned Maintenance` (`Planned` como variante corta), no todos los tipos mezclados ni eventos de Downtime. Se obtienen y deduplican por `work_request_no` dentro del rango de fechas y BU seleccionados; se excluyen equipos sin identificador y WR con horas reales no positivas.
+
+Las barras presentan los ocho equipos con mayor suma de `maintenance_hours` (horas reales, no `scheduled_hours`). El denominador del porcentaje acumulado suma las horas reales de mantenimiento planeado de **todos los equipos identificados**, no solo los ocho seleccionados. Los demás KPIs/agrupaciones del Dashboard de Work Requests mantienen su definición previa.
+
+### Acciones automáticas desde el Top 3
+
+El proceso de staging semanal sigue creando candidatos a acción **solamente para los tres equipos principales** de la última semana laboral terminada (lunes-viernes), usando la **misma agregación de mantenimiento planeado** que el Pareto. No se amplía a ocho acciones. El envío se realiza mediante el endpoint existente `/maintenance-offenders/stage`, respetando su mecanismo de idempotencia; la creación efectiva de acciones depende del receptor.
+
+
 Dos componentes del frontend, `MaintenanceTrend.tsx` y `StatusDistribution.tsx`, están presentes pero vacíos en el repositorio revisado.
 
 ## Referencias a Action Tracker
@@ -215,7 +226,7 @@ El servicio:
 2. agrupa por equipment ID;
 3. suma maintenance hours;
 4. cuenta work requests;
-5. ordena por maintenance hours;
+5. ordena por maintenance hours de WR de tipo **Planned Maintenance**;
 6. selecciona los tres equipos principales;
 7. envía cada equipo al Q-Wall proxy.
 
