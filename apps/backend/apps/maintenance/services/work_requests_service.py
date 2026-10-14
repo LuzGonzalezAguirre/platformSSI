@@ -61,7 +61,7 @@ def is_unplanned_maintenance(row: dict) -> bool:
     return work_type == "unplanned maintenance"
 
 
-def aggregate_ununplanned_equipment(rows: list[dict]) -> list[dict]:
+def aggregate_unplanned_equipment(rows: list[dict]) -> list[dict]:
     """Sum actual maintenance hours once per work request and equipment.
 
     Input rows are already deduplicated by WorkRequest number and scoped by BU.
@@ -136,7 +136,7 @@ class WorkRequestsService:
 
     @staticmethod
     def get_dashboard(filter_ctx: FilterContext) -> dict:
-        cache_key = filter_ctx.cache_key("maint:wr_dashboard:v3:unplanned_equipment")
+        cache_key = filter_ctx.cache_key("maint:wr_dashboard:v4:unplanned_equipment")
         cached = cache.get(cache_key)
         if cached:
             return WorkRequestsService._with_action_refs(cached, filter_ctx)
@@ -233,7 +233,7 @@ class WorkRequestsService:
         by_type       = group_by("type")
         # Only unplanned maintenance WR hours feed the Equipment Pareto,
         # and this same ranking is used for weekly Action Tracker staging.
-        unplanned_equipment = aggregate_ununplanned_equipment(rows)
+        unplanned_equipment = aggregate_unplanned_equipment(rows)
         unplanned_total_hours = sum(item["hours"] for item in unplanned_equipment)
         by_equipment = unplanned_equipment[:8]
         by_technician = _top(group_by("assigned_to"),  "hours")
