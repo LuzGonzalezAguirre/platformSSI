@@ -82,10 +82,14 @@ class QWallRepository:
     @staticmethod
     def get_piece_flags(start_date: date, end_date: date, bu_ids: int | list[int] | None = None) -> list[dict]:
         normalized = _normalize_bu_ids(bu_ids)
-        cache_key  = f"qwall:inspection-bu-v3:piece_flags:photo_count:{_bu_cache_fragment(normalized)}:{start_date}:{end_date}"
+        cache_key  = f"qwall:inspection-bu-v4:piece_flags:verified_contract:{_bu_cache_fragment(normalized)}:{start_date}:{end_date}"
         cached     = cache.get(cache_key)
+        required_fields = {"part_number", "total_photos", "frame_sn", "created_at"}
         if cached is not None:
-            return cached
+            if not cached or required_fields.issubset(cached[0]):
+                return cached
+            # Old proxy payloads must never remain in cache after deployment.
+            cache.delete(cache_key)
 
         resp = requests.get(
             f"{PROXY_URL}/piece-flags",
@@ -99,6 +103,13 @@ class QWallRepository:
         )
         resp.raise_for_status()
         rows = resp.json().get("data", [])
+        if rows and not required_fields.issubset(rows[0]):
+            missing = sorted(required_fields - rows[0].keys())
+            raise ValueError(
+                "Q-Wall Proxy /piece-flags devolvió una respuesta antigua. "
+                f"Columnas faltantes: {', '.join(missing)}. "
+                "Comprueba el servicio activo en QWALL_PROXY_URL y reinicia Uvicorn."
+            )
         cache.set(cache_key, rows, CACHE_TTL)
         return rows
 
