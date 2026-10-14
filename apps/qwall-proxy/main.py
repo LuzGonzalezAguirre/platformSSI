@@ -303,6 +303,8 @@ def piece_flags(start_date: str, end_date: str, bu_id: int | None = None,
             pfr.flag_id,
             pfr.inspection_id,
             pfr.created_at,
+            i.started_at AS inspection_started_at,
+            point.point_name,
             pfr.comment,
             p.workOrder AS work_order,
             p.volvoSerialNumber AS serial_number,
@@ -322,13 +324,22 @@ def piece_flags(start_date: str, end_date: str, bu_id: int | None = None,
         INNER JOIN dbo.ssi_PartNumbers pn ON pn.pn_id = p.pn_id
         LEFT JOIN dbo.ssi_Inspections i ON i.inspection_id = pfr.inspection_id
         LEFT JOIN dbo.ssi_BusinessUnits bu ON bu.bu_id = COALESCE(i.bu_id, pn.bu_id)
+        OUTER APPLY (
+            SELECT TOP (1) ip.point_name
+            FROM dbo.ssi_InspectionResults ir
+            INNER JOIN dbo.ssi_InspectionPoints ip
+                ON ip.inspection_point_id = ir.inspection_point_id
+            WHERE ir.inspection_id = pfr.inspection_id
+            ORDER BY ir.result_id DESC
+        ) point
         LEFT JOIN dbo.ssi_Users u ON u.user_id = i.user_id
         LEFT JOIN dbo.ssi_FailModes fm ON fm.fail_mode_id = pfr.fail_mode_id
         LEFT JOIN dbo.ssi_RejectionPhotos rp ON rp.inspection_id = pfr.inspection_id
         WHERE CAST(pfr.created_at AS DATE) BETWEEN ? AND ?
         {bu_filter}
         GROUP BY
-            pfr.flag_id, pfr.inspection_id, pfr.created_at, pfr.comment,
+            pfr.flag_id, pfr.inspection_id, pfr.created_at,
+            i.started_at, point.point_name, pfr.comment,
             p.workOrder, p.volvoSerialNumber, p.frameSN, p.fpcaSN,
             pn.ssiPN, pn.volvoProductNumber, COALESCE(i.bu_id, pn.bu_id), bu.bu_name,
             u.name, fm.fail_code, fm.description
