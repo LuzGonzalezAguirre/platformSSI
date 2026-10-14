@@ -10,6 +10,8 @@ type Flag = {
   flag_id: number;
   inspection_id: number | null;
   created_at: string;
+  inspection_started_at?: string | null;
+  point_name?: string | null;
   comment: string | null;
   work_order: string | number | null;
   serial_number: string | null;
@@ -81,7 +83,7 @@ function EvidencePhoto({ flag, english }: { flag: Flag; english: boolean }) {
 }
 
 const printable = (value: unknown) => value === null || value === undefined || value === "" ? "—" : String(value);
-const dateTime = (value: string) => value ? value.replace("T", " ").slice(0, 19) : "—";
+const dateTime = (value: string | null | undefined) => value ? value.replace("T", " ").slice(0, 19) : "—";
 
 export default function FlagReportPage() {
   const { i18n } = useTranslation();
@@ -213,8 +215,8 @@ export default function FlagReportPage() {
           <article key={flag.flag_id} style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 180 }}>
-                <strong style={{ fontFamily: "monospace" }}>{printable(flag.serial_number || flag.frame_sn || flag.fpca_sn || flag.work_order)}</strong>
-                <div style={label}>{printable(flag.part_number)} · {printable(modelFor(flag))} · {printable(flag.bu_name)} · WO {printable(flag.work_order)} · {dateTime(flag.created_at)}</div>
+                <strong>{printable(flag.point_name || flag.fail_mode_name || flag.part_number)}</strong>
+                <div style={label}>{printable(flag.part_number)} · {printable(modelFor(flag))} · {printable(flag.bu_name)} · WO {printable(flag.work_order)} · {dateTime(flag.inspection_started_at || flag.created_at)}</div>
               </div>
               {Number(flag.total_photos) > 0 && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Camera size={17} aria-label="Foto" />{flag.total_photos}</span>}
               <button type="button" onClick={() => setSelected(flag)} style={{ ...input, cursor: "pointer" }}>
@@ -238,17 +240,11 @@ export default function FlagReportPage() {
               <button type="button" aria-label={english ? "Close" : "Cerrar"} onClick={() => setSelected(null)}
                 style={{ border: 0, background: "transparent", color: "var(--color-text-primary)", cursor: "pointer" }}><X size={20} /></button>
             </div>
-            {detail(english ? "Date" : "Fecha", dateTime(selected.created_at))}
-            {detail("Business Unit", selected.bu_name)}
-            {detail(english ? "Part" : "Número de parte", selected.part_number)}
-            {detail(english ? "Serial" : "Serie", selected.serial_number)}
-            {detail("Frame SN", selected.frame_sn)}
-            {detail("FPCA SN", selected.fpca_sn)}
-            {detail(english ? "Model" : "Modelo", modelFor(selected))}
+            {detail("Point", selected.point_name)}
+            {detail("BU", selected.bu_name)}
+            {detail("Inspector", selected.inspector_name)}
+            {detail("Date", dateTime(selected.inspection_started_at || selected.created_at).slice(0, 16))}
             {detail("Work Order", selected.work_order)}
-            {detail(english ? "Photos" : "Fotografías", selected.total_photos)}
-            {detail(english ? "Inspector" : "Inspector", selected.inspector_name)}
-            {detail(english ? "Failure mode" : "Modo de falla", selected.fail_mode_name || selected.fail_mode_code)}
             <h3 style={{ marginBottom: 6 }}>{english ? "Comment" : "Comentario"}</h3>
             <p style={{ whiteSpace: "pre-wrap" }}>{selected.comment || (english ? "No comment" : "Sin comentarios")}</p>
             <h3>{english ? "Linked inspection photo" : "Fotografía vinculada a inspección"}</h3>
