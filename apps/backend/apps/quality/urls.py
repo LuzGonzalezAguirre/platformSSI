@@ -1,5 +1,6 @@
 # apps/quality/urls.py
 from django.urls import path, include
+from apps.quality.views.flag_views import FlagReportView
 from apps.quality.views.qwall_designer_views import QWallDesignerProxyView
 from apps.permissions.drf import quality_view
 from apps.quality.views import (
@@ -83,6 +84,7 @@ urlpatterns = [
     path("qwall/part-number-summary/", quality_view(QWallPartNumberSummaryView)),
     path("qwall/part-numbers/", quality_view(QWallPartNumbersView)),
     path("rejection-report/", quality_view(RejectionReportView)),
+    path("flags/", quality_view(FlagReportView)),
     path("rejection-photo/<int:inspection_id>/", quality_view(RejectionPhotoView)),
     path("rejection-report/pdf/", quality_view(RejectionReportPDFView)),
 
