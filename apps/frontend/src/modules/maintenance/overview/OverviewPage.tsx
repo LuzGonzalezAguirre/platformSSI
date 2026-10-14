@@ -78,7 +78,7 @@ export default function OverviewPage() {
             ) : (
               <TopEquipmentPareto
                 byEquipment={workRequestData?.by_equipment ?? []}
-                plannedTotalHours={workRequestData?.planned_total_hours ?? 0}
+                unplannedTotalHours={workRequestData?.unplanned_total_hours ?? 0}
                 rows={(workRequestData?.rows ?? []) as any}
                 lang={lang}
               />
