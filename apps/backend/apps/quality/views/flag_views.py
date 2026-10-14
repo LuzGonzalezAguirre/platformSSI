@@ -1,10 +1,10 @@
 """Read-only inspection flag report. Source of truth: CCS through Q-Wall proxy."""
 from datetime import date
-from django.core.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from apps.permissions.drf import QualityModulePermission
 from apps.quality.repositories.qwall_repository import QWallRepository
+from apps.quality.repositories.flag_photo_repository import FlagPhotoRepository
 
 
 class FlagReportView(APIView):
@@ -29,3 +29,16 @@ class FlagReportView(APIView):
         except Exception:
             return Response({"detail": "No fue posible consultar los flags en CCS."}, status=502)
         return Response({"data": rows, "count": len(rows)})
+
+
+class FlagPhotosView(APIView):
+    permission_classes = [QualityModulePermission]
+    http_method_names = ["get", "head", "options"]
+
+    def get(self, request, flag_id: int):
+        if flag_id <= 0:
+            return Response({"detail": "flag_id inválido."}, status=400)
+        try:
+            return Response(FlagPhotoRepository.get_photos(flag_id))
+        except Exception:
+            return Response({"detail": "No fue posible consultar las fotografías de este Flag."}, status=502)
