@@ -62,7 +62,8 @@
       "warehouseStorageUtilization": "WH Storage Utilization",
       "warehouseStorageDesigner": "Diseñador de Almacén",
       "warehouseShelfLife": "WH Shelf Life",
-      "warehouseDeliveryPerformance": "Delivery Performance (OTD)"
+      "warehouseDeliveryPerformance": "Delivery Performance (OTD)",
+      "qualityFlags": "Piezas Flageadas"
     }
   },
   "pmp": {
