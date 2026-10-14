@@ -38,14 +38,14 @@ class PlannedEquipmentRankingTests(SimpleTestCase):
         self.assertEqual([x["label"] for x in result], ["EQ-A", "EQ-B"])
         self.assertEqual([x["hours"] for x in result], [5.0, 4.0])
         self.assertEqual(result[0]["count"], 2)
-        self.assertFalse(is_planned_maintenance(wr("7", "EQ-C", 1, "Planned Maintenance")))
+        self.assertFalse(is_planned_maintenance(wr("7", "EQ-C", 1, "Unplanned Maintenance")))
 
     @patch("apps.maintenance.services.maintenance_offender_service._stage")
     @patch("apps.maintenance.services.maintenance_offender_service.WorkRequestsService.get_dashboard")
     def test_weekly_staging_uses_top_three_planned_only(self, dashboard, stage):
         dashboard.return_value = {"rows": [
             *[wr(str(i), f"EQ-{i}", 20 - i) for i in range(1, 10)],
-            wr("planned", "PLANNED", 1000, "Preventive Maintenance"),
+            wr("unplanned", "UNPLANNED", 1000, "Unplanned Maintenance"),
         ]}
         stage.side_effect = lambda payload: {"source_key": payload["equipment_id"]}
         result = stage_weekly_maintenance_offenders(date(2026, 10, 10))
