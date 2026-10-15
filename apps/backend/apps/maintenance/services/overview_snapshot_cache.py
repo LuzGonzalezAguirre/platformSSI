@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Callable
 
 from apps.maintenance.services.work_requests_snapshot_cache import (
-    CURRENT_TTL_SECONDS, HISTORY_TTL_SECONDS, _lock, _store,
+    CURRENT_TTL_SECONDS, HISTORY_TTL_SECONDS, _lock,
 )
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,10 @@ def get_cached_response(
         if cached is not None:
             return cached
         response = fetch()
-        if not isinstance(response, dict) or not isinstance(response.get("data"), (dict, list)):
+        if not isinstance(response, dict) or "data" not in response or not (
+            isinstance(response["data"], (dict, list))
+            or (endpoint == "/oee-live" and response["data"] is None)
+        ):
             # Do not turn an invalid/partial Plex response into a persistent source.
             raise ValueError(f"Invalid Plex response for {endpoint}; not cached")
         _write(path, endpoint, payload, response)
