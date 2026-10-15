@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {Settings2,Maximize2,Minimize2,X} from "lucide-react";
 import {useAuthStore} from "../../store/authStore";
-import {button,fetchStorage,rackUtilization,saveStorage,surface,tone,utilization,validMix,type Rack,type Warehouse} from "./storage.shared";
+import {button,fetchStorage,rackUtilization,saveStorage,surface,tone,utilization,validMix,floorPlanStyle,rackStyle,type Rack,type Warehouse} from "./storage.shared";
 
 const GROUPS=[[1,13],[14,26],[27,37],[38,48],[49,55]];
 export default function StorageUtilizationPage(){
@@ -44,15 +44,15 @@ export default function StorageUtilizationPage(){
   {settings&&canEdit&&data&&<section style={surface}><label style={{display:"flex",alignItems:"center",gap:8}}><input type="checkbox" checked={data.designer_enabled} onChange={async e=>{try{setData(await saveStorage({designer_enabled:e.target.checked}));setError("");}catch(err){setError(String(err))}}}/> {t("warehouse.storage.enablePhysical")}</label><p style={{color:"var(--color-text-secondary)",fontSize:13}}>{t("warehouse.storage.thisSwitchControlsWhichMapOperatorsSeeYouCanConfigureT")}</p><button style={{...button,marginTop:8}} onClick={()=>navigate("/warehouse/storage-layout-designer")}>{t("warehouse.storage.openWarehouseDesigner")}</button></section>}
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>{[[t("warehouse.storage.utilization"),overall.toFixed(2)+"%"],[t("warehouse.storage.racks"),String(racks.length)],[t("warehouse.storage.locations"),String(locations.length)],[t("warehouse.storage.mixed"),String(locations.filter(l=>l.standard_pallets>0&&l.euro_pallets>0).length)]].map(([label,val])=><div key={label} style={surface}><span style={{fontSize:12,color:"var(--color-text-secondary)"}}>{label}</span><div style={{fontSize:26,fontWeight:700}}>{val}</div></div>)}</div>
   {data&&data.designer_enabled&&<section style={surface}><h2 style={{fontSize:16,margin:"0 0 12px"}}>{t("warehouse.designer.dynamicLayoutTitle")}</h2>
-   <div style={{height:full?800:550,position:"relative",background:"var(--color-bg)",border:"1px solid var(--color-border)",borderRadius:9,overflow:"auto",minWidth:0}}>
+   <div style={{maxWidth:"100%",overflowX:"auto",overflowY:"hidden"}}><div style={floorPlanStyle}>
     {racks.filter(r=>r.x!==null&&r.y!==null).map(r=><button key={r.number} onClick={()=>openRack(r)}
      title={`${r.name} · ${rackUtilization(r).toFixed(1)}%`}
-     style={{position:"absolute",left:r.x+"%",top:r.y+"%",width:r.width+"%",height:r.height+"%",transform:`rotate(${r.rotation}deg)`,border:selected===r.number?"2px solid var(--color-primary)":"1px solid var(--color-border)",borderRadius:6,background:"var(--color-surface)",color:"var(--color-text-primary)",cursor:"pointer",display:"flex",flexDirection:"column",gap:2,padding:3,overflow:"hidden",minHeight:122,minWidth:94}}>
-      <strong style={{fontSize:13,lineHeight:1.2}}>{r.name}</strong>
-      {r.levels.map(l=><div key={l.level} onClick={e=>{e.stopPropagation();openRack(r,l.level);}} title={`${`${r.name}-${String(l.level).padStart(2,"0")}`}: ${utilization(l).toFixed(2)}%`} style={{background:tone(utilization(l)),color:"#111827",fontSize:12,fontWeight:700,borderRadius:3,flex:1,display:"flex",alignItems:"center",justifyContent:"center",minHeight:21}}>{String(l.level).padStart(2,"0")} · {Math.round(utilization(l))}%</div>)}
+     style={{...rackStyle(r),border:selected===r.number?"2px solid var(--color-primary)":"1px solid var(--color-border)",cursor:"pointer",fontSize:10,fontWeight:700}}>
+      <strong style={{fontSize:10,lineHeight:1.2}}>{r.name}</strong>
+      {r.levels.map(l=><div key={l.level} onClick={e=>{e.stopPropagation();openRack(r,l.level);}} title={`${`${r.name}-${String(l.level).padStart(2,"0")}`}: ${utilization(l).toFixed(2)}%`} style={{background:tone(utilization(l)),color:"#111827",fontSize:9,fontWeight:700,borderRadius:3,flex:1,display:"flex",alignItems:"center",justifyContent:"center",minHeight:0}}>{String(l.level).padStart(2,"0")} · {Math.round(utilization(l))}%</div>)}
      </button>)}
     {!racks.some(r=>r.x!==null)&&<div style={{position:"absolute",inset:0,display:"grid",placeItems:"center",textAlign:"center",padding:16,color:"var(--color-text-secondary)"}}>{t("warehouse.storage.noRacksPositionedYetOpenWarehouseDesignerFromSettingsT")}</div>}
-   </div>
+   </div></div>
    <p style={{fontSize:12,color:"var(--color-text-secondary)"}}>{t("warehouse.storage.selectARackOrLevelToEditItsPalletsInTheRightPanelUnmap")}</p>
   </section>}
   {!data&&!error&&<p>{t("warehouse.storage.loadingLocations")}</p>}
