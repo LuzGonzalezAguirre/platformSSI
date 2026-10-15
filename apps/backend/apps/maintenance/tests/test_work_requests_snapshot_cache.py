@@ -86,3 +86,35 @@ class MonthlyWorkRequestCacheTests(SimpleTestCase):
                                   root=self.root, today=self.today), []
             )
         self.assertEqual(plex.call_count, 1)
+
+    def test_proxy_extra_dates_do_not_abort_or_pollute_month(self):
+        plex = Mock(return_value=[
+            make_row("valid", "2026-10-12"),
+            make_row("outside", "2026-09-30"),
+        ])
+        with self.assertLogs(
+            "apps.maintenance.services.work_requests_snapshot_cache", level="WARNING"
+        ) as captured:
+            rows = get_work_requests(
+                date(2026, 10, 12), date(2026, 10, 14), plex,
+                root=self.root, today=self.today,
+            )
+        self.assertEqual([row["work_request_no"] for row in rows], ["valid"])
+        self.assertTrue(any("outside request_date" in line for line in captured.output))
+        cached = json.loads((self.root / "work_requests_2026_10.json").read_text())
+        self.assertEqual(cached["row_count"], 1)
+        self.assertEqual(cached["rows"][0]["work_request_no"], "valid")
+        get_work_requests(
+            date(2026, 10, 12), date(2026, 10, 14), plex,
+            root=self.root, today=self.today,
+        )
+        self.assertEqual(plex.call_count, 1)
+
+    def test_invalid_request_date_still_rejects_snapshot(self):
+        plex = Mock(return_value=[make_row("broken", "not-a-date")])
+        with self.assertRaisesRegex(ValueError, "invalid request_date"):
+            get_work_requests(
+                date(2026, 10, 12), date(2026, 10, 14), plex,
+                root=self.root, today=self.today,
+            )
+        self.assertFalse((self.root / "work_requests_2026_10.json").exists())
