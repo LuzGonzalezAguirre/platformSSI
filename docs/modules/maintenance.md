@@ -165,6 +165,16 @@ Roles permitidos para modificar targets:
 
 La lectura requiere únicamente autenticación.
 
+## Caché persistente para Maintenance Overview
+
+Las respuestas originales del Plex Proxy correspondientes a `/maintenance-kpis`, `/oee-live`, `/maintenance-downtime-reasons`, `/maintenance-downtime-detail` y `/maintenance-downtime-by-month` ahora pasan por `overview_snapshot_cache.py`. Esto aplica tanto a KPIs/MTBF y OEE como a tendencias, downtime y desglose por causas cuando son consultados. El caché se indexa por endpoint y parámetros exactos de consulta (fecha de inicio, fecha de fin y razón cuando corresponda); conserva respuestas **sin filtrar por BU** para permitir compartirlas entre consultas sin alterar los filtros de acceso. El override manual de OEE continúa resolviéndose primero en PostgreSQL.
+
+Los snapshots residen en `/var/cache/platformssi/plex_wr/overview/<endpoint>/<sha256>.json`, dentro del mismo volumen persistente que Work Requests. Se guardan mediante escritura atómica y bloqueo por archivo, con metadatos de fecha de extracción UTC, endpoint, parámetros y checksum de integridad. Respuestas inválidas o fallos HTTP no se guardan. Cada ventana exacta previamente consultada se reutiliza hasta caducar.
+
+La vigencia es la misma que para los WR: **15 minutos si el periodo abarca el día actual; 30 días para un periodo completamente histórico**. Ambas duraciones se configuran con `PLEX_WR_CACHE_CURRENT_TTL_SECONDS` y `PLEX_WR_CACHE_HISTORY_TTL_SECONDS`. Redis sigue funcionando como la primera capa rápida de caché del dashboard; cuando vence, se vuelve a calcular desde los snapshots de Plex.
+
+**Limitación:** este caché reutiliza exactamente las ventanas y endpoints descargados; una selección histórica nueva con límites de fecha distintos puede requerir nuevas consultas a Plex. La primera carga de cualquier ventana no guardada seguirá tardando lo que requiera el ERP. No se alteran las fórmulas de OEE, MTBF, MTTR, uptime, downtime, ni las reglas de Unplanned Maintenance (Pareto Top 8 y acciones Top 3). Los archivos pueden eliminarse por separado sin borrar información de la base de datos ni del ERP.
+
 ## Work Requests
 
 `WorkRequestsService` consulta `/work-requests` de Plex y deduplica por `work_request_no`.
