@@ -839,7 +839,10 @@
       "deleteLocation": "Eliminar localidad",
       "cancelEdit": "Cancelar edición",
       "confirmDeleteLocation": "¿Eliminar {{name}} y todos sus niveles? Esta acción no se puede deshacer.",
-      "additionalLocations": "Localidades adicionales"
+      "additionalLocations": "Localidades adicionales",
+      "dynamicLocationDescription": "Localidades y niveles configurables · capacidad mixta de pallets",
+      "dynamicLayoutTitle": "Distribución física del almacén",
+      "viewAllLevels": "Ver todos los niveles"
     }
   },
   "incomingInspection": {
