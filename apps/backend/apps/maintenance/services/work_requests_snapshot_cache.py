@@ -8,6 +8,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import logging
 import os
 import tempfile
 from calendar import monthrange
@@ -19,7 +20,9 @@ from typing import Callable
 from apps.ssi_common.plex_ranges import date_chunks
 
 
-SCHEMA_VERSION = 1
+logger = logging.getLogger(__name__)
+
+SCHEMA_VERSION = 2
 CACHE_DIR = Path(os.getenv("PLEX_WR_CACHE_DIR", "/var/cache/platformssi/plex_wr"))
 CURRENT_TTL_SECONDS = int(os.getenv("PLEX_WR_CACHE_CURRENT_TTL_SECONDS", "900"))
 HISTORY_TTL_SECONDS = int(os.getenv("PLEX_WR_CACHE_HISTORY_TTL_SECONDS", "2592000"))
@@ -136,13 +139,33 @@ def get_work_requests(
                     page = fetch(chunk_start, chunk_end)
                     if not isinstance(page, list) or any(not isinstance(row, dict) for row in page):
                         raise ValueError("Incomplete Plex Work Requests response; snapshot not written")
+                    accepted = []
+                    outside_count = 0
                     for row in page:
                         if not str(row.get("work_request_no") or "").strip():
                             raise ValueError("Plex Work Request without work_request_no; snapshot not written")
                         when = str(row.get("request_date") or "")[:10]
-                        if not (chunk_start.isoformat() <= when <= chunk_end.isoformat()):
-                            raise ValueError("Plex Work Request outside requested dates; snapshot not written")
-                    rows.extend(page)
+                        try:
+                            request_day = date.fromisoformat(when)
+                        except ValueError as exc:
+                            raise ValueError(
+                                f"Plex Work Request has invalid request_date ({when!r}); snapshot not written"
+                            ) from exc
+                        # The Plex endpoint may return additional records outside
+                        # the requested window. They are not valid for this
+                        # request_date-based snapshot, but must not block caching
+                        # the matching, already-verified source rows.
+                        if chunk_start <= request_day <= chunk_end:
+                            accepted.append(row)
+                        else:
+                            outside_count += 1
+                    if outside_count:
+                        logger.warning(
+                            "Plex /work-requests returned %d rows outside request_date "
+                            "window %s..%s; excluded from monthly snapshot",
+                            outside_count, chunk_start, chunk_end,
+                        )
+                    rows.extend(accepted)
                 # Only after all requested chunks succeed do we persist the month.
                 _store(path, month_start, period_end, rows)
         all_rows.extend(
