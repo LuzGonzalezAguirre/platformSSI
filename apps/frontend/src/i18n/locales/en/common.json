@@ -765,7 +765,19 @@
       "back": "Back to utilization",
       "properties": "Properties",
       "rotate": "Rotate",
-      "unplace": "Unplace"
+      "unplace": "Unplace",
+      "locationName": "Location name",
+      "levelCount": "Number of levels (1–20)",
+      "addLocation": "Add location",
+      "saveLocation": "Save changes",
+      "editLocation": "Edit location",
+      "deleteLocation": "Delete location",
+      "cancelEdit": "Cancel editing",
+      "confirmDeleteLocation": "Delete {{name}} and all its levels? This cannot be undone.",
+      "additionalLocations": "Additional locations",
+      "dynamicLocationDescription": "Configurable localities and levels · mixed pallet capacity",
+      "dynamicLayoutTitle": "Physical warehouse layout",
+      "viewAllLevels": "View all levels"
     }
   },
   "incomingInspection": {

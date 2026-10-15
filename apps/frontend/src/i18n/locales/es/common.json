@@ -830,7 +830,19 @@
       "back": "Volver a utilización",
       "properties": "Propiedades",
       "rotate": "Rotar",
-      "unplace": "Retirar del plano"
+      "unplace": "Retirar del plano",
+      "locationName": "Nombre de la localidad",
+      "levelCount": "Cantidad de niveles (1–20)",
+      "addLocation": "Agregar localidad",
+      "saveLocation": "Guardar cambios",
+      "editLocation": "Editar localidad",
+      "deleteLocation": "Eliminar localidad",
+      "cancelEdit": "Cancelar edición",
+      "confirmDeleteLocation": "¿Eliminar {{name}} y todos sus niveles? Esta acción no se puede deshacer.",
+      "additionalLocations": "Localidades adicionales",
+      "dynamicLocationDescription": "Localidades y niveles configurables · capacidad mixta de pallets",
+      "dynamicLayoutTitle": "Distribución física del almacén",
+      "viewAllLevels": "Ver todos los niveles"
     }
   },
   "incomingInspection": {
