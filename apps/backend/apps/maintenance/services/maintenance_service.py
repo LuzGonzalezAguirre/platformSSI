@@ -7,6 +7,7 @@ from django.core.cache import cache
 from apps.ssi_common.filters.base import FilterContext
 from apps.ssi_common.plex_ranges import PLEX_CHUNK_DAYS, date_chunks
 from apps.maintenance.services.maintenance_classification import resolve_maintenance_bu
+from apps.maintenance.services.overview_snapshot_cache import get_cached_response
 
 PROXY_URL    = os.getenv("PLEX_PROXY_URL", "http://host.docker.internal:8001")
 PROXY_SECRET = os.getenv("PLEX_PROXY_SECRET", "")
@@ -15,14 +16,19 @@ CACHE_TTL    = 600
 
 
 def _post(endpoint: str, payload: dict, timeout: int = 45) -> dict:
-    resp = requests.post(
-        f"{PROXY_URL}{endpoint}",
-        json=payload,
-        headers=HEADERS,
-        timeout=timeout,
-    )
-    resp.raise_for_status()
-    return resp.json()
+    def fetch_from_plex() -> dict:
+        resp = requests.post(
+            f"{PROXY_URL}{endpoint}",
+            json=payload,
+            headers=HEADERS,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    # Cache raw, BU-independent Plex payloads. All existing formulas, filters,
+    # MTBF source rules and manual OEE override logic remain unchanged.
+    return get_cached_response(endpoint, payload, fetch_from_plex)
 
 
 def _round2(value: float) -> float:
@@ -145,7 +151,7 @@ class MaintenanceService:
 
     @staticmethod
     def get_kpis(filter_ctx: FilterContext, *, global_mtbf: bool = False) -> dict:
-        cache_key = filter_ctx.cache_key("maint:kpis:v6:" + ("global" if global_mtbf else "scoped"))
+        cache_key = filter_ctx.cache_key("maint:kpis:v7:persistent:" + ("global" if global_mtbf else "scoped"))
         cached = cache.get(cache_key)
         if cached:
             return cached
