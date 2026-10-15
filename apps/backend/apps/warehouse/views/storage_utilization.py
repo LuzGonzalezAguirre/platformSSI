@@ -192,9 +192,8 @@ class StorageUtilizationView(APIView):
         with transaction.atomic():
             if not location_name_available(name):
                 return Response({"detail": "Location name already exists."}, status=400)
-            numbers = set(StorageRack.objects.values_list("number", flat=True))
-            number = next((n for n in range(1, 32768) if n not in numbers), None)
-            if number is None:
+            number = max(StorageRack.objects.values_list("number", flat=True), default=0) + 1
+            if number > 32767:
                 return Response({"detail": "No free rack number."}, status=400)
             rack = StorageRack.objects.create(number=number, name=name.strip())
             StorageLocation.objects.bulk_create([
