@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {Settings2,Maximize2,Minimize2,X} from "lucide-react";
 import {useAuthStore} from "../../store/authStore";
-import {button,fetchStorage,locationName,rackUtilization,saveStorage,surface,tone,utilization,validMix,type Rack,type Warehouse} from "./storage.shared";
+import {button,fetchStorage,rackUtilization,saveStorage,surface,tone,utilization,validMix,type Rack,type Warehouse} from "./storage.shared";
 
 const GROUPS=[[1,13],[14,26],[27,37],[38,48],[49,55]];
 export default function StorageUtilizationPage(){
