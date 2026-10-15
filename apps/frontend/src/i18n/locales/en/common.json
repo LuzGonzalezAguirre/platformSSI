@@ -774,7 +774,10 @@
       "deleteLocation": "Delete location",
       "cancelEdit": "Cancel editing",
       "confirmDeleteLocation": "Delete {{name}} and all its levels? This cannot be undone.",
-      "additionalLocations": "Additional locations"
+      "additionalLocations": "Additional locations",
+      "dynamicLocationDescription": "Configurable localities and levels · mixed pallet capacity",
+      "dynamicLayoutTitle": "Physical warehouse layout",
+      "viewAllLevels": "View all levels"
     }
   },
   "incomingInspection": {
