@@ -25,6 +25,15 @@ OVERRIDES = {
     (55, 3): 0,
 }
 
+def location_name_available(name, exclude_number=None):
+    normalized = name.strip().casefold()
+    return not any(
+        (rack.name or f"TJR{rack.number}").casefold() == normalized
+        for rack in StorageRack.objects.all()
+        if rack.number != exclude_number
+    )
+
+
 def serialize_rack(rack):
     locations = sorted(rack.locations.all(), key=lambda loc: loc.level)
     return {
@@ -114,7 +123,7 @@ class StorageUtilizationView(APIView):
                         name = data["name"]
                         if not isinstance(name, str) or not name.strip() or len(name.strip()) > 80:
                             return Response({"detail": "Name must contain 1-80 characters."}, status=400)
-                        if StorageRack.objects.exclude(pk=rack.pk).filter(name__iexact=name.strip()).exists():
+                        if not location_name_available(name, exclude_number=rack.number):
                             return Response({"detail": "Location name already exists."}, status=400)
                         rack.name = name.strip()
                     if "level_count" in data:
@@ -181,7 +190,7 @@ class StorageUtilizationView(APIView):
         if type(count) is not int or not 1 <= count <= 20:
             return Response({"detail": "Level count must be between 1 and 20."}, status=400)
         with transaction.atomic():
-            if StorageRack.objects.filter(name__iexact=name.strip()).exists():
+            if not location_name_available(name):
                 return Response({"detail": "Location name already exists."}, status=400)
             numbers = set(StorageRack.objects.values_list("number", flat=True))
             number = next((n for n in range(1, 32768) if n not in numbers), None)
