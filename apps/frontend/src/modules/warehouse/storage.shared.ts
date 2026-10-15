@@ -15,3 +15,28 @@ export const deleteStorage = async (number:number):Promise<Warehouse> => (await 
 export const surface:CSSProperties={background:"var(--color-surface)",color:"var(--color-text-primary)",border:"1px solid var(--color-border)",borderRadius:12,padding:14};
 export const button:CSSProperties={background:"var(--color-surface)",color:"var(--color-text-primary)",border:"1px solid var(--color-border)",borderRadius:8,padding:"8px 12px",cursor:"pointer"};
 export const tone=(pct:number)=>pct>=99.99?"#ef4444":pct>0?"#eab308":"#22c55e";
+
+// Shared floor-plan coordinate system: identical scale in designer and utilization.
+// Both screens scroll horizontally on narrow viewports instead of rescaling racks.
+export const FLOOR_PLAN_WIDTH = 1200;
+export const FLOOR_PLAN_HEIGHT = 650;
+export const floorPlanStyle:CSSProperties = {
+  width:FLOOR_PLAN_WIDTH,
+  height:FLOOR_PLAN_HEIGHT,
+  minWidth:FLOOR_PLAN_WIDTH,
+  position:"relative",
+  boxSizing:"border-box",
+  background:"var(--color-bg)",
+  border:"1px solid var(--color-border)",
+  borderRadius:9,
+  overflow:"hidden",
+};
+export const rackStyle = (rack:Rack):CSSProperties => ({
+  position:"absolute",left:`${rack.x}%`,top:`${rack.y}%`,
+  width:`${rack.width}%`,height:`${rack.height}%`,
+  boxSizing:"border-box",minWidth:0,minHeight:0,
+  transform:`rotate(${rack.rotation}deg)`,
+  background:"var(--color-surface)",color:"var(--color-text-primary)",
+  border:"1px solid var(--color-border)",borderRadius:6,
+  padding:3,display:"flex",flexDirection:"column",gap:2,overflow:"hidden",
+});
