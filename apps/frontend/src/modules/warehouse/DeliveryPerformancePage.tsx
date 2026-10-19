@@ -78,8 +78,8 @@ export default function DeliveryPerformancePage() {
     try {
       // Always retrieve the six calendar weeks ending at the reference date.
       const trendFrom = isoDate(offsetDays(mondayOf(fromISO(dateTo)), -35));
-      const sixMonthFrom = isoDate(new Date(Date.UTC(Number(dateTo.slice(0, 4)), Number(dateTo.slice(5, 7)) - 6, 1)));
-      const minimum = [dateFrom, trendFrom, sixMonthFrom].sort()[0];
+      const yearStart = dateTo.slice(0, 4) + "-01-01";
+      const minimum = [dateFrom, trendFrom, yearStart].sort()[0];
       const minYear = Number(minimum.slice(0, 4));
       const maxYear = Number(dateTo.slice(0, 4));
       if (maxYear - minYear > 3) throw new Error(tx("Selecciona un rango de hasta 3 años.", "Select a range up to 3 years."));
@@ -120,8 +120,8 @@ export default function DeliveryPerformancePage() {
     const weekRows = within.filter(x => x.planned_ship_date >= monday);
     const byCustomer = (rows: Detail[]) => [...new Set(rows.map(x => x.customer))].sort()
       .map(name => ({ name, ...aggregate(rows.filter(x => x.customer === name)) }));
-    const monthly = Array.from({ length: 6 }, (_, index) => {
-      const period = new Date(Date.UTC(referenceYear, referenceMonth - 6 + index, 1));
+    const monthly = Array.from({ length: referenceMonth }, (_, index) => {
+      const period = new Date(Date.UTC(referenceYear, index, 1));
       const ym = isoDate(period).slice(0, 7);
       return {
         name: monthLabel(period.getUTCMonth() + 1, i18n.language, period.getUTCFullYear()) + " " + period.getUTCFullYear(),
@@ -244,14 +244,14 @@ export default function DeliveryPerformancePage() {
         {chart("monthlyCustomers", tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, monthLabel(referenceMonth, i18n.language, referenceYear) + " " + referenceYear)}
         {chart("weeklyCustomers", tx("OTD semanal por cliente", "Weekly OTD by customer"), view.weeklyCustomers, tx("Semana", "Week") + " " + referenceWeek.week + "/" + referenceWeek.year)}
         {chart("weeklyTrend", tx("Tendencia semanal", "Weekly trend"), view.weeks, tx("Últimas 6 semanas desde Hasta", "Last 6 weeks as of To date"))}
-        {chart("monthlyTrend", tx("Tendencia mensual", "Monthly trend"), view.monthly, tx("Últimos 6 meses desde Hasta", "Last 6 months as of To date"))}
+        {chart("monthlyTrend", tx("Tendencia mensual", "Monthly trend"), view.monthly, tx("Enero hasta el mes de referencia", "January through reference month"))}
       </div>
       {expandedChart && <div role="dialog" aria-modal="true" aria-label={tx("Gráfica ampliada", "Expanded chart")}
         style={{ position: "fixed", inset: 0, zIndex: 9999, padding: 20, background: "var(--color-background, #101820)", display: "flex", flexDirection: "column" }}>
         {expandedChart === "monthlyCustomers" && chart("monthlyCustomers", tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, monthLabel(referenceMonth, i18n.language, referenceYear) + " " + referenceYear, true)}
         {expandedChart === "weeklyCustomers" && chart("weeklyCustomers", tx("OTD semanal por cliente", "Weekly OTD by customer"), view.weeklyCustomers, tx("Semana", "Week") + " " + referenceWeek.week + "/" + referenceWeek.year, true)}
         {expandedChart === "weeklyTrend" && chart("weeklyTrend", tx("Tendencia semanal", "Weekly trend"), view.weeks, tx("Últimas 6 semanas desde Hasta", "Last 6 weeks as of To date"), true)}
-        {expandedChart === "monthlyTrend" && chart("monthlyTrend", tx("Tendencia mensual", "Monthly trend"), view.monthly, tx("Últimos 6 meses desde Hasta", "Last 6 months as of To date"), true)}
+        {expandedChart === "monthlyTrend" && chart("monthlyTrend", tx("Tendencia mensual", "Monthly trend"), view.monthly, tx("Enero hasta el mes de referencia", "January through reference month"), true)}
       </div>}
       <details style={panel}>
         <summary style={{ fontSize: 16, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}>{tx("Detalle de liberaciones", "Release detail")} ({view.detail.length})</summary>
