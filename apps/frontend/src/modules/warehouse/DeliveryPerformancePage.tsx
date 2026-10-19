@@ -57,7 +57,7 @@ export default function DeliveryPerformancePage() {
       return {
         scheduled, early, on_time,
         late: rows.reduce((a, x) => a + x.late, 0),
-        percentage: scheduled ? Math.round((early + on_time) / scheduled * 10000) / 100 : 0,
+        percentage: rows.length ? Math.round(rows.reduce((sum, x) => sum + x.performance_pct, 0) / rows.length * 100) / 100 : 0,
         unreconciled: rows.filter(x => !x.reconciled).length, releases: rows.length,
       };
     };
@@ -126,7 +126,7 @@ export default function DeliveryPerformancePage() {
     {data && view && <>
       <div style={{ ...panel, borderLeft: "4px solid #d97706", fontSize: 12 }}>
         <strong>{tx("Cálculo provisional — pendiente de validación final contra Plex.", "Provisional calculation — pending final Plex validation.")}</strong>
-        {" "}{tx("Los ajustes EDI y la normalización temporal de −3 horas pueden afectar el OTD histórico. Los registros no conciliados se indican abajo.", "EDI adjustments and provisional −3 hour normalization can affect historical OTD. Unreconciled releases are flagged below.")}
+        {" "}{tx("El OTD es el promedio por liberación (To Promise / Volume). La conciliación EDI y el ajuste horario continúan en validación.", "OTD is the mean of release percentages (To Promise / Volume). EDI reconciliation and timezone normalization remain under validation.")}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
         {[ [tx("OTD del mes", "Monthly OTD"), pct(view.totals.percentage)],
