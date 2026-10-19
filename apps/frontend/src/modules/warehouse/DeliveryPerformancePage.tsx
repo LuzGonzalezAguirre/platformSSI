@@ -151,8 +151,8 @@ export default function DeliveryPerformancePage() {
 
   const customerTick = (value: string) => {
     const limit = 16;
-    if (value.length <= limit) return value;
-    const words = value.split(/\\s+/);
+    if (value.length <= limit) return [value];
+    const words = value.split(/\s+/);
     const lines: string[] = [];
     let current = "";
     for (const word of words) {
