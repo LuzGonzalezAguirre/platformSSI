@@ -16,12 +16,10 @@ export const surface:CSSProperties={background:"var(--color-surface)",color:"var
 export const button:CSSProperties={background:"var(--color-surface)",color:"var(--color-text-primary)",border:"1px solid var(--color-border)",borderRadius:8,padding:"8px 12px",cursor:"pointer"};
 export const tone=(pct:number)=>pct>=99.99?"#ef4444":pct>0?"#eab308":"#22c55e";
 
-// Shared floor-plan coordinate system: identical scale in designer and utilization.
-// Expand to the available container width and provide more vertical floor space.\n// The designer and utilization view share this exact coordinate system.\n// On narrower screens the common 1200px minimum remains horizontally scrollable.
-export const FLOOR_PLAN_WIDTH = 1200;
-export const FLOOR_PLAN_HEIGHT = 900;
+// Shared 1600 × 650 floor plan. Its wider canvas adds room for four racks\n// at the end of the current row; both views scroll horizontally as needed.\n// Migration 0005 preserves the existing racks' pixel positions and sizes.\nexport const FLOOR_PLAN_WIDTH = 1600;
+export const FLOOR_PLAN_HEIGHT = 650;
 export const floorPlanStyle:CSSProperties = {
-  width:"100%",
+  width:FLOOR_PLAN_WIDTH,
   height:FLOOR_PLAN_HEIGHT,
   minWidth:FLOOR_PLAN_WIDTH,
   position:"relative",
