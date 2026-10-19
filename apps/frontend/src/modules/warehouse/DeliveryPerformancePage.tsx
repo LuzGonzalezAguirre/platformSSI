@@ -149,6 +149,23 @@ export default function DeliveryPerformancePage() {
     return () => document.removeEventListener("keydown", handleKey);
   }, [expandedChart]);
 
+  const customerTick = (value: string) => {
+    const limit = 16;
+    if (value.length <= limit) return value;
+    const words = value.split(/\\s+/);
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      if (current && (current + " " + word).length > limit) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = current ? current + " " + word : word;
+      }
+    }
+    if (current) lines.push(current);
+    return lines.slice(0, 2).map((line, i) => i === 1 && lines.length > 2 ? line.slice(0, 13) + "…" : line);
+  };
   const chart = (id: string, title: string, rows: Array<{ name: string; percentage: number; releases?: number }>, description: string, expanded = false) => (
     <section style={{ ...panel, display: "flex", flexDirection: "column", minWidth: 0, height: expanded ? "100%" : 425 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
@@ -166,7 +183,13 @@ export default function DeliveryPerformancePage() {
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={rows} margin={{ left: -5, right: 20, top: 24, bottom: 28 }}>
             <CartesianGrid vertical={false} stroke="var(--color-border)" strokeOpacity={0.7}/>
-            <XAxis dataKey="name" interval={0} angle={rows.length > 8 ? -30 : 0} textAnchor={rows.length > 8 ? "end" : "middle"} height={60} tick={{ fill: "var(--color-text-secondary)", fontSize: expanded ? 13 : 11 }} />
+            <XAxis dataKey="name" interval={0} angle={0} textAnchor="middle" height={id.endsWith("Customers") ? 88 : 60}
+              tick={id.endsWith("Customers") ? (props: { x?: number; y?: number; payload?: { value: string } }) => {
+                const lines = customerTick(String(props.payload?.value ?? ""));
+                return <text x={props.x} y={(props.y ?? 0) + 12} fill="var(--color-text-secondary)" textAnchor="middle" fontSize={expanded ? 12 : 10}>
+                  {lines.map((line, index) => <tspan key={index} x={props.x} dy={index === 0 ? 0 : 13}>{line}</tspan>)}
+                </text>;
+              } : { fill: "var(--color-text-secondary)", fontSize: expanded ? 13 : 11 }} />
             <YAxis domain={[0, 105]} unit="%" tick={{ fill: "var(--color-text-secondary)", fontSize: 11 }}/>
             <Tooltip formatter={value => pct(Number(value ?? 0))}/>
             <Legend verticalAlign="top" height={30}/>
