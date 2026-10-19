@@ -17,11 +17,11 @@ export const button:CSSProperties={background:"var(--color-surface)",color:"var(
 export const tone=(pct:number)=>pct>=99.99?"#ef4444":pct>0?"#eab308":"#22c55e";
 
 // Shared floor-plan coordinate system: identical scale in designer and utilization.
-// Both screens scroll horizontally on narrow viewports instead of rescaling racks.
+// Expand to the available container width and provide more vertical floor space.\n// The designer and utilization view share this exact coordinate system.\n// On narrower screens the common 1200px minimum remains horizontally scrollable.
 export const FLOOR_PLAN_WIDTH = 1200;
-export const FLOOR_PLAN_HEIGHT = 650;
+export const FLOOR_PLAN_HEIGHT = 900;
 export const floorPlanStyle:CSSProperties = {
-  width:FLOOR_PLAN_WIDTH,
+  width:"100%",
   height:FLOOR_PLAN_HEIGHT,
   minWidth:FLOOR_PLAN_WIDTH,
   position:"relative",
