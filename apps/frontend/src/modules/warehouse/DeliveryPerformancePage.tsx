@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Bar, BarChart, CartesianGrid, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, ComposedChart } from "recharts";
+import { Bar, CartesianGrid, LabelList, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, ComposedChart } from "recharts";
 import apiClient from "../../services/api.client";
 
 type Aggregate = { scheduled: number; early: number; on_time: number; late: number; percentage: number; unreconciled: number; releases: number };
@@ -64,6 +64,7 @@ export default function DeliveryPerformancePage() {
   const [data, setData] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [expandedChart, setExpandedChart] = useState<string | null>(null);
 
   const validRange = !!dateFrom && !!dateTo && dateFrom <= dateTo;
   const load = async () => {
@@ -77,7 +78,8 @@ export default function DeliveryPerformancePage() {
     try {
       // Always retrieve the six calendar weeks ending at the reference date.
       const trendFrom = isoDate(offsetDays(mondayOf(fromISO(dateTo)), -35));
-      const minimum = dateFrom < trendFrom ? dateFrom : trendFrom;
+      const sixMonthFrom = isoDate(new Date(Date.UTC(Number(dateTo.slice(0, 4)), Number(dateTo.slice(5, 7)) - 6, 1)));
+      const minimum = [dateFrom, trendFrom, sixMonthFrom].sort()[0];
       const minYear = Number(minimum.slice(0, 4));
       const maxYear = Number(dateTo.slice(0, 4));
       if (maxYear - minYear > 3) throw new Error(tx("Selecciona un rango de hasta 3 años.", "Select a range up to 3 years."));
@@ -118,10 +120,14 @@ export default function DeliveryPerformancePage() {
     const weekRows = within.filter(x => x.planned_ship_date >= monday);
     const byCustomer = (rows: Detail[]) => [...new Set(rows.map(x => x.customer))].sort()
       .map(name => ({ name, ...aggregate(rows.filter(x => x.customer === name)) }));
-    const monthly = [...new Set(within.map(x => x.planned_ship_date.slice(0, 7)))].sort().map(ym => ({
-      name: monthLabel(Number(ym.slice(5)), i18n.language, Number(ym.slice(0, 4))) + " " + ym.slice(0, 4),
-      ...aggregate(within.filter(x => x.planned_ship_date.slice(0, 7) === ym)),
-    }));
+    const monthly = Array.from({ length: 6 }, (_, index) => {
+      const period = new Date(Date.UTC(referenceYear, referenceMonth - 6 + index, 1));
+      const ym = isoDate(period).slice(0, 7);
+      return {
+        name: monthLabel(period.getUTCMonth() + 1, i18n.language, period.getUTCFullYear()) + " " + period.getUTCFullYear(),
+        ...aggregate(chosen.filter(x => x.planned_ship_date.slice(0, 7) === ym && x.planned_ship_date <= dateTo)),
+      };
+    });
     const lastMonday = mondayOf(reference);
     const weeks = Array.from({ length: 6 }, (_, index) => {
       const first = isoDate(offsetDays(lastMonday, (index - 5) * 7));
@@ -134,23 +140,40 @@ export default function DeliveryPerformancePage() {
       };
     });
     return { monthlyCustomers: byCustomer(monthRows), weeklyCustomers: byCustomer(weekRows), monthly, weeks, detail: within, totals: aggregate(within) };
-  }, [data, dateFrom, dateTo, customer, i18n.language, validRange]);
+  }, [data, dateFrom, dateTo, customer, i18n.language, validRange, referenceYear, referenceMonth]);
 
-  const chart = (title: string, rows: Array<{ name: string; percentage: number }>, type: "bar" | "mixed", description: string) => (
-    <section style={panel}>
-      <h2 style={{ fontSize: 16, margin: "0 0 4px" }}>{title}</h2>
-      <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "0 0 12px" }}>{description}</p>
-      <div style={{ height: 300, width: "100%" }}>
+  useEffect(() => {
+    if (!expandedChart) return;
+    const handleKey = (event: KeyboardEvent) => { if (event.key === "Escape") setExpandedChart(null); };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [expandedChart]);
+
+  const chart = (id: string, title: string, rows: Array<{ name: string; percentage: number; releases?: number }>, description: string, expanded = false) => (
+    <section style={{ ...panel, display: "flex", flexDirection: "column", minWidth: 0, height: expanded ? "100%" : 425 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div>
+          <h2 style={{ fontSize: expanded ? 22 : 16, margin: "0 0 4px" }}>{title}</h2>
+          <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "0 0 12px" }}>{description}</p>
+        </div>
+        <button type="button" aria-label={expanded ? tx("Cerrar gráfica", "Close chart") : tx("Expandir gráfica", "Expand chart")}
+          onClick={() => setExpandedChart(expanded ? null : id)}
+          style={{ ...input, cursor: "pointer", whiteSpace: "nowrap" }}>
+          {expanded ? tx("Cerrar ×", "Close ×") : tx("Expandir ⛶", "Expand ⛶")}
+        </button>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, width: "100%" }}>
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={rows} margin={{ left: -14, right: 12, top: 6, bottom: 32 }}>
+          <ComposedChart data={rows} margin={{ left: -5, right: 20, top: 24, bottom: 28 }}>
             <CartesianGrid vertical={false} stroke="var(--color-border)" strokeOpacity={0.7}/>
-            <XAxis dataKey="name" interval={0} angle={rows.length > 7 ? -35 : 0} textAnchor={rows.length > 7 ? "end" : "middle"} height={54} tick={{ fill: "var(--color-text-secondary)", fontSize: 10 }} />
-            <YAxis domain={[0, 100]} unit="%" tick={{ fill: "var(--color-text-secondary)", fontSize: 11 }}/>
+            <XAxis dataKey="name" interval={0} angle={rows.length > 8 ? -30 : 0} textAnchor={rows.length > 8 ? "end" : "middle"} height={60} tick={{ fill: "var(--color-text-secondary)", fontSize: expanded ? 13 : 11 }} />
+            <YAxis domain={[0, 105]} unit="%" tick={{ fill: "var(--color-text-secondary)", fontSize: 11 }}/>
             <Tooltip formatter={value => pct(Number(value ?? 0))}/>
-            <Legend verticalAlign="top" height={28}/>
-            <Bar dataKey="percentage" name="OTD" fill="#5999d3" maxBarSize={42} radius={[4,4,0,0]} isAnimationActive={false}/>
+            <Legend verticalAlign="top" height={30}/>
+            <Bar dataKey="percentage" name="OTD" fill="#5999d3" maxBarSize={expanded ? 80 : 50} radius={[4,4,0,0]} isAnimationActive={false}>
+              <LabelList dataKey="percentage" position="top" formatter={value => pct(Number(value ?? 0))} fill="var(--color-text-primary)" fontSize={expanded ? 14 : 11} fontWeight={700}/>
+            </Bar>
             <Line type="linear" dataKey={() => 100} name={tx("Meta 100%", "Target 100%")} stroke="#36b77e" strokeWidth={2} dot={false} isAnimationActive={false}/>
-            {type === "mixed" ? null : null}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -206,10 +229,6 @@ export default function DeliveryPerformancePage() {
     </div>
     {error && <p role="alert" style={{ color: "#dc2626" }}>{error}</p>}
     {data && view && <>
-      <div style={{ ...panel, borderLeft: "4px solid #d97706", fontSize: 12 }}>
-        <strong>{tx("Cálculo provisional — pendiente de validación final contra Plex.", "Provisional calculation — pending final Plex validation.")}</strong>
-        {" "}{tx("El OTD es el promedio por liberación (To Promise / Volume). La conciliación EDI y el ajuste horario continúan en validación.", "OTD is the mean of release percentages (To Promise / Volume). EDI reconciliation and timezone normalization remain under validation.")}
-      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
         {[
           ["Scheduled", view.totals.scheduled.toLocaleString(i18n.language)],
@@ -221,14 +240,21 @@ export default function DeliveryPerformancePage() {
           <div key={label} style={panel}><span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{label}</span><div style={{ fontWeight: 750, fontSize: 26, marginTop: 6 }}>{value}</div></div>
         )}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,450px),1fr))", gap: 12 }}>
-        {chart(tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, "bar", monthLabel(referenceMonth, i18n.language, referenceYear) + " " + referenceYear)}
-        {chart(tx("OTD semanal por cliente", "Weekly OTD by customer"), view.weeklyCustomers, "bar", tx("Semana", "Week") + " " + referenceWeek.week + "/" + referenceWeek.year)}
-        {chart(tx("Tendencia semanal", "Weekly trend"), view.weeks, "mixed", tx("Últimas 6 semanas desde Hasta", "Last 6 weeks as of To date"))}
-        {chart(tx("Tendencia mensual", "Monthly trend"), view.monthly, "mixed", dateFrom + " — " + dateTo)}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 16, width: "100%", minWidth: 0 }}>
+        {chart("monthlyCustomers", tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, monthLabel(referenceMonth, i18n.language, referenceYear) + " " + referenceYear)}
+        {chart("weeklyCustomers", tx("OTD semanal por cliente", "Weekly OTD by customer"), view.weeklyCustomers, tx("Semana", "Week") + " " + referenceWeek.week + "/" + referenceWeek.year)}
+        {chart("weeklyTrend", tx("Tendencia semanal", "Weekly trend"), view.weeks, tx("Últimas 6 semanas desde Hasta", "Last 6 weeks as of To date"))}
+        {chart("monthlyTrend", tx("Tendencia mensual", "Monthly trend"), view.monthly, tx("Últimos 6 meses desde Hasta", "Last 6 months as of To date"))}
       </div>
-      <section style={panel}>
-        <h2 style={{ fontSize: 16, margin: "0 0 10px" }}>{tx("Detalle de liberaciones", "Release detail")} ({view.detail.length})</h2>
+      {expandedChart && <div role="dialog" aria-modal="true" aria-label={tx("Gráfica ampliada", "Expanded chart")}
+        style={{ position: "fixed", inset: 0, zIndex: 9999, padding: 20, background: "var(--color-background, #101820)", display: "flex", flexDirection: "column" }}>
+        {expandedChart === "monthlyCustomers" && chart("monthlyCustomers", tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, monthLabel(referenceMonth, i18n.language, referenceYear) + " " + referenceYear, true)}
+        {expandedChart === "weeklyCustomers" && chart("weeklyCustomers", tx("OTD semanal por cliente", "Weekly OTD by customer"), view.weeklyCustomers, tx("Semana", "Week") + " " + referenceWeek.week + "/" + referenceWeek.year, true)}
+        {expandedChart === "weeklyTrend" && chart("weeklyTrend", tx("Tendencia semanal", "Weekly trend"), view.weeks, tx("Últimas 6 semanas desde Hasta", "Last 6 weeks as of To date"), true)}
+        {expandedChart === "monthlyTrend" && chart("monthlyTrend", tx("Tendencia mensual", "Monthly trend"), view.monthly, tx("Últimos 6 meses desde Hasta", "Last 6 months as of To date"), true)}
+      </div>}
+      <details style={panel}>
+        <summary style={{ fontSize: 16, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}>{tx("Detalle de liberaciones", "Release detail")} ({view.detail.length})</summary>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead><tr>{["Customer", "Part", "Revision", "PO", "Release", "Due Date", "Ship Date", "Scheduled", "Early", "On Time", "Late", "OTD", tx("Conciliación", "Reconciliation")].map(label => <th key={label} style={tableCell}>{label}</th>)}</tr></thead>
@@ -242,7 +268,7 @@ export default function DeliveryPerformancePage() {
             </tr>)}</tbody>
           </table>
         </div>
-      </section>
+      </details>
     </>}
   </div>;
 }
