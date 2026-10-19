@@ -478,7 +478,7 @@ function StepCanvas() {
   const selPct = selected && currentStep ? toPercent(selected.pos_x, selected.pos_y) : { xPct: 0, yPct: 0 };
 
   return (
-    <div style={{ fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 110px)' }}>
+    <div style={{ fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 110px)', minHeight: 560, minWidth: 0 }}>
       {/* TOP BAR */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -691,8 +691,9 @@ function StepCanvas() {
                 {partNumber} · Step {currentStep.step_number} &nbsp;|&nbsp; {currentStep.image_width} × {currentStep.image_height} &nbsp;|&nbsp; {pointCount} points · {labelCount} labels
               </div>
 
-              <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: `${zoom}%`, maxWidth: PB_WIDTH }}>
+              <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', padding: 24, background: '#f1f5f9' }}>
+                {/* Preserve the WinForms 1080×540 design coordinates. The viewport scrolls instead of shrinking the layout. */}
+                <div style={{ width: (PB_WIDTH * zoom) / 100, minWidth: (PB_WIDTH * zoom) / 100, margin: '0 auto' }}>
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     marginBottom: 4, fontSize: 11, color: '#64748b',
