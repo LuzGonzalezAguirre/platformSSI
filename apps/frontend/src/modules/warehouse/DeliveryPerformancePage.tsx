@@ -20,36 +20,84 @@ const panel: React.CSSProperties = { background: "var(--color-surface)", border:
 const input: React.CSSProperties = { background: "var(--color-surface)", color: "var(--color-text-primary)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "8px 10px" };
 const tableCell: React.CSSProperties = { padding: "9px 10px", borderBottom: "1px solid var(--color-border)", textAlign: "left", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" };
 const pct = (v: number) => Number.isFinite(v) ? v.toFixed(2) + "%" : "—";
-const monthLabel = (month: number, lang: string) => new Intl.DateTimeFormat(lang, { month: "short" }).format(new Date(2026, month - 1, 1));
+const monthLabel = (month: number, lang: string, year = 2026) => new Intl.DateTimeFormat(lang, { month: "short" }).format(new Date(year, month - 1, 1));
+const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+const fromISO = (s: string) => new Date(s + "T00:00:00Z");
+const offsetDays = (d: Date, days: number) => new Date(d.getTime() + days * 86400000);
+const mondayOf = (d: Date) => offsetDays(d, -((d.getUTCDay() + 6) % 7));
+const weekInfo = (d: Date) => {
+  const thursday = offsetDays(d, 3 - ((d.getUTCDay() + 6) % 7));
+  const start = mondayOf(new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4)));
+  return { year: thursday.getUTCFullYear(), week: 1 + Math.round((mondayOf(thursday).getTime() - start.getTime()) / 604800000) };
+};
+const today = () => {
+  const now = new Date();
+  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+};
+type DatePreset = "custom" | "today" | "yesterday" | "last7" | "last30" | "thisWeek" | "lastWeek" | "thisMonth" | "lastMonth" | "thisYear";
+function presetRange(preset: DatePreset): [string, string] {
+  const end = fromISO(today());
+  const shift = (days: number) => isoDate(offsetDays(end, days));
+  const firstMonth = isoDate(new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1)));
+  switch (preset) {
+    case "today": return [today(), today()];
+    case "yesterday": return [shift(-1), shift(-1)];
+    case "last7": return [shift(-6), today()];
+    case "last30": return [shift(-29), today()];
+    case "thisWeek": return [isoDate(mondayOf(end)), today()];
+    case "lastWeek": return [isoDate(offsetDays(mondayOf(end), -7)), isoDate(offsetDays(mondayOf(end), -1))];
+    case "thisMonth": return [firstMonth, today()];
+    case "lastMonth": return [isoDate(new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 1, 1))), isoDate(offsetDays(fromISO(firstMonth), -1))];
+    case "thisYear": return [end.getUTCFullYear() + "-01-01", today()];
+    default: return [firstMonth, today()];
+  }
+}
 
 export default function DeliveryPerformancePage() {
   const { i18n } = useTranslation();
   const es = i18n.language.startsWith("es");
   const tx = (esText: string, enText: string) => es ? esText : enText;
-  const [year, setYear] = useState(2026);
-  const [month, setMonth] = useState(10);
-  const [week, setWeek] = useState(41);
+  const [preset, setPreset] = useState<DatePreset>("thisMonth");
+  const [dateFrom, setDateFrom] = useState(() => presetRange("thisMonth")[0]);
+  const [dateTo, setDateTo] = useState(() => presetRange("thisMonth")[1]);
   const [customer, setCustomer] = useState("");
   const [data, setData] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const validRange = !!dateFrom && !!dateTo && dateFrom <= dateTo;
   const load = async () => {
+    if (!validRange) {
+      setData(null);
+      setError(tx("El rango de fechas es inválido.", "Invalid date range."));
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      const result = await apiClient.get<Report>("/warehouse/delivery-performance/", { params: { year } });
-      setData(result.data);
+      // Always retrieve the six calendar weeks ending at the reference date.
+      const trendFrom = isoDate(offsetDays(mondayOf(fromISO(dateTo)), -35));
+      const minimum = dateFrom < trendFrom ? dateFrom : trendFrom;
+      const minYear = Number(minimum.slice(0, 4));
+      const maxYear = Number(dateTo.slice(0, 4));
+      if (maxYear - minYear > 3) throw new Error(tx("Selecciona un rango de hasta 3 años.", "Select a range up to 3 years."));
+      const responses = await Promise.all(Array.from({ length: maxYear - minYear + 1 }, (_, i) =>
+        apiClient.get<Report>("/warehouse/delivery-performance/", { params: { year: minYear + i } })));
+      setData({ ...responses[responses.length - 1].data, detail: responses.flatMap(response => response.data.detail) });
     } catch (e) {
       setData(null);
       setError(e instanceof Error ? e.message : tx("No fue posible consultar Plex.", "Could not retrieve Plex data."));
     } finally { setLoading(false); }
   };
-  useEffect(() => { void load(); }, [year]);
+  useEffect(() => { void load(); }, [dateFrom, dateTo]);
 
   const customers = useMemo(() => [...new Set(data?.detail.map(x => x.customer) ?? [])].sort(), [data]);
+  const reference = fromISO(dateTo || today());
+  const referenceWeek = weekInfo(reference);
+  const referenceMonth = reference.getUTCMonth() + 1;
+  const referenceYear = reference.getUTCFullYear();
   const view = useMemo(() => {
-    if (!data) return null;
+    if (!data || !validRange) return null;
     const aggregate = (rows: Detail[]): Aggregate => {
       const scheduled = rows.reduce((a, x) => a + x.scheduled, 0);
       const early = rows.reduce((a, x) => a + x.early, 0);
@@ -58,21 +106,35 @@ export default function DeliveryPerformancePage() {
         scheduled, early, on_time,
         late: rows.reduce((a, x) => a + x.late, 0),
         percentage: rows.length ? Math.round(rows.reduce((sum, x) => sum + x.performance_pct, 0) / rows.length * 100) / 100 : 0,
-        unreconciled: rows.filter(x => !x.reconciled).length, releases: rows.length,
+        unreconciled: rows.filter(x => !x.reconciled).length,
+        releases: rows.length,
       };
     };
     const chosen = data.detail.filter(x => !customer || x.customer === customer);
-    const monthRows = chosen.filter(x => x.month === month);
-    const weekRows = chosen.filter(x => x.week === week);
-    const monthlyCustomers = [...new Set(monthRows.map(x => x.customer))].sort().map(name => ({ name, ...aggregate(monthRows.filter(x => x.customer === name)) }));
-    const weeklyCustomers = [...new Set(weekRows.map(x => x.customer))].sort().map(name => ({ name, ...aggregate(weekRows.filter(x => x.customer === name)) }));
-    const monthly = Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      return { name: monthLabel(m, i18n.language), month: m, ...aggregate(chosen.filter(x => x.month === m)) };
+    const within = chosen.filter(x => x.planned_ship_date >= dateFrom && x.planned_ship_date <= dateTo);
+    const referenceMonthPrefix = dateTo.slice(0, 7);
+    const monday = isoDate(mondayOf(reference));
+    const monthRows = within.filter(x => x.planned_ship_date.slice(0, 7) === referenceMonthPrefix);
+    const weekRows = within.filter(x => x.planned_ship_date >= monday);
+    const byCustomer = (rows: Detail[]) => [...new Set(rows.map(x => x.customer))].sort()
+      .map(name => ({ name, ...aggregate(rows.filter(x => x.customer === name)) }));
+    const monthly = [...new Set(within.map(x => x.planned_ship_date.slice(0, 7)))].sort().map(ym => ({
+      name: monthLabel(Number(ym.slice(5)), i18n.language, Number(ym.slice(0, 4))) + " " + ym.slice(0, 4),
+      ...aggregate(within.filter(x => x.planned_ship_date.slice(0, 7) === ym)),
+    }));
+    const lastMonday = mondayOf(reference);
+    const weeks = Array.from({ length: 6 }, (_, index) => {
+      const first = isoDate(offsetDays(lastMonday, (index - 5) * 7));
+      const last = isoDate(offsetDays(lastMonday, (index - 5) * 7 + 6));
+      const wk = weekInfo(fromISO(first));
+      return {
+        name: "W" + String(wk.week).padStart(2, "0") + "/" + String(wk.year).slice(2),
+        week: wk.week,
+        ...aggregate(chosen.filter(x => x.planned_ship_date >= first && x.planned_ship_date <= last && x.planned_ship_date <= dateTo)),
+      };
     });
-    const weeks = [...new Set(chosen.map(x => x.week))].sort((a,b) => a - b).map(w => ({ name: String(w), week: w, ...aggregate(chosen.filter(x => x.week === w)) }));
-    return { monthlyCustomers, weeklyCustomers, monthly, weeks, detail: monthRows, totals: aggregate(monthRows) };
-  }, [data, month, week, customer, i18n.language]);
+    return { monthlyCustomers: byCustomer(monthRows), weeklyCustomers: byCustomer(weekRows), monthly, weeks, detail: within, totals: aggregate(within) };
+  }, [data, dateFrom, dateTo, customer, i18n.language, validRange]);
 
   const chart = (title: string, rows: Array<{ name: string; percentage: number }>, type: "bar" | "mixed", description: string) => (
     <section style={panel}>
@@ -101,26 +163,46 @@ export default function DeliveryPerformancePage() {
       <p style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>{tx("Cumplimiento de embarques por cliente, semana y mes — fuente Plex", "Shipment performance by customer, week and month — Plex source")}</p>
     </header>
     <div style={{ display: "flex", gap: 9, flexWrap: "wrap", alignItems: "end" }}>
-      <label style={{ display: "grid", gap: 4, fontSize: 12 }}>{tx("Año", "Year")}
-        <input type="number" min={2020} max={new Date().getFullYear() + 1} value={year} onChange={e => setYear(Number(e.target.value))} style={{ ...input, width: 110 }}/>
-      </label>
-      <label style={{ display: "grid", gap: 4, fontSize: 12 }}>{tx("Mes", "Month")}
-        <select value={month} onChange={e => setMonth(Number(e.target.value))} style={input}>
-          {Array.from({ length: 12 }, (_, i) => i+1).map(m => <option key={m} value={m}>{monthLabel(m, i18n.language)}</option>)}
+      <label style={{ display: "grid", gap: 4, fontSize: 12 }}>{tx("Periodo", "Period")}
+        <select value={preset} onChange={e => {
+          const next = e.target.value as DatePreset;
+          setPreset(next);
+          if (next !== "custom") {
+            const [from, to] = presetRange(next);
+            setDateFrom(from);
+            setDateTo(to);
+          }
+        }} style={{ ...input, minWidth: 155 }}>
+          {([
+            ["custom", tx("Custom", "Custom")],
+            ["today", tx("Today", "Today")],
+            ["yesterday", tx("Yesterday", "Yesterday")],
+            ["last7", tx("Last 7 days", "Last 7 days")],
+            ["last30", tx("Last 30 days", "Last 30 days")],
+            ["thisWeek", tx("This week", "This week")],
+            ["lastWeek", tx("Last week", "Last week")],
+            ["thisMonth", tx("This month", "This month")],
+            ["lastMonth", tx("Last month", "Last month")],
+            ["thisYear", tx("This year", "This year")],
+          ] as [DatePreset, string][]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
+      </label>
+      <label style={{ display: "grid", gap: 4, fontSize: 12 }}>{tx("Desde", "From")}
+        <input type="date" value={dateFrom} onChange={e => { setPreset("custom"); setDateFrom(e.target.value); }} style={input}/>
+      </label>
+      <label style={{ display: "grid", gap: 4, fontSize: 12 }}>{tx("Hasta (referencia)", "To (reference)")}
+        <input type="date" value={dateTo} onChange={e => { setPreset("custom"); setDateTo(e.target.value); }} style={input}/>
       </label>
       <label style={{ display: "grid", gap: 4, fontSize: 12 }}>{tx("Semana ISO", "ISO week")}
-        <select value={week} onChange={e => setWeek(Number(e.target.value))} style={input}>
-          {Array.from({ length: 53 }, (_, i) => i+1).map(w => <option key={w} value={w}>{w}</option>)}
-        </select>
+        <span style={{ ...input, display: "inline-flex", alignItems: "center" }}>{referenceWeek.year} - W{String(referenceWeek.week).padStart(2, "0")}</span>
       </label>
       <label style={{ display: "grid", gap: 4, fontSize: 12 }}>{tx("Cliente", "Customer")}
         <select value={customer} onChange={e => setCustomer(e.target.value)} style={{ ...input, maxWidth: 270 }}>
           <option value="">{tx("Todos los clientes", "All customers")}</option>
-          {customers.map(c => <option key={c} value={c}>{c}</option>)}
+          {customers.map(name => <option key={name} value={name}>{name}</option>)}
         </select>
       </label>
-      <button style={input} type="button" onClick={() => void load()} disabled={loading}>{loading ? tx("Cargando…", "Loading…") : tx("Actualizar", "Refresh")}</button>
+      <button style={input} type="button" onClick={() => void load()} disabled={loading || !validRange}>{loading ? tx("Cargando…", "Loading…") : tx("Actualizar", "Refresh")}</button>
     </div>
     {error && <p role="alert" style={{ color: "#dc2626" }}>{error}</p>}
     {data && view && <>
@@ -129,18 +211,21 @@ export default function DeliveryPerformancePage() {
         {" "}{tx("El OTD es el promedio por liberación (To Promise / Volume). La conciliación EDI y el ajuste horario continúan en validación.", "OTD is the mean of release percentages (To Promise / Volume). EDI reconciliation and timezone normalization remain under validation.")}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
-        {[ [tx("OTD del mes", "Monthly OTD"), pct(view.totals.percentage)],
-           [tx("Programado", "Scheduled"), view.totals.scheduled.toLocaleString(i18n.language)],
-           [tx("Early + On Time", "Early + On Time"), (view.totals.early + view.totals.on_time).toLocaleString(i18n.language)],
-           [tx("Sin conciliar", "Unreconciled"), String(view.totals.unreconciled)] ].map(([label, value]) =>
+        {[
+          ["Scheduled", view.totals.scheduled.toLocaleString(i18n.language)],
+          ["Early Deliveries", view.totals.early.toLocaleString(i18n.language)],
+          ["On Time Deliveries", view.totals.on_time.toLocaleString(i18n.language)],
+          ["Late Deliveries", view.totals.late.toLocaleString(i18n.language)],
+          ["Delivery Performance", pct(view.totals.percentage)],
+        ].map(([label, value]) =>
           <div key={label} style={panel}><span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{label}</span><div style={{ fontWeight: 750, fontSize: 26, marginTop: 6 }}>{value}</div></div>
         )}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,450px),1fr))", gap: 12 }}>
-        {chart(tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, "bar", monthLabel(month, i18n.language) + " " + year)}
-        {chart(tx("OTD semanal por cliente", "Weekly OTD by customer"), view.weeklyCustomers, "bar", tx("Semana", "Week") + " " + week)}
-        {chart(tx("Tendencia semanal", "Weekly trend"), view.weeks, "mixed", tx("Todas las semanas disponibles", "All available weeks"))}
-        {chart(tx("Tendencia mensual", "Monthly trend"), view.monthly, "mixed", String(year))}
+        {chart(tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, "bar", monthLabel(referenceMonth, i18n.language, referenceYear) + " " + referenceYear)}
+        {chart(tx("OTD semanal por cliente", "Weekly OTD by customer"), view.weeklyCustomers, "bar", tx("Semana", "Week") + " " + referenceWeek.week + "/" + referenceWeek.year)}
+        {chart(tx("Tendencia semanal", "Weekly trend"), view.weeks, "mixed", tx("Últimas 6 semanas desde Hasta", "Last 6 weeks as of To date"))}
+        {chart(tx("Tendencia mensual", "Monthly trend"), view.monthly, "mixed", dateFrom + " — " + dateTo)}
       </div>
       <section style={panel}>
         <h2 style={{ fontSize: 16, margin: "0 0 10px" }}>{tx("Detalle de liberaciones", "Release detail")} ({view.detail.length})</h2>
