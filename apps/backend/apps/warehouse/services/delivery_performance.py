@@ -29,8 +29,28 @@ def percentage(ok, scheduled):
     return 100.0 * ok / scheduled if scheduled else 0.0
 
 
+REQUIRED_PROXY_COLUMNS = frozenset({
+    "Release_Key", "Planned_Ship_Date", "Scheduled", "Quantity_Shipped",
+    "Early", "On_Time", "Late", "Customer_Name",
+    "Delivery_Performance_Raw", "Unattributed_Quantity",
+})
+
+def validate_proxy_rows(rows):
+    if not isinstance(rows, list):
+        raise PlexProxyError("Invalid delivery response: expected a list")
+    for row in rows:
+        if not isinstance(row, dict):
+            raise PlexProxyError("Invalid delivery response: expected release objects")
+        missing = REQUIRED_PROXY_COLUMNS.difference(row)
+        if missing:
+            raise PlexProxyError(
+                "Incompatible Plex proxy delivery-performance response. "
+                "Update/restart plex-proxyO and verify PLEX_PROXY_URL. "
+                f"Missing fields: {', '.join(sorted(missing))}"
+            )
+
 def report(year):
-    key = f"warehouse:delivery-performance:to-promise-v2:{year}"
+    key = f"warehouse:delivery-performance:to-promise-v3:{year}"
     raw = cache.get(key)
     if raw is None:
         raw = []
@@ -40,10 +60,12 @@ def report(year):
             end = (date(year + 1, 1, 1) if month == 10
                    else date(year, month + 3, 1)) - timedelta(days=1)
             rows = client.get_delivery_performance(start.isoformat(), end.isoformat())
-            if not isinstance(rows, list):
-                raise PlexProxyError("Invalid delivery response")
+            validate_proxy_rows(rows)
             raw.extend(rows)
+        validate_proxy_rows(raw)
         cache.set(key, raw, timeout=300)
+    else:
+        validate_proxy_rows(raw)
 
     detail = []
     seen_releases = set()
