@@ -69,6 +69,7 @@ def check_monthly_demand_releases():
         # Bypass the warehouse HTTP cache so the poll can detect fresh releases.
         rows = PlexClient().get_demand(
             customer_no=None,
+            include_all_customers=True,
             release_status="All",
             ship_date_from=month_start.isoformat(),
             ship_date_to=end_day.isoformat(),
