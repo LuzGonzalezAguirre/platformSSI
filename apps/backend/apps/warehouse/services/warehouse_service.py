@@ -72,3 +72,11 @@ class WarehouseService:
             lambda: self.client.get_demand(**params),
             **params,
         )
+    def get_revenue_forecast(self, start_date: str, end_date: str,
+                             customer_no: int | None, release_status: str) -> list:
+        return self._get_or_fetch(
+            "revenue_forecast",
+            lambda: self.client.get_revenue_forecast(start_date, end_date, customer_no, release_status),
+            start_date=start_date, end_date=end_date,
+            customer_no=customer_no, release_status=release_status,
+        )
