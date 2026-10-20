@@ -237,6 +237,12 @@ export const sidebarConfig: NavSection[] = [
 
       },
       {
+        id: "warehouse.revenue-forecast",
+        labelKey: "nav.items.warehouseRevenueForecast",
+        path: "/warehouse/revenue-forecast",
+        icon: "ChartNoAxesCombined",
+      },
+      {
         id: "warehouse.delivery-performance",
         labelKey: "nav.items.warehouseDeliveryPerformance",
         path: "/warehouse/delivery-performance",
