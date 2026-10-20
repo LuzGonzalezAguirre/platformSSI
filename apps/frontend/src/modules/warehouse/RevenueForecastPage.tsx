@@ -61,7 +61,7 @@ export default function RevenueForecastPage() {
           ...(customer ? { customer_no: Number(customer) } : {}) },
       });
       setRows(res.data);
-      const actualRes = await apiClient.get<{Account_No: string; Revenue: number}[]>("/warehouse/shipping-revenue-summary/", { params: { start_date: startDate, end_date: endDate } });
+      const actualRes = await apiClient.get<{Account_No: string; Revenue: number}[]>("/warehouse/shipping-revenue-summary/", { params: { start_date: startDate, end_date: endDate, ...(customer ? { customer_no: Number(customer) } : {}) } });
       setActual(actualRes.data);
     } catch (e) { setRows([]); setActual([]); setError("Could not load Plex revenue forecast / shipping revenue"); }
     finally { setLoading(false); }
