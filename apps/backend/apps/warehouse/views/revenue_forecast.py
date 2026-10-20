@@ -43,9 +43,12 @@ class ShippingRevenueSummaryView(APIView):
                 raise ValueError("range")
         except (ValueError, TypeError):
             return Response({"detail": "Invalid dates or range"}, status=400)
+        customer = request.query_params.get("customer_no")
         try:
-            customer = request.query_params.get("customer_no")
             customer_no = int(customer) if customer else None
+        except ValueError:
+            return Response({"detail": "Invalid customer_no"}, status=400)
+        try:
             return Response(WarehouseService().get_shipping_revenue_summary(start, end, customer_no))
         except PlexProxyError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
