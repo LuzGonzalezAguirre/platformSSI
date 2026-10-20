@@ -148,10 +148,6 @@ export default function DemandPage() {
         )}
       </div>
 
-      <div style={styles.notice}>
-        {t("warehouse.demand.inventoryNotice")}
-      </div>
-
       {error && <div style={styles.errorMsg}>{error}</div>}
 
       <div style={styles.tableWrap}>
