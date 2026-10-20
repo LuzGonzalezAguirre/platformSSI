@@ -22,7 +22,7 @@ export default function DemandPage() {
   const [shipDateTo, setShipDateTo] = useState("");
   const [po, setPo]                 = useState("");
   const [customerPartNo, setCustomerPartNo] = useState("");
-  const [releaseTypes, setReleaseTypes] = useState<string[]>([]);
+  const [releaseType, setReleaseType] = useState("All");
   const [rows, setRows]               = useState<DemandRow[]>([]);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
@@ -44,7 +44,7 @@ export default function DemandPage() {
     try {
       const filters: DemandFilters = {
         customerNo, status: status as DemandFilters["status"], shipDateFrom,
-        shipDateTo, po, customerPartNo, releaseTypes,
+        shipDateTo, po, customerPartNo, releaseTypes: releaseType === "All" ? [] : [releaseType],
       };
       const data = await WarehouseService.getDemand(filters);
       setRows(data);
@@ -99,10 +99,17 @@ export default function DemandPage() {
         </div>
         <div style={styles.filterGroup}>
           <label style={styles.filterLabel}>{t("warehouse.demand.releaseType")}</label>
-          <select multiple size={3} value={releaseTypes} onChange={(e) => setReleaseTypes(Array.from(e.target.selectedOptions, (option) => option.value))} style={styles.select} aria-label={t("warehouse.demand.releaseType")}>
-            {DEMAND_RELEASE_TYPES.map((releaseType) => <option key={releaseType} value={releaseType}>{releaseType}</option>)}
+          <select
+            value={releaseType}
+            onChange={(e) => setReleaseType(e.target.value)}
+            style={styles.select}
+            aria-label={t("warehouse.demand.releaseType")}
+          >
+            <option value="All">All</option>
+            {DEMAND_RELEASE_TYPES.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
           </select>
-          <span style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)" }}>{t("warehouse.demand.multiSelectHelp")}</span>
         </div>
 
         <div style={styles.filterGroup}>
@@ -160,56 +167,63 @@ export default function DemandPage() {
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {["PO", t("warehouse.demand.status"), t("warehouse.demand.shipToCarrier"), t("warehouse.demand.colPart"), t("warehouse.demand.colCustPart"),
-                    t("warehouse.demand.qtyReadyInventory"), t("warehouse.demand.wipInventory"), t("warehouse.demand.colShipDate"), t("warehouse.demand.shipperNo"),
-                    t("warehouse.demand.colDueDate"), t("warehouse.demand.requestedShipDate"), t("warehouse.demand.colRelQty"),
-                    t("warehouse.demand.colShipped"), t("warehouse.demand.colBalance"), t("warehouse.demand.totalRelDue"),
-                    t("warehouse.demand.colRelStatus"), t("warehouse.demand.colRelType"),
-                  ].map((h) => (
-                    <th key={h} style={styles.th}>{h}</th>
-                  ))}
+                  {[
+                    "PO Rel",
+                    t("warehouse.demand.status"),
+                    t("warehouse.demand.shipToCarrier"),
+                    "Part No/Cust Part",
+                    t("warehouse.demand.qtyReadyInventory"),
+                    t("warehouse.demand.wipInventory"),
+                    "Ship Date/Shipper No",
+                    t("warehouse.demand.colDueDate"),
+                    t("warehouse.demand.requestedShipDate"),
+                    t("warehouse.demand.colRelQty"),
+                    t("warehouse.demand.colShipped"),
+                    t("warehouse.demand.colBalance"),
+                    t("warehouse.demand.totalRelDue"),
+                    t("warehouse.demand.colRelStatus"),
+                    t("warehouse.demand.colRelType"),
+                  ].map((header) => <th key={header} style={styles.th}>{header}</th>)}
                 </tr>
               </thead>
               <tbody>
-                {customerRows.map((row, i) => (
-                  <tr key={i} style={i % 2 === 0 ? styles.trEven : styles.trOdd}>
-                    <td style={{ ...styles.td, fontFamily: "monospace", fontSize: "0.8rem" }}>{row.PO_Rel || "—"}</td>
-                    <td style={styles.td}>
-                      <span style={{
-                        padding: "0.15rem 0.5rem", borderRadius: "999px", fontSize: "0.72rem", fontWeight: "600",
-                        backgroundColor: row.PO_Status === "Open" ? "rgba(22,163,74,0.1)" : "rgba(107,114,128,0.1)",
-                        color: row.PO_Status === "Open" ? "var(--color-running)" : "var(--color-text-secondary)",
-                      }}>
-                        {row.PO_Status === "Open" ? t("warehouse.demand.statusOpen") : (row.PO_Status || "—")}
-                      </span>
-                    </td>
-                    <td style={styles.td}>{row.Ship_To_Carrier || "—"}</td>
-                    <td style={{ ...styles.td, fontFamily: "monospace", fontSize: "0.8rem" }}>{row.Part_No_Rev}</td>
-                    <td style={styles.td}>{row.Cust_Part || "—"}</td>
-                    <td style={{ ...styles.td, textAlign: "right", fontWeight: "600" }}>{row.Qty_Ready?.toLocaleString()}</td>
-                    <td style={{ ...styles.td, textAlign: "right" }}>{row.Qty_WIP?.toLocaleString()}</td>
-                    <td style={styles.td}>{formatDate(row.Ship_Date)}</td>
-                    <td style={styles.td}>{row.Shipper_No || "—"}</td>
-                    <td style={styles.td}>{formatDate(row.Due_Date)}</td>
-                    <td style={styles.td}>{formatDate(row.Requested_Ship_Date ?? null)}</td>
-                    <td style={{ ...styles.td, textAlign: "right" }}>{row.Rel_Qty?.toLocaleString()}</td>
-                    <td style={{ ...styles.td, textAlign: "right" }}>{row.Shipped?.toLocaleString()}</td>
-                    <td style={{ ...styles.td, textAlign: "right", fontWeight: "600", color: row.Rel_Bal > 0 ? "var(--color-primary)" : "var(--color-text-secondary)" }}>
-                      {row.Rel_Bal?.toLocaleString()}
-                    </td>
-                    <td style={{ ...styles.td, textAlign: "right" }}>{row.Total_Rel_Due == null ? "—" : row.Total_Rel_Due.toLocaleString()}</td>
-                    <td style={styles.td}>
-                      <span style={{
-                        padding: "0.15rem 0.5rem", borderRadius: "999px", fontSize: "0.72rem", fontWeight: "600",
-                        backgroundColor: row.Rel_Status === "Open" ? "rgba(22,163,74,0.1)" : "rgba(107,114,128,0.1)",
-                        color: row.Rel_Status === "Open" ? "var(--color-running)" : "var(--color-text-secondary)",
-                      }}>
-                        {row.Rel_Status === "Open" ? t("warehouse.demand.statusOpen") : row.Rel_Status}
-                      </span>
-                    </td>
-                    <td style={{ ...styles.td, fontSize: "0.775rem", color: "var(--color-text-secondary)" }}>{row.Rel_Type}</td>
-                  </tr>
-                ))}
+                {customerRows.map((row, i) => {
+                  const prev = customerRows[i - 1];
+                  const samePO = Boolean(prev && prev.PO_Rel === row.PO_Rel);
+                  const sameShipTo = Boolean(prev && prev.Ship_To_Carrier === row.Ship_To_Carrier);
+                  const samePart = Boolean(prev && prev.Part_No_Rev === row.Part_No_Rev && prev.Cust_Part === row.Cust_Part);
+                  return (
+                    <tr key={i} style={i % 2 === 0 ? styles.trEven : styles.trOdd}>
+                      <td style={styles.td}>{samePO ? "" : (row.PO_Rel || "—")}</td>
+                      <td style={styles.td}>{row.PO_Status || "—"}</td>
+                      <td style={styles.td}>{sameShipTo ? "" : (row.Ship_To_Carrier || "—")}</td>
+                      <td style={styles.td}>
+                        {!samePart && (
+                          <div style={styles.stackedCell}>
+                            <strong>{row.Part_No_Rev}</strong>
+                            {row.Cust_Part && <span style={styles.secondaryCell}>{row.Cust_Part}</span>}
+                          </div>
+                        )}
+                      </td>
+                      <td style={styles.numericCell}>{row.Qty_Ready?.toLocaleString() ?? "—"}</td>
+                      <td style={styles.numericCell}>{row.Qty_WIP?.toLocaleString() ?? "—"}</td>
+                      <td style={styles.td}>
+                        <div style={styles.stackedCell}>
+                          <span>{formatDate(row.Ship_Date)}</span>
+                          {row.Shipper_No && <span style={styles.secondaryCell}>{row.Shipper_No}</span>}
+                        </div>
+                      </td>
+                      <td style={styles.td}>{formatDate(row.Due_Date)}</td>
+                      <td style={styles.td}>{formatDate(row.Requested_Ship_Date ?? null)}</td>
+                      <td style={styles.numericCell}>{row.Rel_Qty?.toLocaleString() ?? "—"}</td>
+                      <td style={styles.numericCell}>{row.Shipped?.toLocaleString() ?? "—"}</td>
+                      <td style={{ ...styles.numericCell, fontWeight: 700 }}>{row.Rel_Bal?.toLocaleString() ?? "—"}</td>
+                      <td style={styles.numericCell}>{row.Total_Rel_Due == null ? "—" : row.Total_Rel_Due.toLocaleString()}</td>
+                      <td style={styles.td}>{row.Rel_Status}</td>
+                      <td style={styles.td}>{row.Rel_Type}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -240,7 +254,10 @@ const styles: Record<string, React.CSSProperties> = {
   tableCount:    { fontSize: "0.8rem", color: "var(--color-text-secondary)", padding: "0.15rem 0.5rem", borderRadius: "999px", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)" },
   table:         { width: "100%", borderCollapse: "collapse", fontSize: "0.825rem" },
   th:            { padding: "0.625rem 1rem", textAlign: "left", fontSize: "0.725rem", fontWeight: "700", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", backgroundColor: "var(--color-bg)", borderBottom: "1px solid var(--color-border)", whiteSpace: "nowrap" },
-  td:            { padding: "0.6rem 1rem", color: "var(--color-text-primary)", borderBottom: "1px solid var(--color-border)" },
+  td:            { padding: "0.5rem 0.7rem", color: "var(--color-text-primary)", borderBottom: "1px solid var(--color-border)" },
   trEven:        { backgroundColor: "transparent" },
   trOdd:         { backgroundColor: "var(--color-bg)" },
+  numericCell:   { padding: "0.5rem 0.7rem", textAlign: "right", whiteSpace: "nowrap", color: "var(--color-text-primary)", borderBottom: "1px solid var(--color-border)", fontVariantNumeric: "tabular-nums" },
+  stackedCell:   { display: "flex", flexDirection: "column", gap: "0.2rem", minWidth: "8rem" },
+  secondaryCell: { color: "var(--color-text-secondary)", fontSize: "0.76rem" },
 };
