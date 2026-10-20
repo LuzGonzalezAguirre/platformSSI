@@ -27,8 +27,10 @@ def build_demand_teams_payload(row):
         ("Cantidad", row.get("Rel_Qty")),
         ("Fecha embarque", str(row.get("Ship_Date") or "")[:10]),
         ("Tipo", row.get("Rel_Type")),
+        ("Changed By", row.get("Changed_By")),
+        ("Note", row.get("Note")),
     )
-    facts = [{"title": label, "value": str(value or "—")} for label, value in fields]
+    facts = [{"title": label, "value": str(value) if value is not None and str(value).strip() else (" " if label == "Note" else "—")} for label, value in fields]
     card = {
         "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
         "type": "AdaptiveCard",
@@ -50,6 +52,8 @@ def build_demand_teams_payload(row):
         "parte": str(row.get("Part_No_Rev") or ""),
         "cantidad": row.get("Rel_Qty"),
         "fecha_embarque": str(row.get("Ship_Date") or "")[:10],
+        "changed_by": str(row.get("Changed_By") or ""),
+        "note": str(row.get("Note") or ""),
         "attachments": [{"contentType": "application/vnd.microsoft.card.adaptive", "content": card}],
     }
 
