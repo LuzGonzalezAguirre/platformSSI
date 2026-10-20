@@ -80,3 +80,10 @@ class WarehouseService:
             start_date=start_date, end_date=end_date,
             customer_no=customer_no, release_status=release_status,
         )
+
+    def get_shipping_revenue_summary(self, start_date: str, end_date: str) -> list:
+        return self._get_or_fetch(
+            "shipping_revenue_summary",
+            lambda: self.client.get_shipping_revenue_summary(start_date, end_date),
+            start_date=start_date, end_date=end_date,
+        )
