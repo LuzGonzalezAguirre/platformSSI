@@ -16,7 +16,10 @@ export const surface:CSSProperties={background:"var(--color-surface)",color:"var
 export const button:CSSProperties={background:"var(--color-surface)",color:"var(--color-text-primary)",border:"1px solid var(--color-border)",borderRadius:8,padding:"8px 12px",cursor:"pointer"};
 export const tone=(pct:number)=>pct>=99.99?"#ef4444":pct>0?"#eab308":"#22c55e";
 
-// Shared 1600 × 650 floor plan. Its wider canvas adds room for four racks\n// at the end of the current row; both views scroll horizontally as needed.\n// Migration 0005 preserves the existing racks' pixel positions and sizes.\nexport const FLOOR_PLAN_WIDTH = 1600;
+// Shared 1600 × 650 floor plan. Extra horizontal room for four racks.
+// Designer and utilization use the same scrollable coordinate system.
+// Migration 0005 preserves previous rack positions and physical widths.
+export const FLOOR_PLAN_WIDTH = 1600;
 export const FLOOR_PLAN_HEIGHT = 650;
 export const floorPlanStyle:CSSProperties = {
   width:FLOOR_PLAN_WIDTH,
