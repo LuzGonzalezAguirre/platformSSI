@@ -42,3 +42,29 @@ class StorageLocation(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["rack", "level"], name="warehouse_unique_rack_level"),
         ]
+
+
+class DeliveryAction(models.Model):
+    """Action attached to a specific OTD chart bar, independent of Plex snapshots."""
+    CHARTS = [
+        ("monthlyCustomers", "Monthly OTD by Customer"),
+        ("weeklyCustomers", "Weekly OTD by Customer"),
+        ("weeklyTrend", "Weekly Trend"),
+        ("monthlyTrend", "Monthly Trend"),
+    ]
+    chart = models.CharField(max_length=32, choices=CHARTS)
+    period_key = models.CharField(max_length=16)
+    customer = models.CharField(max_length=180, blank=True, default="")
+    reason = models.TextField()
+    task = models.TextField()
+    responsible = models.CharField(max_length=160)
+    start_date = models.DateField()
+    due_date = models.DateField()
+    status = models.CharField(max_length=32, default="Pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "warehouse_delivery_action"
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["chart", "period_key", "customer"], name="warehouse_otd_action_lookup")]

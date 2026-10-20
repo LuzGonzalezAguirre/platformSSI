@@ -11,6 +11,9 @@ type Detail = {
   shipped_recorded: number; detail_shipped: number; variance: number; reconciled: boolean;
   performance_pct: number; source_status: string; month: number; week: number;
 };
+type OtdAction = { id:number; chart:string; period_key:string; customer:string; reason:string; task:string; responsible:string; start_date:string; due_date:string; status:string };
+type ActionDraft = Omit<OtdAction,"id">;
+type BarDatum = { name:string; percentage:number; releases?:number; period_key?:string; customer?:string };
 type Report = {
   year: number; methodology: string; caveat: string; overall: Aggregate;
   monthly_by_customer: Group[]; weekly_by_customer: Group[];
@@ -65,6 +68,44 @@ export default function DeliveryPerformancePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
+  const [actions, setActions] = useState<OtdAction[]>([]);
+  const [actionError, setActionError] = useState("");
+  const [editingId, setEditingId] = useState<number|null>(null);
+  const [actionOpen, setActionOpen] = useState(false);
+  const [draft, setDraft] = useState<ActionDraft>({
+    chart:"weeklyCustomers", period_key:"", customer:"", reason:"", task:"", responsible:"",
+    start_date:today(), due_date:today(), status:"Pending",
+  });
+  const reloadActions = async () => {
+    try { setActions((await apiClient.get<OtdAction[]>("/warehouse/delivery-performance/actions/")).data); setActionError(""); }
+    catch (err) { setActionError(err instanceof Error ? err.message : String(err)); }
+  };
+  useEffect(() => { void reloadActions(); }, []);
+  const actionsForBar = (id:string, datum:BarDatum) => actions.filter(action =>
+    action.chart === id && action.period_key === datum.period_key &&
+    (!id.endsWith("Customers") || action.customer === datum.customer));
+  const newAction = (id:string, datum:BarDatum) => {
+    setEditingId(null);
+    setDraft({ chart:id, period_key:datum.period_key || "", customer:datum.customer || "", reason:"", task:"", responsible:"",
+      start_date:today(), due_date:today(), status:"Pending" });
+    setActionOpen(true);
+    const el = document.getElementById("otd-actions");
+    if (el instanceof HTMLDetailsElement) el.open = true;
+    el?.scrollIntoView({behavior:"smooth",block:"center"});
+  };
+  const saveAction = async () => {
+    try {
+      if (editingId) await apiClient.patch(`/warehouse/delivery-performance/actions/${editingId}/`, draft);
+      else await apiClient.post("/warehouse/delivery-performance/actions/", draft);
+      await reloadActions();
+      setActionOpen(false);
+    } catch (err) { setActionError(err instanceof Error ? err.message : String(err)); }
+  };
+  const removeAction = async (id:number) => {
+    if (!window.confirm(tx("¿Eliminar la acción?", "Delete action?"))) return;
+    try { await apiClient.delete(`/warehouse/delivery-performance/actions/${id}/`); await reloadActions(); }
+    catch (err) { setActionError(err instanceof Error ? err.message : String(err)); }
+  };
 
   const validRange = !!dateFrom && !!dateTo && dateFrom <= dateTo;
   const load = async () => {
@@ -119,12 +160,13 @@ export default function DeliveryPerformancePage() {
     const monthRows = within.filter(x => x.planned_ship_date.slice(0, 7) === referenceMonthPrefix);
     const weekRows = within.filter(x => x.planned_ship_date >= monday);
     const byCustomer = (rows: Detail[]) => [...new Set(rows.map(x => x.customer))].sort()
-      .map(name => ({ name, ...aggregate(rows.filter(x => x.customer === name)) }));
+      .map(name => ({ name, customer:name, period_key: rows === monthRows ? referenceMonthPrefix : monday, ...aggregate(rows.filter(x => x.customer === name)) }));
     const monthly = Array.from({ length: referenceMonth }, (_, index) => {
       const period = new Date(Date.UTC(referenceYear, index, 1));
       const ym = isoDate(period).slice(0, 7);
       return {
         name: monthLabel(period.getUTCMonth() + 1, i18n.language, period.getUTCFullYear()) + " " + period.getUTCFullYear(),
+        period_key:ym,
         ...aggregate(chosen.filter(x => x.planned_ship_date.slice(0, 7) === ym && x.planned_ship_date <= dateTo)),
       };
     });
@@ -136,6 +178,7 @@ export default function DeliveryPerformancePage() {
       return {
         name: "W" + String(wk.week).padStart(2, "0") + "/" + String(wk.year).slice(2),
         week: wk.week,
+        period_key:first,
         ...aggregate(chosen.filter(x => x.planned_ship_date >= first && x.planned_ship_date <= last && x.planned_ship_date <= dateTo)),
       };
     });
@@ -166,7 +209,7 @@ export default function DeliveryPerformancePage() {
     if (current) lines.push(current);
     return lines.slice(0, 2).map((line, i) => i === 1 && lines.length > 2 ? line.slice(0, 13) + "…" : line);
   };
-  const chart = (id: string, title: string, rows: Array<{ name: string; percentage: number; releases?: number }>, description: string, expanded = false) => (
+  const chart = (id: string, title: string, rows: BarDatum[], description: string, expanded = false) => (
     <section style={{ ...panel, display: "flex", flexDirection: "column", minWidth: 0, height: expanded ? "100%" : 425 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
@@ -191,9 +234,19 @@ export default function DeliveryPerformancePage() {
                 </text>;
               } : { fill: "var(--color-text-secondary)", fontSize: expanded ? 13 : 11 }} />
             <YAxis domain={[0, 105]} unit="%" tick={{ fill: "var(--color-text-secondary)", fontSize: 11 }}/>
-            <Tooltip formatter={value => pct(Number(value ?? 0))}/>
+            <Tooltip content={({active,payload}) => {
+              const item = payload?.[0]?.payload as BarDatum|undefined;
+              if (!active || !item) return null;
+              const linked = actionsForBar(id,item);
+              return <div style={{...panel,maxWidth:330,boxShadow:"0 4px 12px rgba(0,0,0,.2)",fontSize:12}}>
+                <strong>{item.name}: {pct(item.percentage)}</strong>
+                {linked.length ? linked.map(a=><p key={a.id} style={{margin:"7px 0"}}><b>Reason:</b> {a.reason}<br/>Task: {a.task}<br/>Status: {a.status}</p>)
+                  : <p>{tx("Sin razón registrada.", "No reason recorded.")}</p>}
+              </div>;
+            }}/>
             <Legend verticalAlign="top" height={30}/>
-            <Bar dataKey="percentage" name="OTD" fill="#5999d3" maxBarSize={expanded ? 80 : 50} radius={[4,4,0,0]} isAnimationActive={false}>
+            <Bar dataKey="percentage" name="OTD" fill="#5999d3" maxBarSize={expanded ? 80 : 50} radius={[4,4,0,0]} isAnimationActive={false}
+              cursor="pointer" onClick={(datum:BarDatum) => newAction(id,datum)}>
               <LabelList dataKey="percentage" position="top" formatter={value => pct(Number(value ?? 0))} fill="var(--color-text-primary)" fontSize={expanded ? 14 : 11} fontWeight={700}/>
             </Bar>
             <Line type="linear" dataKey={() => 100} name={tx("Meta 100%", "Target 100%")} stroke="#36b77e" strokeWidth={2} dot={false} isAnimationActive={false}/>
@@ -276,6 +329,45 @@ export default function DeliveryPerformancePage() {
         {expandedChart === "weeklyTrend" && chart("weeklyTrend", tx("Tendencia semanal", "Weekly trend"), view.weeks, tx("Últimas 6 semanas desde Hasta", "Last 6 weeks as of To date"), true)}
         {expandedChart === "monthlyTrend" && chart("monthlyTrend", tx("Tendencia mensual", "Monthly trend"), view.monthly, tx("Enero hasta el mes de referencia", "January through reference month"), true)}
       </div>}
+      <details id="otd-actions" style={panel}>
+        <summary style={{fontWeight:700,fontSize:16,cursor:"pointer"}}>{tx("Acciones de OTD","OTD Actions")} ({actions.length})</summary>
+        <p style={{fontSize:12,color:"var(--color-text-secondary)"}}>{tx("Haz clic en una barra para asociar una acción al cliente y periodo. Pasa el cursor por la barra para ver su razón.","Click a bar to associate an action with a customer and period. Hover to see the reason.")}</p>
+        {actionError && <p role="alert" style={{color:"#dc2626"}}>{actionError}</p>}
+        <button type="button" style={input} onClick={()=>newAction("weeklyCustomers",{name:"",percentage:0,period_key:isoDate(mondayOf(reference))})}>+ Action</button>
+        {actionOpen && <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,margin:"14px 0"}}>
+          <label style={{display:"grid",gap:4}}>Chart
+            <select style={input} value={draft.chart} onChange={e=>setDraft(p=>({...p,chart:e.target.value}))}>
+              <option value="monthlyCustomers">Monthly OTD by Customer</option><option value="weeklyCustomers">Weekly OTD by Customer</option>
+              <option value="weeklyTrend">Weekly Trend</option><option value="monthlyTrend">Monthly Trend</option>
+            </select></label>
+          <label style={{display:"grid",gap:4}}>Period (YYYY-MM / Monday YYYY-MM-DD)
+            <input style={input} value={draft.period_key} onChange={e=>setDraft(p=>({...p,period_key:e.target.value}))}/></label>
+          {draft.chart.endsWith("Customers") && <label style={{display:"grid",gap:4}}>Customer
+            <select style={input} value={draft.customer} onChange={e=>setDraft(p=>({...p,customer:e.target.value}))}>
+              <option value="">Select customer</option>{customers.map(name=><option key={name} value={name}>{name}</option>)}
+            </select></label>}
+          {(["reason","task","responsible"] as const).map(field=><label key={field} style={{display:"grid",gap:4}}>
+            {field.toUpperCase()}<input style={input} value={draft[field]} onChange={e=>setDraft(p=>({...p,[field]:e.target.value}))}/></label>)}
+          {(["start_date","due_date"] as const).map(field=><label key={field} style={{display:"grid",gap:4}}>
+            {field==="start_date"?"START":"DUE DATE"}<input type="date" style={input} value={draft[field]} onChange={e=>setDraft(p=>({...p,[field]:e.target.value}))}/></label>)}
+          <label style={{display:"grid",gap:4}}>STATUS<select style={input} value={draft.status} onChange={e=>setDraft(p=>({...p,status:e.target.value}))}>
+            <option>Pending</option><option>In Progress</option><option>Completed</option><option>Cancelled</option>
+          </select></label>
+          <div style={{display:"flex",gap:8,alignItems:"end"}}><button type="button" style={input} onClick={()=>void saveAction()}>Save</button>
+            <button type="button" style={input} onClick={()=>setActionOpen(false)}>Cancel</button></div>
+        </div>}
+        <div style={{overflowX:"auto",marginTop:12}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead><tr>{["CUSTOMER","REASON","TASK","RESPONSIBLE","START","DUE DATE","STATUS","BAR",""].map(s=><th key={s} style={tableCell}>{s}</th>)}</tr></thead>
+          <tbody>{actions.map(a=><tr key={a.id}><td style={tableCell}>{a.customer||"—"}</td>
+            <td style={{...tableCell,whiteSpace:"normal"}}>{a.reason}</td><td style={{...tableCell,whiteSpace:"normal"}}>{a.task}</td>
+            <td style={tableCell}>{a.responsible}</td><td style={tableCell}>{a.start_date}</td><td style={tableCell}>{a.due_date}</td>
+            <td style={tableCell}>{a.status}</td><td style={tableCell}>{a.chart} / {a.period_key}</td>
+            <td style={tableCell}><button type="button" style={input} onClick={()=>{
+              const {id,...values}=a;setEditingId(id);setDraft(values);setActionOpen(true);
+            }}>Edit</button>{" "}<button type="button" style={input} onClick={()=>void removeAction(a.id)}>Delete</button></td>
+          </tr>)}</tbody>
+        </table></div>
+      </details>
       <details style={panel}>
         <summary style={{ fontSize: 16, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}>{tx("Detalle de liberaciones", "Release detail")} ({view.detail.length})</summary>
         <div style={{ overflowX: "auto" }}>
