@@ -84,12 +84,14 @@ class PlexClient:
         ship_date_from: str | None = None, ship_date_to: str | None = None,
         po: str | None = None, customer_part_no: str | None = None,
         release_types: list[str] | None = None,
+        include_all_customers: bool = False,
     ) -> list:
         return self._post("demand", {
             "customer_no": customer_no,
             "release_status": release_status,
-            "ship_date_from": ship_date_from,
-            "ship_date_to": ship_date_to,
+            "start_date": ship_date_from,
+            "end_date": ship_date_to,
+            "include_all_customers": include_all_customers,
             "po": po,
             "customer_part_no": customer_part_no,
             "release_types": release_types,
