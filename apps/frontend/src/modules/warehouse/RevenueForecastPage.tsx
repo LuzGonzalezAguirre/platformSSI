@@ -47,6 +47,7 @@ export default function RevenueForecastPage() {
   const [status, setStatus] = useState("All");
   const [customer, setCustomer] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
+  const [actual, setActual] = useState<{Account_No: string; Revenue: number}[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const load = async () => {
@@ -60,7 +61,9 @@ export default function RevenueForecastPage() {
           ...(customer ? { customer_no: Number(customer) } : {}) },
       });
       setRows(res.data);
-    } catch (e) { setRows([]); setError("Could not load Plex revenue forecast"); }
+      const actualRes = await apiClient.get<{Account_No: string; Revenue: number}[]>("/warehouse/shipping-revenue-summary/", { params: { start_date: startDate, end_date: endDate } });
+      setActual(actualRes.data);
+    } catch (e) { setRows([]); setActual([]); setError("Could not load Plex revenue forecast / shipping revenue"); }
     finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
@@ -75,6 +78,7 @@ export default function RevenueForecastPage() {
   const total = rows.reduce((v, r) => v + (r.Forecast_Revenue ?? 0), 0);
   const remaining = rows.reduce((v, r) => v + (r.Remaining_Revenue ?? 0), 0);
   const missing = rows.filter(r => r.Forecast_Revenue === null).length;
+  const actualTotal = actual.reduce((v, r) => v + Number(r.Revenue || 0), 0);
   return <main style={{ padding: 24, color: "var(--color-text-primary)" }}>
     <h2>Revenue Forecast</h2>
     <p style={{ color: "var(--color-text-secondary)" }}>Proyección por releases de Demand y precios de venta por PO en Plex. Valores sin precio verificable no se estiman.</p>
@@ -92,6 +96,14 @@ export default function RevenueForecastPage() {
       <span><strong>Remaining Revenue (priced)</strong><br/>{money(remaining)}</span>
       <span><strong>Missing/unverified prices</strong><br/>{missing}</span>
     </div>
+    <section style={panel}><h3>Actual Shipping Revenue (Invoice Date)</h3>
+      <p>Accounts 41000-420 and 41000-470. Actual invoice revenue is shown separately; it is not added to forecast.</p>
+      <table style={tableStyle}><thead><tr><th style={th}>Account No</th><th style={th}>Actual Revenue</th></tr></thead><tbody>
+      {actual.map(a => <tr key={a.Account_No}><td style={td}>{a.Account_No}</td><td style={td}>{money(Number(a.Revenue || 0))}</td></tr>)}
+      <tr><td style={td}><strong>Total Actual</strong></td><td style={td}><strong>{money(actualTotal)}</strong></td></tr>
+      </tbody></table>
+      <p style={{ color: "var(--color-text-secondary)" }}>Forecast by Ship Date and actual by Invoice Date are different measures; direct variance is not a reconciled like-for-like comparison.</p>
+    </section>
     <SummaryTable title="Revenue by Release Type" groups={byType}/>
     <SummaryTable title="Revenue by Customer" groups={byCustomer}/>
     <SummaryTable title="Revenue by Part" groups={byPart}/>
