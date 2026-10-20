@@ -68,3 +68,20 @@ class DeliveryAction(models.Model):
         db_table = "warehouse_delivery_action"
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["chart", "period_key", "customer"], name="warehouse_otd_action_lookup")]
+
+
+class DemandReleaseAlert(models.Model):
+    """Release first seen in the active shipping month; delivery is retryable."""
+
+    release_key = models.BigIntegerField(unique=True)
+    ship_month = models.DateField(db_index=True)
+    payload = models.JSONField(default=dict)
+    status = models.CharField(max_length=16, default="pending", db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    first_seen_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "warehouse_demand_release_alert"
+        ordering = ["first_seen_at"]
