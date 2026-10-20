@@ -20,4 +20,13 @@ class Migration(migrations.Migration):
             ],
             options={"db_table": "warehouse_demand_release_alert", "ordering": ["first_seen_at"]},
         ),
+        migrations.CreateModel(
+            name="DemandAlertSyncState",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("ship_month", models.DateField(unique=True)),
+                ("seeded_at", models.DateTimeField(auto_now_add=True)),
+            ],
+            options={"db_table": "warehouse_demand_alert_sync_state"},
+        ),
     ]
