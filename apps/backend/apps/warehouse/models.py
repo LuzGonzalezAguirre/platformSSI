@@ -85,3 +85,12 @@ class DemandReleaseAlert(models.Model):
     class Meta:
         db_table = "warehouse_demand_release_alert"
         ordering = ["first_seen_at"]
+
+
+class DemandAlertSyncState(models.Model):
+    """Persist first-run baseline for each shipping month."""
+    ship_month = models.DateField(unique=True)
+    seeded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "warehouse_demand_alert_sync_state"
