@@ -30,3 +30,20 @@ class RevenueForecastView(APIView):
                 start, end, customer_no, release_status))
         except PlexProxyError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+class ShippingRevenueSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start = request.query_params.get("start_date")
+        end = request.query_params.get("end_date")
+        try:
+            a, b = date.fromisoformat(start), date.fromisoformat(end)
+            if a > b or (b - a).days > 180:
+                raise ValueError("range")
+        except (ValueError, TypeError):
+            return Response({"detail": "Invalid dates or range"}, status=400)
+        try:
+            return Response(WarehouseService().get_shipping_revenue_summary(start, end))
+        except PlexProxyError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
