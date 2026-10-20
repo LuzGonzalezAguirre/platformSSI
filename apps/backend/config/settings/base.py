@@ -127,6 +127,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 PLEX_PROXY_URL    = env("PLEX_PROXY_URL", default="http://host.docker.internal:8001")
 PLEX_PROXY_SECRET = env("PLEX_PROXY_SECRET")
 PLEX_CACHE_TTL    = 300  # segundos — 5 minutos default
+DEMAND_TEAMS_WEBHOOK_URL = env("DEMAND_TEAMS_WEBHOOK_URL", default="")
 
 QWALL_PROXY_URL    = env("QWALL_PROXY_URL", default="http://host.docker.internal:8002")
 ACTION_TRACKER_URL = env("ACTION_TRACKER_URL", default="")
@@ -136,6 +137,14 @@ QWALL_PROXY_TOKEN = env("QWALL_PROXY_TOKEN")
 
 
 CELERY_BEAT_SCHEDULE = {
+    "warehouse-demand-release-check": {
+        "task": "apps.warehouse.tasks.check_monthly_demand_releases",
+        "schedule": crontab(minute="*/15"),
+    },
+    "warehouse-demand-teams-delivery": {
+        "task": "apps.warehouse.tasks.send_pending_demand_teams_alerts",
+        "schedule": crontab(minute="*/5"),
+    },
     "cogp-weekly-offenders-saturday": {
         "task": "apps.quality.cogp.tasks.stage_weekly_cogp_offenders",
         "schedule": crontab(minute=0, hour=7, day_of_week="saturday"),
