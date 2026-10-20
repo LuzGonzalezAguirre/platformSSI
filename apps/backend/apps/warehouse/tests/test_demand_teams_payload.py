@@ -14,6 +14,8 @@ class DemandTeamsPayloadTests(SimpleTestCase):
             "Rel_Qty": 262,
             "Ship_Date": "2026-10-15T00:00:00",
             "Rel_Type": "Firm (862)",
+            "Changed_By": "Paola Lopez",
+            "Note": "",
         })
         self.assertEqual(payload["release_key"], 618734191)
         self.assertEqual(payload["tipo_alerta"], "DEMAND_NEW_RELEASE")
@@ -23,3 +25,6 @@ class DemandTeamsPayloadTests(SimpleTestCase):
         facts = attachment["content"]["body"][1]["facts"]
         self.assertEqual(facts[0]["value"], "Deere & Company")
         self.assertEqual(facts[5]["value"], "2026-10-15")
+        self.assertEqual(facts[7]["value"], "Paola Lopez")
+        self.assertEqual(facts[8]["value"], " ")
+        self.assertEqual(payload["note"], "")
