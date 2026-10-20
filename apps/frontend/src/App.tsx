@@ -9,6 +9,7 @@ import ProfilePage from "./modules/profile/ProfilePage";
 import RolesPage from "./modules/admin/RolesPage";
 import ClearToBuildPage from "./modules/warehouse/ClearToBuildPage";
 import DemandPage from "./modules/warehouse/DemandPage";
+import RevenueForecastPage from "./modules/warehouse/RevenueForecastPage";
 import ShelfLifePage from "./modules/warehouse/ShelfLifePage";
 import DeliveryPerformancePage from "./modules/warehouse/DeliveryPerformancePage";
 import StorageUtilizationPage from "./modules/warehouse/StorageUtilizationPage";
@@ -113,6 +114,7 @@ function AppRoutes() {
         <Route path="/settings" element={<div>Configuración</div>} />
         <Route path="/warehouse/ctb" element={withPermission("warehouse", <ClearToBuildPage />)} />
         <Route path="/warehouse/demand" element={withPermission("warehouse", <DemandPage />)} />
+        <Route path="/warehouse/revenue-forecast" element={withPermission("warehouse", <RevenueForecastPage />)} />
         <Route path="/warehouse/delivery-performance" element={withPermission("warehouse", <DeliveryPerformancePage />)} />
         <Route path="/warehouse/shelf-life" element={withPermission("warehouse", <ShelfLifePage />)} />
         <Route path="/warehouse/storage-utilization" element={withPermission("warehouse", <StorageUtilizationPage />)} />
