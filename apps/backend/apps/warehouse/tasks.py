@@ -74,6 +74,9 @@ def check_monthly_demand_releases():
             ship_date_from=month_start.isoformat(),
             ship_date_to=end_day.isoformat(),
         )
+        if not rows:
+            logger.warning("Demand Teams: Plex returned zero releases for %s; baseline not initialized", month_start)
+            return {"status": "empty", "new_releases": 0}
         if any(row.get("Release_Key") is None for row in rows):
             raise RuntimeError("Plex /demand must return Release_Key; update plex-proxyO.")
 
@@ -81,6 +84,10 @@ def check_monthly_demand_releases():
         with transaction.atomic():
             # Lock protects baseline initialization even if multiple workers race.
             state, initialized = DemandAlertSyncState.objects.get_or_create(ship_month=month_start)
+            # Recover an earlier erroneous zero-row initialization without sending
+            # old releases as new alerts.
+            if not initialized and not DemandReleaseAlert.objects.filter(ship_month=month_start).exists():
+                initialized = True
             for row in rows:
                 key = int(row["Release_Key"])
                 _, was_created = DemandReleaseAlert.objects.get_or_create(
