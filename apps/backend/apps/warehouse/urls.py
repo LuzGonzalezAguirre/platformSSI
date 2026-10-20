@@ -1,5 +1,5 @@
 from django.urls import path
-from apps.warehouse.views.revenue_forecast import RevenueForecastView
+from apps.warehouse.views.revenue_forecast import RevenueForecastView, ShippingRevenueSummaryView
 from apps.warehouse.views.shelf_life import ShelfLifeView
 from apps.warehouse.views.delivery_performance import DeliveryPerformanceView
 from apps.warehouse.views.delivery_actions import DeliveryActionsView, DeliveryActionDetailView
@@ -12,6 +12,7 @@ from apps.warehouse.views.warehouse_view import (
 )
 
 urlpatterns = [
+    path("shipping-revenue-summary/", ShippingRevenueSummaryView.as_view(), name="shipping-revenue-summary"),
     path("revenue-forecast/", RevenueForecastView.as_view(), name="warehouse-revenue-forecast"),
     path("delivery-performance/", DeliveryPerformanceView.as_view(), name="warehouse-delivery-performance"),
     path("delivery-performance/actions/", DeliveryActionsView.as_view(), name="warehouse-delivery-actions"),
