@@ -58,11 +58,11 @@ export default function DemandPage() {
 
   useEffect(() => { fetchDemand(); }, []);
 
-  const grouped = rows.reduce<Record<string, DemandRow[]>>((acc, row) => {
-    if (!acc[row.Customer]) acc[row.Customer] = [];
-    acc[row.Customer].push(row);
-    return acc;
-  }, {});
+  const sortedRows = [...rows].sort((a, b) =>
+    a.Customer.localeCompare(b.Customer) ||
+    (a.Ship_Date ?? "").localeCompare(b.Ship_Date ?? "") ||
+    a.Part_No_Rev.localeCompare(b.Part_No_Rev)
+  );
 
   return (
     <div style={styles.page}>
@@ -154,81 +154,87 @@ export default function DemandPage() {
 
       {error && <div style={styles.errorMsg}>{error}</div>}
 
-      {Object.entries(grouped).map(([customer, customerRows]) => (
-        <div key={customer} style={styles.tableWrap}>
-          <div style={styles.tableHeader}>
-            <div style={styles.customerHeader}>
-              <Icons.Building2 size={16} style={{ color: "var(--color-primary)" }} />
-              <span style={styles.tableTitle}>{customer}</span>
-              <span style={styles.tableCount}>{customerRows.length} {t("warehouse.demand.releases")}</span>
-            </div>
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  {[
-                    "PO Rel",
-                    t("warehouse.demand.status"),
-                    t("warehouse.demand.shipToCarrier"),
-                    "Part No/Cust Part",
-                    t("warehouse.demand.qtyReadyInventory"),
-                    t("warehouse.demand.wipInventory"),
-                    "Ship Date/Shipper No",
-                    t("warehouse.demand.colDueDate"),
-                    t("warehouse.demand.requestedShipDate"),
-                    t("warehouse.demand.colRelQty"),
-                    t("warehouse.demand.colShipped"),
-                    t("warehouse.demand.colBalance"),
-                    t("warehouse.demand.totalRelDue"),
-                    t("warehouse.demand.colRelStatus"),
-                    t("warehouse.demand.colRelType"),
-                  ].map((header) => <th key={header} style={styles.th}>{header}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {customerRows.map((row, i) => {
-                  const prev = customerRows[i - 1];
-                  const samePO = Boolean(prev && prev.PO_Rel === row.PO_Rel);
-                  const sameShipTo = Boolean(prev && prev.Ship_To_Carrier === row.Ship_To_Carrier);
-                  const samePart = Boolean(prev && prev.Part_No_Rev === row.Part_No_Rev && prev.Cust_Part === row.Cust_Part);
-                  return (
-                    <tr key={i} style={i % 2 === 0 ? styles.trEven : styles.trOdd}>
-                      <td style={styles.td}>{samePO ? "" : (row.PO_Rel || "—")}</td>
-                      <td style={styles.td}>{row.PO_Status || "—"}</td>
-                      <td style={styles.td}>{sameShipTo ? "" : (row.Ship_To_Carrier || "—")}</td>
-                      <td style={styles.td}>
-                        {!samePart && (
-                          <div style={styles.stackedCell}>
-                            <strong>{row.Part_No_Rev}</strong>
-                            {row.Cust_Part && <span style={styles.secondaryCell}>{row.Cust_Part}</span>}
-                          </div>
-                        )}
-                      </td>
-                      <td style={styles.numericCell}>{row.Qty_Ready?.toLocaleString() ?? "—"}</td>
-                      <td style={styles.numericCell}>{row.Qty_WIP?.toLocaleString() ?? "—"}</td>
-                      <td style={styles.td}>
-                        <div style={styles.stackedCell}>
-                          <span>{formatDate(row.Ship_Date)}</span>
-                          {row.Shipper_No && <span style={styles.secondaryCell}>{row.Shipper_No}</span>}
-                        </div>
-                      </td>
-                      <td style={styles.td}>{formatDate(row.Due_Date)}</td>
-                      <td style={styles.td}>{formatDate(row.Requested_Ship_Date ?? null)}</td>
-                      <td style={styles.numericCell}>{row.Rel_Qty?.toLocaleString() ?? "—"}</td>
-                      <td style={styles.numericCell}>{row.Shipped?.toLocaleString() ?? "—"}</td>
-                      <td style={{ ...styles.numericCell, fontWeight: 700 }}>{row.Rel_Bal?.toLocaleString() ?? "—"}</td>
-                      <td style={styles.numericCell}>{row.Total_Rel_Due == null ? "—" : row.Total_Rel_Due.toLocaleString()}</td>
-                      <td style={styles.td}>{row.Rel_Status}</td>
-                      <td style={styles.td}>{row.Rel_Type}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      <div style={styles.tableWrap}>
+        <div style={styles.tableHeader}>
+          <div style={styles.customerHeader}>
+            <Icons.Table2 size={16} style={{ color: "var(--color-primary)" }} />
+            <span style={styles.tableTitle}>Customer Releases</span>
+            <span style={styles.tableCount}>{rows.length} {t("warehouse.demand.releases")}</span>
           </div>
         </div>
-      ))}
+        <div style={{ overflowX: "auto" }}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>{t("warehouse.demand.customer")}</th>
+                <th style={styles.th}>PO</th>
+                <th style={styles.th}>Part No / Cust Part</th>
+                <th style={{ ...styles.th, textAlign: "right" }}>Qty Ready</th>
+                <th style={{ ...styles.th, textAlign: "right" }}>Qty WIP</th>
+                <th style={styles.th}>Ship Date / Shipper</th>
+                <th style={styles.th}>{t("warehouse.demand.colDueDate")}</th>
+                <th style={{ ...styles.th, textAlign: "right" }}>Rel Qty</th>
+                <th style={{ ...styles.th, textAlign: "right" }}>Shipped</th>
+                <th style={{ ...styles.th, textAlign: "right" }}>Rel Bal</th>
+                <th style={styles.th}>Rel Status</th>
+                <th style={styles.th}>Rel Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedRows.map((row, i) => {
+                const previous = sortedRows[i - 1];
+                const newCustomer = !previous || previous.Customer !== row.Customer;
+                const balance = Number(row.Rel_Bal) || 0;
+                const ready = Number(row.Qty_Ready) || 0;
+                const wip = Number(row.Qty_WIP) || 0;
+                return (
+                  <tr key={i} style={{
+                    backgroundColor: newCustomer ? "var(--color-bg)" : "transparent",
+                    borderTop: newCustomer && i > 0 ? "2px solid var(--color-border)" : undefined,
+                  }}>
+                    <td style={{ ...styles.td, minWidth: "150px" }}>
+                      {newCustomer && <span style={styles.customerName}>{row.Customer}</span>}
+                    </td>
+                    <td style={{ ...styles.td, fontWeight: 500 }}>{row.PO_Rel || "—"}</td>
+                    <td style={styles.td}>
+                      <div style={styles.stackedCell}>
+                        <span style={{ fontWeight: 600 }}>{row.Part_No_Rev}</span>
+                        {row.Cust_Part && <span style={styles.secondaryCell}>{row.Cust_Part}</span>}
+                      </div>
+                    </td>
+                    <td style={{ ...styles.numericCell, color: ready > 0 ? "var(--color-running)" : "var(--color-text-secondary)", fontWeight: ready > 0 ? 700 : 400 }}>
+                      {ready.toLocaleString()}
+                    </td>
+                    <td style={{ ...styles.numericCell, color: wip > 0 ? "var(--color-primary)" : "var(--color-text-secondary)", fontWeight: wip > 0 ? 600 : 400 }}>
+                      {wip.toLocaleString()}
+                    </td>
+                    <td style={styles.td}>
+                      <div style={styles.stackedCell}>
+                        <span>{formatDate(row.Ship_Date)}</span>
+                        {row.Shipper_No && <span style={styles.secondaryCell}>{row.Shipper_No}</span>}
+                      </div>
+                    </td>
+                    <td style={styles.td}>{formatDate(row.Due_Date)}</td>
+                    <td style={styles.numericCell}>{row.Rel_Qty?.toLocaleString() ?? "—"}</td>
+                    <td style={styles.numericCell}>{row.Shipped?.toLocaleString() ?? "—"}</td>
+                    <td style={{ ...styles.numericCell, fontWeight: 700 }}>{balance.toLocaleString()}</td>
+                    <td style={styles.td}>
+                      <span style={{
+                        ...styles.statusPill,
+                        backgroundColor: row.Rel_Status === "Open" ? "rgba(22,163,74,0.10)" :
+                          row.Rel_Status === "Scheduled" ? "rgba(59,130,246,0.10)" : "var(--color-bg)",
+                        color: row.Rel_Status === "Open" ? "var(--color-running)" :
+                          row.Rel_Status === "Scheduled" ? "var(--color-primary)" : "var(--color-text-secondary)",
+                      }}>{row.Rel_Status || "—"}</span>
+                    </td>
+                    <td style={styles.td}>{row.Rel_Type || "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -253,6 +259,8 @@ const styles: Record<string, React.CSSProperties> = {
   tableTitle:    { fontSize: "0.9rem", fontWeight: "700", color: "var(--color-text-primary)" },
   tableCount:    { fontSize: "0.8rem", color: "var(--color-text-secondary)", padding: "0.15rem 0.5rem", borderRadius: "999px", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)" },
   table:         { width: "100%", borderCollapse: "collapse", fontSize: "0.825rem" },
+  customerName:  { display: "inline-block", fontWeight: 700, color: "var(--color-text-primary)" },
+  statusPill:    { display: "inline-block", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 600 },
   th:            { padding: "0.625rem 1rem", textAlign: "left", fontSize: "0.725rem", fontWeight: "700", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", backgroundColor: "var(--color-bg)", borderBottom: "1px solid var(--color-border)", whiteSpace: "nowrap" },
   td:            { padding: "0.5rem 0.7rem", color: "var(--color-text-primary)", borderBottom: "1px solid var(--color-border)" },
   trEven:        { backgroundColor: "transparent" },
