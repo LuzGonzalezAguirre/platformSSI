@@ -63,7 +63,8 @@
       "warehouseStorageDesigner": "Warehouse Designer",
       "warehouseShelfLife": "WH Shelf Life",
       "warehouseDeliveryPerformance": "Delivery Performance (OTD)",
-      "qualityFlags": "Flagged Pieces"
+      "qualityFlags": "Flagged Pieces",
+      "warehouseRevenueForecast": "Revenue Forecast"
     }
   },
   "scrapRate": {
