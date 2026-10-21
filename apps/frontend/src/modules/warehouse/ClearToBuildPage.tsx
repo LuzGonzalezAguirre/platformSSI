@@ -1,3 +1,4 @@
+import "./warehouse-unified.css";
 // apps/frontend/src/modules/warehouse/ClearToBuildPage.tsx
 import { useState, useMemo } from "react";
 import * as Icons from "lucide-react";
@@ -102,9 +103,9 @@ function TreeCell({ row, isLastAtLevel }: { row: CtbRow; isLastAtLevel: boolean[
                 title={`BOM references Rev ${bomRev} · Using active Rev ${row.active_revision}`}
                 style={{
                   display: "inline-flex", alignItems: "center",
-                  backgroundColor: "#eff6ff",
-                  color: "#1d4ed8",
-                  border: "1px solid #bfdbfe",
+                  backgroundColor: "var(--color-bg)",
+                  color: "var(--color-primary)",
+                  border: "1px solid var(--color-border)",
                   borderRadius: "3px",
                   fontSize: "0.6rem", fontWeight: "700",
                   padding: "1px 5px",
@@ -216,8 +217,11 @@ export default function ClearToBuildPage() {
   const isLastAtLevelMap = useMemo(() => buildIsLastAtLevel(filteredRows), [filteredRows]);
 
   return (
-    <div style={S.page}>
-
+    <div className="warehouse-unified" style={S.page}>
+      <div className="warehouse-heading">
+        <span className="warehouse-heading-icon"><Icons.GitBranch size={23}/></span>
+        <div><h1>BOM / Clear to Build</h1><p>Explora la estructura del producto, revisiones, materiales y disponibilidad para fabricación.</p></div>
+      </div>
       {/* ── Filtros superiores ── */}
       <div style={S.filterBar}>
         <div style={S.fg}>
@@ -447,7 +451,7 @@ export default function ClearToBuildPage() {
 }
 
 const S: Record<string, React.CSSProperties> = {
-  page:         { display: "flex", flexDirection: "column", gap: "1.25rem", padding: "0 2rem" },
+  page:         { display: "flex", flexDirection: "column", gap: "1.25rem", padding: "0 1rem 2rem", minWidth: 0 },
   filterBar:    { display: "flex", flexWrap: "wrap", gap: "1.25rem", alignItems: "flex-end", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1.25rem 1.5rem" },
   tableFilters: { display: "flex", flexWrap: "wrap", gap: "1.5rem", alignItems: "flex-end", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1rem 1.5rem" },
   fg:           { display: "flex", flexDirection: "column", gap: "0.375rem" },
