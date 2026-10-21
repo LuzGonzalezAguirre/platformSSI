@@ -60,11 +60,14 @@ export default function RevenueForecastPage() {
   const [debug, setDebug] = useState(false);
   const [selectedRelease, setSelectedRelease] = useState<number | null>(null);
   const [auditMetric, setAuditMetric] = useState<RevenueKpi | null>(null);
+  const [legacyRows, setLegacyRows] = useState<Row[] | null>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState("");
   const load = async () => {
     if (!startDate || !endDate || startDate > endDate) {
       setError("Invalid date range"); return;
     }
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setLegacyRows(null); setCompareError("");
     try {
       const res = await apiClient.get<Row[]>("/warehouse/revenue-forecast/", {
         params: { start_date: startDate, end_date: endDate, status: "Active", debug,
@@ -152,6 +155,42 @@ export default function RevenueForecastPage() {
         URL.revokeObjectURL(url);
       }}>Exportar auditoría CSV</button>
       <p className="warehouse-muted">El CSV contiene {rows.length} releases; suma monetaria reportada: {money(total)}. Verifica que el período, el cliente y la moneda correspondan exactamente con Plex.</p>
+    </section>}
+    {debug && <section className="warehouse-forecast-section" style={panel}>
+      <h3>Comparación histórica de cálculo</h3>
+      <p className="warehouse-muted">Compara el mismo período y cliente entre la lógica original All (todos los estados y tipos) y la lógica activa actual. Solo diagnóstico: no modifica Revenue Forecast.</p>
+      <button type="button" disabled={compareLoading || loading} onClick={async () => {
+        setCompareLoading(true); setCompareError("");
+        try {
+          const response = await apiClient.get<Row[]>("/warehouse/revenue-forecast/", {
+            params: {start_date:startDate,end_date:endDate,status:"LegacyAll",debug:true,
+              ...(customer ? {customer_no:Number(customer)} : {})}
+          });
+          setLegacyRows(response.data);
+        } catch {
+          setLegacyRows(null);
+          setCompareError("No se pudo consultar la lógica histórica. Verifica que backend y plex-proxy estén actualizados.");
+        } finally { setCompareLoading(false); }
+      }}>{compareLoading ? "Comparando..." : "Comparar con cálculo original"}</button>
+      {compareError && <p role="alert">{compareError}</p>}
+      {legacyRows && (() => {
+        const gross = legacyRows.reduce((sum,r)=>sum+(r.Forecast_Revenue ?? 0),0);
+        const activeKeys = new Set(rows.map(r=>r.Release_Key));
+        const excluded = legacyRows.filter(r=>!activeKeys.has(r.Release_Key));
+        const excludedMoney = excluded.reduce((sum,r)=>sum+(r.Forecast_Revenue ?? 0),0);
+        const groups = new Map<string,{count:number,revenue:number}>();
+        excluded.forEach(r=>{
+          const key = (r.Rel_Status ?? "Desconocido") + " / " + r.Release_Type;
+          const g=groups.get(key) ?? {count:0,revenue:0};
+          g.count++;g.revenue+=r.Forecast_Revenue ?? 0;groups.set(key,g);
+        });
+        return <>
+          <p><strong>Original All:</strong> {legacyRows.length} releases · {money(gross)}. <strong>Activo:</strong> {rows.length} releases · {money(total)}. <strong>Fuera del alcance activo:</strong> {excluded.length} releases · {money(excludedMoney)}.</p>
+          <p className="warehouse-muted">Diferencia total entre las consultas: {money(gross-total)}. Los precios o datos Plex pueden cambiar entre solicitudes; el desglose no debe interpretarse como ajuste financiero confirmado.</p>
+          <div style={{maxHeight:340,overflow:"auto"}}><table style={tableStyle}><thead><tr>{["Estado / tipo fuera del forecast activo","Releases","Importe"].map(x=><th key={x} style={th}>{x}</th>)}</tr></thead>
+          <tbody>{Array.from(groups.entries()).sort((a,b)=>b[1].revenue-a[1].revenue).map(([key,g])=><tr key={key}><td style={td}>{key}</td><td style={td}>{g.count}</td><td style={td}>{money(g.revenue)}</td></tr>)}</tbody></table></div>
+        </>;
+      })()}
     </section>}
     <RevenuePaceChart rows={rows} startDate={startDate} endDate={endDate}/>
     {debug && auditMetric && <RevenueKpiAudit rows={rows} metric={auditMetric}
