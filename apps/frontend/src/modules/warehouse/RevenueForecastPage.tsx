@@ -52,12 +52,13 @@ function SummaryTable({ title, groups }: { title: string; groups: Group[] }) {
 export default function RevenueForecastPage() {
   const today = new Date();
   const [startDate, setStartDate] = useState(() => iso(new Date(today.getFullYear(), today.getMonth(), 1)));
-  const [endDate, setEndDate] = useState(() => iso(today));
+  const [endDate, setEndDate] = useState(() => iso(new Date(today.getFullYear(), today.getMonth() + 1, 0)));
 
   const [customer, setCustomer] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [actual, setActual] = useState<{Account_No: string; Revenue: number}[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadedRange, setLoadedRange] = useState("");
   const [error, setError] = useState("");
   const [debug, setDebug] = useState(false);
   const [selectedRelease, setSelectedRelease] = useState<number | null>(null);
@@ -73,11 +74,12 @@ export default function RevenueForecastPage() {
           ...(customer ? { customer_no: Number(customer) } : {}) },
       });
       setRows(res.data);
+      setLoadedRange(`${startDate} → ${endDate}`);
       setSelectedRelease(null);
       setAuditMetric(null);
       const actualRes = await apiClient.get<{Account_No: string; Revenue: number}[]>("/warehouse/shipping-revenue-summary/", { params: { start_date: startDate, end_date: endDate, ...(customer ? { customer_no: Number(customer) } : {}) } });
       setActual(actualRes.data);
-    } catch (e) { setRows([]); setActual([]); setError("Could not load Plex revenue forecast / shipping revenue"); }
+    } catch (e) { setRows([]); setActual([]); setLoadedRange(""); setError("Could not load Plex revenue forecast / shipping revenue"); }
     finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
@@ -112,6 +114,7 @@ export default function RevenueForecastPage() {
       <button disabled={loading} onClick={() => void load()}>{loading ? "Loading..." : "Refresh"}</button>
     </div>
     {error && <p role="alert" className="warehouse-error">{error}</p>}
+    <p className="warehouse-muted">Período consultado: {loadedRange || "sin datos cargados"} · {rows.length} releases activos recuperados. Cambia las fechas y presiona Refresh para consultar otro período.</p>
     <div className="warehouse-metric-grid">
       {([
         ["releases", "Releases", rows.length.toLocaleString("en-US")],
