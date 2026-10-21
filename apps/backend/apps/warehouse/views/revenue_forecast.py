@@ -20,8 +20,8 @@ class RevenueForecastView(APIView):
                 raise ValueError("range")
             customer = request.query_params.get("customer_no")
             customer_no = int(customer) if customer else None
-            release_status = request.query_params.get("status", "All")
-            if release_status not in ("All", "Open", "History"):
+            release_status = request.query_params.get("status", "Active")
+            if release_status not in ("Active", "All", "Open"):
                 return Response({"detail": "Invalid status"}, status=400)
         except (ValueError, TypeError):
             return Response({"detail": "Invalid dates, range or customer"}, status=400)
