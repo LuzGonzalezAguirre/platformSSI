@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 export type RevenueAuditRow = {
+  Coincidence?: { Exact_Group_Size: number; Exact_Release_Keys: number[]; Overlap_Group_Size: number; Other_Release_Types: string[]; Classification: string; Review_Required: boolean; Confirmed_Duplicate: boolean };
   Release_Key: number;
   PO_Line_Key: number;
   PO_No: string;
@@ -58,18 +59,22 @@ export default function RevenueKpiAudit({
 }) {
   const [search, setSearch] = useState("");
   const [onlyExceptions, setOnlyExceptions] = useState(false);
+  const [onlyCoincidences, setOnlyCoincidences] = useState(false);
   const selected = definitions[metric];
   const missing = rows.filter(r => r.Unit_Price === null || r.Forecast_Revenue === null);
   const priced = rows.filter(r => r.Unit_Price !== null && r.Forecast_Revenue !== null);
   const base = metric === "missing" ? missing : rows;
   const visible = useMemo(() => base.filter(row => {
     if (onlyExceptions && row.Unit_Price !== null && row.Forecast_Revenue !== null) return false;
+    if (onlyCoincidences && !row.Coincidence?.Review_Required) return false;
     const needle = search.trim().toLowerCase();
     return !needle || [row.Release_Key, row.PO_Line_Key, row.PO_No, row.Customer_No,
       row.Part_No_Rev, row.Release_Type, row.Price_Key].some(value =>
       String(value ?? "").toLowerCase().includes(needle));
-  }), [base, onlyExceptions, search]);
+  }), [base, onlyExceptions, onlyCoincidences, search]);
   const count = rows.length;
+  const candidates = rows.filter(r => r.Coincidence?.Review_Required);
+  const candidateRevenue = candidates.reduce((sum,r) => sum + (r.Forecast_Revenue ?? 0),0);
   const forecast = rows.reduce((sum, row) => sum + (row.Forecast_Revenue ?? 0), 0);
   const remaining = rows.reduce((sum, row) => sum + (row.Remaining_Revenue ?? 0), 0);
   const quantity = rows.reduce((sum, row) => sum + Number(row.Rel_Qty ?? 0), 0);
@@ -105,17 +110,19 @@ export default function RevenueKpiAudit({
         ["Σ Remaining", money(remaining)],
       ].map(([label, value]) => <div key={label} className="warehouse-metric"><span>{label}</span><strong>{value}</strong></div>)}
     </div>
+    <p className="warehouse-muted"><strong>Coincidencias para revisar:</strong> {candidates.length} releases por {money(candidateRevenue)} (importe bruto asociado, NO significa duplicación confirmada). El cálculo oficial no cambia.</p>
     <p className="warehouse-muted">El total se obtiene de los valores sin redondear de la respuesta del API; la interfaz redondea solo la presentación. Los releases sin precio aparecen en la tabla y no se convierten en $0 verificados.</p>
     <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
       <input aria-label="Buscar release" placeholder="Buscar Release, PO, parte o cliente…" value={search}
         onChange={e => setSearch(e.target.value)} style={{ padding: 9, border: "1px solid var(--color-border)", background: "var(--color-bg)", color: "var(--color-text-primary)", borderRadius: 6, minWidth: 270 }}/>
       {metric !== "missing" && <label className="warehouse-muted"><input type="checkbox" checked={onlyExceptions} onChange={e => setOnlyExceptions(e.target.checked)}/> Solo sin precio</label>}
+      <label className="warehouse-muted"><input type="checkbox" checked={onlyCoincidences} onChange={e => setOnlyCoincidences(e.target.checked)}/> Solo coincidencias</label>
       <span className="warehouse-muted">Filas visibles: {visible.length} / {base.length}</span>
       {(metric === "forecast" || metric === "remaining") && <span className="warehouse-muted">Subtotal visible: {money(sumVisible)}</span>}
     </div>
     <div style={{ overflowX: "auto", maxHeight: 540 }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-        <thead><tr>{["Release_Key", "PO_Line_Key", "PO", "Customer", "Part / Rev", "Type", "Ship Date", "Rel Qty", "Shipped", "Rel Bal", "Price_Key", "Unit Price", "Forecast", "Remaining", "Diagnóstico", ""].map(column => <th key={column} style={heading}>{column}</th>)}</tr></thead>
+        <thead><tr>{["Release_Key", "PO_Line_Key", "PO", "Customer", "Part / Rev", "Type", "Ship Date", "Rel Qty", "Shipped", "Rel Bal", "Price_Key", "Unit Price", "Forecast", "Remaining", "Diagnóstico", "Coincidencia", "IDs relacionados", ""].map(column => <th key={column} style={heading}>{column}</th>)}</tr></thead>
         <tbody>{visible.map(row => <tr key={row.Release_Key}>
           <td style={cell}>{row.Release_Key}</td><td style={cell}>{row.PO_Line_Key}</td>
           <td style={cell}>{row.PO_No}</td><td style={cell}>{row.Customer_No}</td>
@@ -125,6 +132,8 @@ export default function RevenueKpiAudit({
           <td style={cell}>{row.Forecast_Revenue === null ? "Sin precio" : money(row.Forecast_Revenue)}</td>
           <td style={cell}>{row.Remaining_Revenue === null ? "Sin precio" : money(row.Remaining_Revenue)}</td>
           <td style={{ ...cell, color: row.Price_Issue ? "var(--color-stopped)" : "var(--color-running)" }}>{row.Price_Issue ?? "Validado"}</td>
+          <td style={cell}>{row.Coincidence?.Classification ?? "Activa Debug y actualiza"}</td>
+          <td style={cell}>{row.Coincidence?.Exact_Release_Keys.join(", ") ?? "—"}{row.Coincidence?.Other_Release_Types.length ? " | Tipos: " + row.Coincidence.Other_Release_Types.join(", ") : ""}</td>
           <td style={cell}><button className="warehouse-audit-button" type="button" onClick={() => onInspect(row.Release_Key)}>Inspeccionar</button></td>
         </tr>)}</tbody>
       </table>
