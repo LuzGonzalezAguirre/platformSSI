@@ -141,7 +141,7 @@ export default function RevenueForecastPage() {
         </div>
         <p className="warehouse-muted">Simulación = Gross Forecast menos el importe de releases con evidencia histórica de desactualización EDI. Un mensaje histórico no confirma que el release siga obsoleto. No se descuentan registros sin precio del monto; {ediUnpriced.length} releases marcados no tienen precio verificable. La clasificación NO confirma la vigencia de ningún release.</p>
         <div style={{maxHeight:440,overflow:"auto"}}>
-        <table style={tableStyle}><thead><tr>{["Release_Key","PO","Part","Ship Date","Rel Status","EDI Status","Last outdated","Events later","Reason","Gross","Adjustment provisional"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+        <table style={tableStyle}><thead><tr>{["Release_Key","PO","Part","Ship Date","EDI classification","EDI key","Last outdated","Events later","Reason","Gross","Adjustment provisional"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
         <tbody>{rows.filter(r=>r.EDI_Audit?.Historically_Outdated).map(r=><tr key={r.Release_Key}>
           <td style={td}>{r.Release_Key}</td><td style={td}>{r.PO_No}</td><td style={td}>{r.Part_No_Rev}</td><td style={td}>{r.Ship_Date}</td>
           <td style={td}>{r.EDI_Audit?.Status ?? "N/A"}</td><td style={td}>{r.EDI_Audit?.Last_Outdated_EDI_Key ?? "—"}</td>
