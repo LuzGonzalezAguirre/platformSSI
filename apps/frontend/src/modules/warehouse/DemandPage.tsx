@@ -1,3 +1,4 @@
+import "./warehouse-unified.css";
 import { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -65,7 +66,11 @@ export default function DemandPage() {
   );
 
   return (
-    <div style={styles.page}>
+    <div className="warehouse-unified" style={styles.page}>
+      <div className="warehouse-heading">
+        <span className="warehouse-heading-icon"><Icons.ClipboardList size={23}/></span>
+        <div><h1>Demand</h1><p>Consulta de liberaciones, cantidades pendientes y disponibilidad para embarque.</p></div>
+      </div>
       {/* Filtros superiores */}
       <div style={styles.filterBar}>
         <div style={styles.filterGroup}>
@@ -236,8 +241,8 @@ export default function DemandPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page:          { display: "flex", flexDirection: "column", gap: "1.25rem" },
-  filterBar:     { display: "flex", flexWrap: "wrap", gap: "1.25rem", alignItems: "flex-end", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1.25rem 1.5rem" },
+  page:          { display: "flex", flexDirection: "column", gap: "1.25rem", padding: "0 1rem 2rem", minWidth: 0 },
+  filterBar:     { display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1.25rem 1.5rem" },
   filterGroup:   { display: "flex", flexDirection: "column", gap: "0.375rem" },
   filterLabel:   { fontSize: "0.75rem", fontWeight: "600", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" },
   input:         { padding: "0.55rem 0.75rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", fontSize: "0.875rem", color: "var(--color-text-primary)", backgroundColor: "var(--color-bg)", minWidth: "160px" },
@@ -246,7 +251,7 @@ const styles: Record<string, React.CSSProperties> = {
   segmentBtn:    { padding: "0.55rem 1rem", border: "none", borderRight: "1px solid var(--color-border)", backgroundColor: "var(--color-bg)", color: "var(--color-text-secondary)", cursor: "pointer", fontSize: "0.875rem", fontWeight: "500" },
   segmentActive: { backgroundColor: "var(--color-primary)", color: "#fff" },
   loadBtn:       { display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.55rem 1.25rem", backgroundColor: "var(--color-primary)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontSize: "0.875rem", fontWeight: "600" },
-  summaryBadge:  { display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.4rem 0.875rem", borderRadius: "999px", backgroundColor: "rgba(10,110,189,0.08)", color: "var(--color-primary)", fontSize: "0.8rem", fontWeight: "600", marginTop: "1.5rem" },
+  summaryBadge:  { display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.4rem 0.875rem", borderRadius: "var(--radius-md)", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-primary)", fontSize: "0.8rem", fontWeight: "600", marginTop: "1.5rem" },
   notice:        { padding: "0.75rem 1rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", color: "var(--color-text-secondary)", fontSize: "0.8rem" },
   errorMsg:      { padding: "0.75rem 1rem", borderRadius: "var(--radius-md)", backgroundColor: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "var(--color-stopped)", fontSize: "0.875rem" },
   tableWrap:     { backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" },
