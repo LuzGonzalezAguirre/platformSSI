@@ -7,6 +7,9 @@ import apiClient from "../../services/api.client";
 type PriceCandidate = { Price_Key: number; Price: number | null; Active: number; Effective_Date: string | null; Expiration_Date: string | null; Breakpoint_Quantity: number; Unit: string; Currency_Key: number; Selection_Status: string; Exclusion_Reasons: string[] };
 type DebugInfo = { Field_Sources: Record<string,string>; Price_Conversion_Raw: number | null; Currency_Key: number | null; Price_Unit: string | null; Candidate_Count: number; Eligible_Count: number; Candidates: PriceCandidate[]; Selection_Rule: string };
 type Row = { PO_Line_Key: number; Debug?: DebugInfo;
+  EDI_Audit?: { Status: string; Historically_Outdated: boolean; Last_Outdated_Change_Key: number | null; Last_Outdated_Change_Date: string | null; Last_Outdated_EDI_Key: string | null; Change_Events: number; Events_After_Outdated: number; Adjustment_Reason: string; Provisional_Exclusion: boolean; Confirmed_Current: boolean };
+  EDI_Provisional_Adjustment?: number | null;
+  Adjusted_Forecast_Provisional?: number | null;
   Release_Key: number; Customer_No: number; PO_No: string;
   Part_No_Rev: string; Release_Type: string; Ship_Date: string;
   Rel_Qty: number; Rel_Bal: number; Shipped: number;
@@ -88,6 +91,13 @@ export default function RevenueForecastPage() {
   const total = rows.reduce((v, r) => v + (r.Forecast_Revenue ?? 0), 0);
   const remaining = rows.reduce((v, r) => v + (r.Remaining_Revenue ?? 0), 0);
   const missing = rows.filter(r => r.Forecast_Revenue === null).length;
+  const ediAvailable = debug && rows.length > 0 && rows.every(r => Boolean(r.EDI_Audit));
+  const historicalOutdated = rows.filter(r => r.EDI_Audit?.Historically_Outdated);
+  const laterEvents = historicalOutdated.filter(r => (r.EDI_Audit?.Events_After_Outdated ?? 0) > 0);
+  const ediUnpriced = historicalOutdated.filter(r => r.Forecast_Revenue === null);
+  const ediAdjustment = historicalOutdated.reduce((sum, r) => sum + (r.Forecast_Revenue ?? 0), 0);
+  const ediAdjusted = total - ediAdjustment;
+  const ediPendingReview = rows.filter(r => !r.EDI_Audit || !r.EDI_Audit.Confirmed_Current).length;
   const actualTotal = actual.reduce((v, r) => v + Number(r.Revenue || 0), 0);
   const selectedRow = rows.find(r => r.Release_Key === selectedRelease);
   return <main className="warehouse-unified" style={{ padding: "0 1rem 2rem" }}>
@@ -117,6 +127,30 @@ export default function RevenueForecastPage() {
           <small style={{ color: "var(--color-primary)" }}>Ver origen y desglose →</small>
         </button>)}
     </div>
+    {debug && <section className="warehouse-forecast-section" style={panel}>
+      <h3>EDI Revenue Adjustment — simulación, no KPI oficial</h3>
+      {!ediAvailable ? <p className="warehouse-muted">La auditoría EDI no está disponible en la respuesta actual. Actualiza y reinicia plex-proxy; después pulsa Refresh. No se calcula un ajuste a partir de datos incompletos.</p> :
+      <>
+        <div className="warehouse-metric-grid">
+          <div className="warehouse-metric"><span>Gross Forecast</span><strong>{money(total)}</strong></div>
+          <div className="warehouse-metric"><span>Historial EDI obsoleto (importe)</span><strong>{money(ediAdjustment)}</strong></div>
+          <div className="warehouse-metric"><span>Adjusted Forecast provisional</span><strong>{money(ediAdjusted)}</strong></div>
+          <div className="warehouse-metric"><span>Releases con evento EDI outdated</span><strong>{historicalOutdated.length}</strong></div>
+          <div className="warehouse-metric"><span>Con eventos posteriores</span><strong>{laterEvents.length}</strong></div>
+          <div className="warehouse-metric"><span>Sin vigencia confirmada</span><strong>{ediPendingReview}</strong></div>
+        </div>
+        <p className="warehouse-muted">Simulación = Gross Forecast menos el importe de releases con evidencia histórica de desactualización EDI. Un mensaje histórico no confirma que el release siga obsoleto. No se descuentan registros sin precio del monto; {ediUnpriced.length} releases marcados no tienen precio verificable. La clasificación NO confirma la vigencia de ningún release.</p>
+        <div style={{maxHeight:440,overflow:"auto"}}>
+        <table style={tableStyle}><thead><tr>{["Release_Key","PO","Part","Ship Date","Rel Status","EDI Status","Last outdated","Events later","Reason","Gross","Adjustment provisional"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+        <tbody>{rows.filter(r=>r.EDI_Audit?.Historically_Outdated).map(r=><tr key={r.Release_Key}>
+          <td style={td}>{r.Release_Key}</td><td style={td}>{r.PO_No}</td><td style={td}>{r.Part_No_Rev}</td><td style={td}>{r.Ship_Date}</td>
+          <td style={td}>{r.EDI_Audit?.Status ?? "N/A"}</td><td style={td}>{r.EDI_Audit?.Last_Outdated_EDI_Key ?? "—"}</td>
+          <td style={td}>{r.EDI_Audit?.Last_Outdated_Change_Date ?? "—"}</td><td style={td}>{r.EDI_Audit?.Events_After_Outdated ?? 0}</td>
+          <td style={td}>{r.EDI_Audit?.Adjustment_Reason}</td><td style={td}>{r.Forecast_Revenue === null ? "N/A" : money(r.Forecast_Revenue)}</td>
+          <td style={td}>{r.EDI_Provisional_Adjustment === null ? "N/A" : money(r.EDI_Provisional_Adjustment ?? 0)}</td>
+        </tr>)}</tbody></table></div>
+      </>}
+    </section>}
     {debug && auditMetric && <RevenueKpiAudit rows={rows} metric={auditMetric}
       onClose={() => setAuditMetric(null)}
       onInspect={key => setSelectedRelease(key)} />}
