@@ -1,5 +1,6 @@
 import "./warehouse-unified.css";
 import { TrendingUp } from "lucide-react";
+import RevenueKpiAudit, { type RevenueKpi } from "./RevenueKpiAudit";
 import { useEffect, useMemo, useState } from "react";
 import apiClient from "../../services/api.client";
 
@@ -56,6 +57,7 @@ export default function RevenueForecastPage() {
   const [error, setError] = useState("");
   const [debug, setDebug] = useState(false);
   const [selectedRelease, setSelectedRelease] = useState<number | null>(null);
+  const [auditMetric, setAuditMetric] = useState<RevenueKpi | null>(null);
   const load = async () => {
     if (!startDate || !endDate || startDate > endDate) {
       setError("Invalid date range"); return;
@@ -68,6 +70,7 @@ export default function RevenueForecastPage() {
       });
       setRows(res.data);
       setSelectedRelease(null);
+      setAuditMetric(null);
       const actualRes = await apiClient.get<{Account_No: string; Revenue: number}[]>("/warehouse/shipping-revenue-summary/", { params: { start_date: startDate, end_date: endDate, ...(customer ? { customer_no: Number(customer) } : {}) } });
       setActual(actualRes.data);
     } catch (e) { setRows([]); setActual([]); setError("Could not load Plex revenue forecast / shipping revenue"); }
@@ -99,11 +102,25 @@ export default function RevenueForecastPage() {
     </div>
     {error && <p role="alert" className="warehouse-error">{error}</p>}
     <div className="warehouse-metric-grid">
-      <div className="warehouse-metric"><span>Releases</span><strong>{rows.length.toLocaleString("en-US")}</strong></div>
-      <div className="warehouse-metric"><span>Forecast Revenue</span><strong>{money(total)}</strong></div>
-      <div className="warehouse-metric"><span>Remaining Revenue</span><strong>{money(remaining)}</strong></div>
-      <div className="warehouse-metric"><span>Sin precio verificable</span><strong>{missing.toLocaleString("en-US")}</strong></div>
+      {([
+        ["releases", "Releases", rows.length.toLocaleString("en-US")],
+        ["forecast", "Forecast Revenue", money(total)],
+        ["remaining", "Remaining Revenue", money(remaining)],
+        ["missing", "Sin precio verificable", missing.toLocaleString("en-US")],
+      ] as [RevenueKpi, string, string][]).map(([key, label, value]) =>
+        <button key={key} type="button" className="warehouse-metric"
+          aria-pressed={auditMetric === key}
+          onClick={() => { setAuditMetric(auditMetric === key ? null : key); setSelectedRelease(null); }}
+          style={{ cursor: "pointer", textAlign: "left", color: "var(--color-text-primary)",
+            borderColor: auditMetric === key ? "var(--color-primary)" : "var(--color-border)" }}>
+          <span>{label}</span><strong>{value}</strong>
+          <small style={{ color: "var(--color-primary)" }}>Ver origen y desglose →</small>
+        </button>)}
     </div>
+    {debug && auditMetric && <RevenueKpiAudit rows={rows} metric={auditMetric}
+      onClose={() => setAuditMetric(null)}
+      onInspect={key => setSelectedRelease(key)} />}
+    {auditMetric && !debug && <div style={panel}>Activa <strong>Modo diagnóstico</strong> y pulsa <strong>Refresh</strong> para inspeccionar el desglose del KPI.</div>}
     <section className="warehouse-forecast-section" style={panel}><h3>Actual Shipping Revenue (Invoice Date)</h3>
       <p>Accounts 41000-420 and 41000-470. Actual invoice revenue is shown separately; it is not added to forecast.</p>
       <table style={tableStyle}><thead><tr><th style={th}>Account No</th><th style={th}>Actual Revenue</th></tr></thead><tbody>
