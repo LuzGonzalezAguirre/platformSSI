@@ -26,8 +26,9 @@ class RevenueForecastView(APIView):
         except (ValueError, TypeError):
             return Response({"detail": "Invalid dates, range or customer"}, status=400)
         try:
+            debug = request.query_params.get("debug", "false").lower() in ("1", "true")
             return Response(WarehouseService().get_revenue_forecast(
-                start, end, customer_no, release_status))
+                start, end, customer_no, release_status, debug))
         except PlexProxyError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
