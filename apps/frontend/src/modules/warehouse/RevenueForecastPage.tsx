@@ -1,3 +1,5 @@
+import "./warehouse-unified.css";
+import { TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import apiClient from "../../services/api.client";
 
@@ -30,11 +32,11 @@ function group(rows: Row[], selector: (r: Row) => string): Group[] {
   return Array.from(index.values()).sort((a, b) => a.key.localeCompare(b.key));
 }
 const tableStyle: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const th: React.CSSProperties = { textAlign: "left", padding: 10, borderBottom: "1px solid var(--color-border)", whiteSpace: "nowrap" };
-const td: React.CSSProperties = { padding: 10, borderBottom: "1px solid var(--color-border)", whiteSpace: "nowrap" };
-const panel: React.CSSProperties = { background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10, padding: 18, marginTop: 18, overflowX: "auto" };
+const th: React.CSSProperties = { textAlign: "left", padding: "0.7rem 1rem", background: "var(--color-bg)", color: "var(--color-text-secondary)", fontWeight: 700, fontSize: 11, letterSpacing: ".04em", textTransform: "uppercase", borderBottom: "2px solid var(--color-border)", whiteSpace: "nowrap" };
+const td: React.CSSProperties = { padding: "0.65rem 1rem", borderBottom: "1px solid var(--color-border)", whiteSpace: "nowrap", color: "var(--color-text-primary)", fontVariantNumeric: "tabular-nums" };
+const panel: React.CSSProperties = { background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "1.15rem 1.4rem", overflowX: "auto", minWidth: 0 };
 function SummaryTable({ title, groups }: { title: string; groups: Group[] }) {
-  return <section style={panel}><h3>{title}</h3><table style={tableStyle}><thead><tr>
+  return <section className="warehouse-forecast-section" style={panel}><h3>{title}</h3><table style={tableStyle}><thead><tr>
     <th style={th}>Group</th><th style={th}>Releases</th><th style={th}>Rel Qty</th>
     <th style={th}>Forecast Revenue</th><th style={th}>Sin precio</th>
   </tr></thead><tbody>{groups.map(g => <tr key={g.key}>
@@ -85,10 +87,9 @@ export default function RevenueForecastPage() {
   const missing = rows.filter(r => r.Forecast_Revenue === null).length;
   const actualTotal = actual.reduce((v, r) => v + Number(r.Revenue || 0), 0);
   const selectedRow = rows.find(r => r.Release_Key === selectedRelease);
-  return <main style={{ padding: 24, color: "var(--color-text-primary)" }}>
-    <h2>Revenue Forecast</h2>
-    <p style={{ color: "var(--color-text-secondary)" }}>Proyección por releases de Demand y precios de venta por PO en Plex. Valores sin precio verificable no se estiman.</p>
-    <div style={{ ...panel, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "end" }}>
+  return <main className="warehouse-unified" style={{ padding: "0 1rem 2rem" }}>
+    <div className="warehouse-heading"><span className="warehouse-heading-icon"><TrendingUp size={23}/></span><div><h1>Revenue Forecast</h1><p>Proyección por releases de Demand y precios de venta por PO en Plex. Precios no verificados permanecen sin estimar.</p></div></div>
+    <div className="warehouse-forecast-filter" style={panel}>
       <label>From<br/><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}/></label>
       <label>To<br/><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}/></label>
       <label>Status<br/><select value={status} onChange={e => setStatus(e.target.value)}><option>All</option><option>Open</option><option>History</option></select></label>
@@ -96,14 +97,14 @@ export default function RevenueForecastPage() {
       <label><input type="checkbox" checked={debug} onChange={e => setDebug(e.target.checked)} /> Modo diagnóstico</label>
       <button disabled={loading} onClick={() => void load()}>{loading ? "Loading..." : "Refresh"}</button>
     </div>
-    {error && <p role="alert" style={{ color: "var(--color-stopped)" }}>{error}</p>}
-    <div style={{ ...panel, display: "flex", gap: 30, flexWrap: "wrap" }}>
-      <span><strong>Releases</strong><br/>{rows.length}</span>
-      <span><strong>Forecast Revenue (priced)</strong><br/>{money(total)}</span>
-      <span><strong>Remaining Revenue (priced)</strong><br/>{money(remaining)}</span>
-      <span><strong>Missing/unverified prices</strong><br/>{missing}</span>
+    {error && <p role="alert" className="warehouse-error">{error}</p>}
+    <div className="warehouse-metric-grid">
+      <div className="warehouse-metric"><span>Releases</span><strong>{rows.length.toLocaleString("en-US")}</strong></div>
+      <div className="warehouse-metric"><span>Forecast Revenue</span><strong>{money(total)}</strong></div>
+      <div className="warehouse-metric"><span>Remaining Revenue</span><strong>{money(remaining)}</strong></div>
+      <div className="warehouse-metric"><span>Sin precio verificable</span><strong>{missing.toLocaleString("en-US")}</strong></div>
     </div>
-    <section style={panel}><h3>Actual Shipping Revenue (Invoice Date)</h3>
+    <section className="warehouse-forecast-section" style={panel}><h3>Actual Shipping Revenue (Invoice Date)</h3>
       <p>Accounts 41000-420 and 41000-470. Actual invoice revenue is shown separately; it is not added to forecast.</p>
       <table style={tableStyle}><thead><tr><th style={th}>Account No</th><th style={th}>Actual Revenue</th></tr></thead><tbody>
       {actual.map(a => <tr key={a.Account_No}><td style={td}>{a.Account_No}</td><td style={td}>{money(Number(a.Revenue || 0))}</td></tr>)}
@@ -111,13 +112,13 @@ export default function RevenueForecastPage() {
       </tbody></table>
       <p style={{ color: "var(--color-text-secondary)" }}>Forecast by Ship Date and actual by Invoice Date are different measures; direct variance is not a reconciled like-for-like comparison.</p>
     </section>
-    {debug && <section style={panel}><h3>Fórmulas y fuentes</h3><p>Rel Qty = Sales_v_Release.Quantity; Rel Bal = Quantity - Quantity_Shipped; Unit Price = Sales_v_Price.Price por PO_Line_Key; Forecast = Rel Qty × Unit Price; Remaining = Rel Bal × Unit Price.</p><p>Actual = SUM(Accounting_v_AR_Invoice_Dist.Credit - Debit), por Invoice_Date. Forecast y Actual se mantienen separados.</p></section>}
+    {debug && <section className="warehouse-forecast-section" style={panel}><h3>Fórmulas y fuentes</h3><p>Rel Qty = Sales_v_Release.Quantity; Rel Bal = Quantity - Quantity_Shipped; Unit Price = Sales_v_Price.Price por PO_Line_Key; Forecast = Rel Qty × Unit Price; Remaining = Rel Bal × Unit Price.</p><p>Actual = SUM(Accounting_v_AR_Invoice_Dist.Credit - Debit), por Invoice_Date. Forecast y Actual se mantienen separados.</p></section>}
     <SummaryTable title="Revenue by Release Type" groups={byType}/>
     <SummaryTable title="Revenue by Customer" groups={byCustomer}/>
     <SummaryTable title="Revenue by Part" groups={byPart}/>
-    <section style={panel}><h3>Revenue by Ship Date</h3><table style={tableStyle}><thead><tr><th style={th}>Ship Date</th><th style={th}>Release Qty</th><th style={th}>Daily Revenue</th><th style={th}>Accumulated</th><th style={th}>Unpriced</th></tr></thead><tbody>{daily.map(d => <tr key={d.key}><td style={td}>{d.key}</td><td style={td}>{qty(d.qty)}</td><td style={td}>{money(d.revenue)}</td><td style={td}>{money(d.accumulated)}</td><td style={td}>{d.missing}</td></tr>)}</tbody></table></section>
-    <section style={panel}><h3>Release detail / price audit</h3><table style={tableStyle}><thead><tr>{["Release","PO","Customer","Part","Type","Ship Date","Rel Qty","Balance","Unit Price","Forecast","Price Key",...(debug ? ["Debug"] : [])].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead><tbody>{rows.map(r => <tr key={r.Release_Key}><td style={td}>{r.Release_Key}</td><td style={td}>{r.PO_No}</td><td style={td}>{r.Customer_No}</td><td style={td}>{r.Part_No_Rev}</td><td style={td}>{r.Release_Type}</td><td style={td}>{r.Ship_Date}</td><td style={td}>{qty(r.Rel_Qty)}</td><td style={td}>{qty(r.Rel_Bal)}</td><td style={td}>{r.Unit_Price === null ? "N/A" : money(r.Unit_Price)}</td><td style={td} title={r.Price_Issue ?? ""}>{r.Forecast_Revenue === null ? "N/A" : money(r.Forecast_Revenue)}</td><td style={td}>{r.Price_Key ?? "—"}</td>{debug && <td style={td}><button type="button" onClick={() => setSelectedRelease(r.Release_Key)}>Inspeccionar</button></td>}</tr>)}</tbody></table></section>
-    {debug && selectedRow && <section style={panel}><h3>Auditoría Release_Key {selectedRow.Release_Key}</h3>
+    <section className="warehouse-forecast-section" style={panel}><h3>Revenue by Ship Date</h3><table style={tableStyle}><thead><tr><th style={th}>Ship Date</th><th style={th}>Release Qty</th><th style={th}>Daily Revenue</th><th style={th}>Accumulated</th><th style={th}>Unpriced</th></tr></thead><tbody>{daily.map(d => <tr key={d.key}><td style={td}>{d.key}</td><td style={td}>{qty(d.qty)}</td><td style={td}>{money(d.revenue)}</td><td style={td}>{money(d.accumulated)}</td><td style={td}>{d.missing}</td></tr>)}</tbody></table></section>
+    <section className="warehouse-forecast-section" style={panel}><h3>Release detail / price audit</h3><table style={tableStyle}><thead><tr>{["Release","PO","Customer","Part","Type","Ship Date","Rel Qty","Balance","Unit Price","Forecast","Price Key",...(debug ? ["Debug"] : [])].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead><tbody>{rows.map(r => <tr key={r.Release_Key}><td style={td}>{r.Release_Key}</td><td style={td}>{r.PO_No}</td><td style={td}>{r.Customer_No}</td><td style={td}>{r.Part_No_Rev}</td><td style={td}>{r.Release_Type}</td><td style={td}>{r.Ship_Date}</td><td style={td}>{qty(r.Rel_Qty)}</td><td style={td}>{qty(r.Rel_Bal)}</td><td style={td}>{r.Unit_Price === null ? "N/A" : money(r.Unit_Price)}</td><td style={td} title={r.Price_Issue ?? ""}>{r.Forecast_Revenue === null ? "N/A" : money(r.Forecast_Revenue)}</td><td style={td}>{r.Price_Key ?? "—"}</td>{debug && <td style={td}><button className="warehouse-audit-button" type="button" onClick={() => setSelectedRelease(r.Release_Key)}>Inspeccionar</button></td>}</tr>)}</tbody></table></section>
+    {debug && selectedRow && <section className="warehouse-forecast-section" style={panel}><h3>Auditoría Release_Key {selectedRow.Release_Key}</h3>
       <p>PO: {selectedRow.PO_No}; PO_Line_Key: {selectedRow.PO_Line_Key}; Price_Key: {selectedRow.Price_Key ?? "N/A"}; Issue: {selectedRow.Price_Issue ?? "Ninguno"}</p>
       {selectedRow.Debug ? <>
         <p>{selectedRow.Debug.Selection_Rule}</p>
