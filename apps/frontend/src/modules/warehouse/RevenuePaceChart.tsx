@@ -4,7 +4,6 @@ import { Bar, CartesianGrid, Cell, ComposedChart, Line, ResponsiveContainer, Too
 export type RevenueChartRow = {
   Ship_Date: string;
   Forecast_Revenue: number | null;
-  EDI_Audit?: { Historically_Outdated: boolean };
 };
 
 type Point = {
@@ -37,17 +36,13 @@ export default function RevenuePaceChart({ rows, startDate, endDate }: {
   endDate: string;
 }) {
   const [goalInput, setGoalInput] = useState("");
-  const [basis, setBasis] = useState<"gross" | "edi">("gross");
   const goal = Number(goalInput);
   const validGoal = goalInput.trim() !== "" && Number.isFinite(goal) && goal > 0;
-  const hasEdi = rows.length > 0 && rows.every(r => r.EDI_Audit != null);
-  const useAdjusted = basis === "edi" && hasEdi;
 
   const data = useMemo<Point[]>(() => {
     const dates = isoDays(startDate, endDate);
     const byDay = new Map<string, number>();
     rows.forEach(r => {
-      if (useAdjusted && r.EDI_Audit?.Historically_Outdated) return;
       if (r.Forecast_Revenue === null) return;
       byDay.set(r.Ship_Date, (byDay.get(r.Ship_Date) ?? 0) + r.Forecast_Revenue);
     });
@@ -67,7 +62,7 @@ export default function RevenuePaceChart({ rows, startDate, endDate }: {
         onPace: percent !== null && percent >= expectedPercent,
       };
     });
-  }, [rows, startDate, endDate, useAdjusted, goal, validGoal]);
+  }, [rows, startDate, endDate, goal, validGoal]);
 
   const total = data.length ? data[data.length - 1].accumulated : 0;
   return <section className="warehouse-forecast-section" style={{
@@ -82,17 +77,9 @@ export default function RevenuePaceChart({ rows, startDate, endDate }: {
           placeholder="Ingresa meta" value={goalInput} onChange={e => setGoalInput(e.target.value)}
           style={{padding:8, borderRadius:6, border:"1px solid var(--color-border)", background:"var(--color-bg)", color:"var(--color-text-primary)"}}/>
       </label>
-      <label style={{display:"grid", gap:5}}>Base del pronóstico
-        <select value={basis} onChange={e=>setBasis(e.target.value as "gross"|"edi")}
-          style={{padding:8, borderRadius:6, border:"1px solid var(--color-border)", background:"var(--color-bg)", color:"var(--color-text-primary)"}}>
-          <option value="gross">Gross Forecast</option>
-          <option value="edi" disabled={!hasEdi}>Adjusted Forecast EDI (provisional)</option>
-        </select>
-      </label>
       <div className="warehouse-metric"><span>Total programado</span><strong>{money(total)}</strong></div>
       <div className="warehouse-metric"><span>% de la meta</span><strong>{validGoal ? ((total / goal) * 100).toFixed(1) + "%" : "Meta pendiente"}</strong></div>
     </div>
-    {basis === "edi" && <p className="warehouse-muted">La exclusión basada en eventos históricos EDI es provisional y no confirma el estado vigente de las liberaciones.</p>}
     <div style={{width:"100%", height:380}}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{top:24,right:28,bottom:24,left:12}}>
