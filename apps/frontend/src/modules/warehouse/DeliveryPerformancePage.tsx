@@ -227,9 +227,9 @@ export default function DeliveryPerformancePage() {
           <ComposedChart data={rows} margin={{ left: -5, right: 20, top: 24, bottom: 28 }}>
             <CartesianGrid vertical={false} stroke="var(--color-border)" strokeOpacity={0.7}/>
             <XAxis dataKey="name" interval={0} angle={0} textAnchor="middle" height={id.endsWith("Customers") ? 88 : 60}
-              tick={id.endsWith("Customers") ? (props: { x?: number; y?: number; payload?: { value: string } }) => {
+              tick={id.endsWith("Customers") ? (props: { x?: string | number; y?: string | number; payload?: { value: string } }) => {
                 const lines = customerTick(String(props.payload?.value ?? ""));
-                return <text x={props.x} y={(props.y ?? 0) + 12} fill="var(--color-text-secondary)" textAnchor="middle" fontSize={expanded ? 12 : 10}>
+                return <text x={props.x} y={Number(props.y ?? 0) + 12} fill="var(--color-text-secondary)" textAnchor="middle" fontSize={expanded ? 12 : 10}>
                   {lines.map((line, index) => <tspan key={index} x={props.x} dy={index === 0 ? 0 : 13}>{line}</tspan>)}
                 </text>;
               } : { fill: "var(--color-text-secondary)", fontSize: expanded ? 13 : 11 }} />
@@ -246,7 +246,7 @@ export default function DeliveryPerformancePage() {
             }}/>
             <Legend verticalAlign="top" height={30}/>
             <Bar dataKey="percentage" name="OTD" fill="#5999d3" maxBarSize={expanded ? 80 : 50} radius={[4,4,0,0]} isAnimationActive={false}
-              cursor="pointer" onClick={(datum:BarDatum) => newAction(id,datum)}>
+              cursor="pointer" onClick={(datum) => { const item = (datum as { payload?: BarDatum }).payload; if (item) newAction(id, item); }}>
               <LabelList dataKey="percentage" position="top" formatter={value => pct(Number(value ?? 0))} fill="var(--color-text-primary)" fontSize={expanded ? 14 : 11} fontWeight={700}/>
             </Bar>
             <Line type="linear" dataKey={() => 100} name={tx("Meta 100%", "Target 100%")} stroke="#36b77e" strokeWidth={2} dot={false} isAnimationActive={false}/>
