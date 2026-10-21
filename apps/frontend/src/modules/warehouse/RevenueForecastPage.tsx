@@ -1,6 +1,7 @@
 import "./warehouse-unified.css";
 import { TrendingUp } from "lucide-react";
 import RevenueKpiAudit, { type RevenueKpi } from "./RevenueKpiAudit";
+import RevenuePaceChart from "./RevenuePaceChart";
 import { useEffect, useMemo, useState } from "react";
 import apiClient from "../../services/api.client";
 
@@ -127,6 +128,7 @@ export default function RevenueForecastPage() {
           <small style={{ color: "var(--color-primary)" }}>Ver origen y desglose →</small>
         </button>)}
     </div>
+    <RevenuePaceChart rows={rows} startDate={startDate} endDate={endDate}/>
     {debug && <section className="warehouse-forecast-section" style={panel}>
       <h3>EDI Revenue Adjustment — simulación, no KPI oficial</h3>
       {!ediAvailable ? <p className="warehouse-muted">La auditoría EDI no está disponible en la respuesta actual. Actualiza y reinicia plex-proxy; después pulsa Refresh. No se calcula un ajuste a partir de datos incompletos.</p> :
