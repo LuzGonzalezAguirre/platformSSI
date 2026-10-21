@@ -121,6 +121,19 @@ export default function RevenueForecastPage() {
           <small style={{ color: "var(--color-primary)" }}>Ver origen y desglose →</small>
         </button>)}
     </div>
+    {debug && <section className="warehouse-forecast-section" style={panel}>
+      <h3>Conciliación de precios — Plex vs. platformSSI</h3>
+      <p className="warehouse-muted">Diagnóstico de los registros que sí se recuperaron. Los precios no verificables no aportan importe al KPI, pero siguen contando como releases. Esta tabla no modifica los cálculos.</p>
+      <div className="warehouse-metric-grid">
+        <div className="warehouse-metric"><span>Releases sin importe verificado</span><strong>{missing}</strong></div>
+        <div className="warehouse-metric"><span>Cantidad sin importe</span><strong>{qty(rows.filter(r=>r.Forecast_Revenue === null).reduce((s,r)=>s+r.Rel_Qty,0))}</strong></div>
+        <div className="warehouse-metric"><span>Importe con precio verificado</span><strong>{money(total)}</strong></div>
+      </div>
+      <div style={{maxHeight:360,overflow:"auto"}}>
+        <table style={tableStyle}><thead><tr>{["Release","PO","Cliente","Parte","Ship Date","Rel Qty","Precio","Motivo"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+        <tbody>{rows.filter(r=>r.Forecast_Revenue === null).map(r=><tr key={r.Release_Key}><td style={td}>{r.Release_Key}</td><td style={td}>{r.PO_No}</td><td style={td}>{r.Customer_No}</td><td style={td}>{r.Part_No_Rev}</td><td style={td}>{r.Ship_Date}</td><td style={td}>{qty(r.Rel_Qty)}</td><td style={td}>{r.Unit_Price === null?"Sin precio":money(r.Unit_Price)}</td><td style={td}>{r.Price_Issue ?? "Sin diagnóstico"}</td></tr>)}</tbody></table>
+      </div>
+    </section>}
     <RevenuePaceChart rows={rows} startDate={startDate} endDate={endDate}/>
     {debug && auditMetric && <RevenueKpiAudit rows={rows} metric={auditMetric}
       onClose={() => setAuditMetric(null)}
