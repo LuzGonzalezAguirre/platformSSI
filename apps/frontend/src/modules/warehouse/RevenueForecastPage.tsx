@@ -53,7 +53,7 @@ export default function RevenueForecastPage() {
   const today = new Date();
   const [startDate, setStartDate] = useState(() => iso(new Date(today.getFullYear(), today.getMonth(), 1)));
   const [endDate, setEndDate] = useState(() => iso(today));
-  const [status, setStatus] = useState("All");
+
   const [customer, setCustomer] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [actual, setActual] = useState<{Account_No: string; Revenue: number}[]>([]);
@@ -69,7 +69,7 @@ export default function RevenueForecastPage() {
     setLoading(true); setError("");
     try {
       const res = await apiClient.get<Row[]>("/warehouse/revenue-forecast/", {
-        params: { start_date: startDate, end_date: endDate, status, debug,
+        params: { start_date: startDate, end_date: endDate, status: "Active", debug,
           ...(customer ? { customer_no: Number(customer) } : {}) },
       });
       setRows(res.data);
@@ -102,11 +102,11 @@ export default function RevenueForecastPage() {
   const actualTotal = actual.reduce((v, r) => v + Number(r.Revenue || 0), 0);
   const selectedRow = rows.find(r => r.Release_Key === selectedRelease);
   return <main className="warehouse-unified" style={{ padding: "0 1rem 2rem" }}>
-    <div className="warehouse-heading"><span className="warehouse-heading-icon"><TrendingUp size={23}/></span><div><h1>Revenue Forecast</h1><p>Proyección por releases de Demand y precios de venta por PO en Plex. Precios no verificados permanecen sin estimar.</p></div></div>
+    <div className="warehouse-heading"><span className="warehouse-heading-icon"><TrendingUp size={23}/></span><div><h1>Revenue Forecast</h1><p>Proyección de releases activos (Firm 862, Forecast o HOLD; estados Open y Scheduled) y precios por PO en Plex. Precios no verificados permanecen sin estimar.</p></div></div>
     <div className="warehouse-forecast-filter" style={panel}>
       <label>From<br/><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}/></label>
       <label>To<br/><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}/></label>
-      <label>Status<br/><select value={status} onChange={e => setStatus(e.target.value)}><option>All</option><option>Open</option><option>History</option></select></label>
+      <span className="warehouse-muted">Releases: Firm (862), Forecast, HOLD · Estados: Open, Scheduled</span>
       <label>Customer No<br/><input type="number" placeholder="All" value={customer} onChange={e => setCustomer(e.target.value)}/></label>
       <label><input type="checkbox" checked={debug} onChange={e => setDebug(e.target.checked)} /> Modo diagnóstico</label>
       <button disabled={loading} onClick={() => void load()}>{loading ? "Loading..." : "Refresh"}</button>
