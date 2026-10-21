@@ -95,6 +95,7 @@ export default function RevenueForecastPage() {
   const remaining = rows.reduce((v, r) => v + (r.Remaining_Revenue ?? 0), 0);
   const missing = rows.filter(r => r.Forecast_Revenue === null).length;
   const actualTotal = actual.reduce((v, r) => v + Number(r.Revenue || 0), 0);
+  const combinedForecast = remaining + actualTotal;
   const selectedRow = rows.find(r => r.Release_Key === selectedRelease);
   return <main className="warehouse-unified" style={{ padding: "0 1rem 2rem" }}>
     <div className="warehouse-heading"><span className="warehouse-heading-icon"><TrendingUp size={23}/></span><div><h1>Revenue Forecast</h1><p>Proyección de releases activos (Firm 862, Forecast o HOLD; estados Open y Scheduled) y precios por PO en Plex. Precios no verificados permanecen sin estimar.</p></div></div>
@@ -109,9 +110,10 @@ export default function RevenueForecastPage() {
     {error && <p role="alert" className="warehouse-error">{error}</p>}
     <p className="warehouse-muted">Período consultado: {loadedRange || "sin datos cargados"} · {rows.length} releases activos recuperados. Cambia las fechas y presiona Refresh para consultar otro período.</p>
     <div className="warehouse-metric-grid">
+      <div className="warehouse-metric"><span>Forecast Revenue</span><strong>{money(combinedForecast)}</strong><small>Remaining + Actual Shipping</small></div>
       {([
         ["releases", "Releases", rows.length.toLocaleString("en-US")],
-        ["forecast", "Forecast Revenue", money(total)],
+        
         ["remaining", "Remaining Revenue", money(remaining)],
         ["missing", "Sin precio verificable", missing.toLocaleString("en-US")],
       ] as [RevenueKpi, string, string][]).map(([key, label, value]) =>
@@ -124,6 +126,16 @@ export default function RevenueForecastPage() {
           <small style={{ color: "var(--color-primary)" }}>Ver origen y desglose →</small>
         </button>)}
     </div>
+    <section className="warehouse-forecast-section" style={panel}>
+      <h3>Composición de Forecast Revenue</h3>
+      <p className="warehouse-muted">Forecast Revenue = Remaining Revenue (Ship Date, releases activos) + Actual Shipping Revenue (Invoice Date, cuentas 41000-420 y 41000-470). Ambos componentes usan el período seleccionado. No se aplica ningún ajuste EDI.</p>
+      <table style={tableStyle}><tbody>
+        <tr><td style={td}>Remaining Revenue</td><td style={{...td,textAlign:"right"}}>{money(remaining)}</td></tr>
+        <tr><td style={td}>Actual Shipping Revenue</td><td style={{...td,textAlign:"right"}}>{money(actualTotal)}</td></tr>
+        <tr><td style={td}><strong>Forecast Revenue total</strong></td><td style={{...td,textAlign:"right"}}><strong>{money(combinedForecast)}</strong></td></tr>
+      </tbody></table>
+      <p className="warehouse-muted">El detalle por release y las tablas por producto corresponden al importe programado; la facturación real se presenta separadamente por cuenta contable.</p>
+    </section>
     {debug && <section className="warehouse-forecast-section" style={panel}>
       <h3>Conciliación de precios — Plex vs. platformSSI</h3>
       <p className="warehouse-muted">Diagnóstico de los registros que sí se recuperaron. Los precios no verificables no aportan importe al KPI, pero siguen contando como releases. Esta tabla no modifica los cálculos.</p>
@@ -198,14 +210,14 @@ export default function RevenueForecastPage() {
       onInspect={key => setSelectedRelease(key)} />}
     {auditMetric && !debug && <div style={panel}>Activa <strong>Modo diagnóstico</strong> y pulsa <strong>Refresh</strong> para inspeccionar el desglose del KPI.</div>}
     <section className="warehouse-forecast-section" style={panel}><h3>Actual Shipping Revenue (Invoice Date)</h3>
-      <p>Accounts 41000-420 and 41000-470. Actual invoice revenue is shown separately; it is not added to forecast.</p>
+      <p>Accounts 41000-420 and 41000-470. Actual invoice revenue is included once in the Forecast Revenue KPI together with Remaining Revenue.</p>
       <table style={tableStyle}><thead><tr><th style={th}>Account No</th><th style={th}>Actual Revenue</th></tr></thead><tbody>
       {actual.map(a => <tr key={a.Account_No}><td style={td}>{a.Account_No}</td><td style={td}>{money(Number(a.Revenue || 0))}</td></tr>)}
       <tr><td style={td}><strong>Total Actual</strong></td><td style={td}><strong>{money(actualTotal)}</strong></td></tr>
       </tbody></table>
-      <p style={{ color: "var(--color-text-secondary)" }}>Forecast by Ship Date and actual by Invoice Date are different measures; direct variance is not a reconciled like-for-like comparison.</p>
+      <p style={{ color: "var(--color-text-secondary)" }}>Forecast Revenue combines Remaining (Ship Date) with Actual Shipping (Invoice Date), as defined for this KPI; date bases are different.</p>
     </section>
-    {debug && <section className="warehouse-forecast-section" style={panel}><h3>Fórmulas y fuentes</h3><p>Rel Qty = Sales_v_Release.Quantity; Rel Bal = Quantity - Quantity_Shipped; Unit Price = Sales_v_Price.Price por PO_Line_Key; Forecast = Rel Qty × Unit Price; Remaining = Rel Bal × Unit Price.</p><p>Actual = SUM(Accounting_v_AR_Invoice_Dist.Credit - Debit), por Invoice_Date. Forecast y Actual se mantienen separados.</p></section>}
+    {debug && <section className="warehouse-forecast-section" style={panel}><h3>Fórmulas y fuentes</h3><p>Rel Qty = Sales_v_Release.Quantity; Rel Bal = Quantity - Quantity_Shipped; Unit Price = Sales_v_Price.Price por PO_Line_Key; Release Gross = Rel Qty × Unit Price; Remaining = Rel Bal × Unit Price; Forecast KPI = SUM(Remaining) + SUM(Actual Shipping).</p><p>Actual = SUM(Accounting_v_AR_Invoice_Dist.Credit - Debit), por Invoice_Date. Actual se suma una sola vez al KPI Forecast y también se muestra separado para auditoría.</p></section>}
     <SummaryTable title="Revenue by Release Type" groups={byType}/>
     <SummaryTable title="Revenue by Customer" groups={byCustomer}/>
     <SummaryTable title="Revenue by Part" groups={byPart}/>
