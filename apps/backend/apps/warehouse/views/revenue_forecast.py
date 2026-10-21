@@ -21,12 +21,14 @@ class RevenueForecastView(APIView):
             customer = request.query_params.get("customer_no")
             customer_no = int(customer) if customer else None
             release_status = request.query_params.get("status", "Active")
-            if release_status not in ("Active", "All", "Open"):
+            if release_status not in ("Active", "All", "Open", "LegacyAll"):
                 return Response({"detail": "Invalid status"}, status=400)
         except (ValueError, TypeError):
             return Response({"detail": "Invalid dates, range or customer"}, status=400)
         try:
             debug = request.query_params.get("debug", "false").lower() in ("1", "true")
+            if release_status == "LegacyAll" and not debug:
+                return Response({"detail": "LegacyAll requires debug mode"}, status=400)
             return Response(WarehouseService().get_revenue_forecast(
                 start, end, customer_no, release_status, debug))
         except PlexProxyError as exc:
