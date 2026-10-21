@@ -99,10 +99,10 @@ class PlexClient:
     def get_delivery_performance(self, start_date: str, end_date: str) -> list:
         return self._post("delivery-performance", {"start_date": start_date, "end_date": end_date})
 
-    def get_revenue_forecast(self, start_date: str, end_date: str, customer_no: int | None, release_status: str) -> list:
+    def get_revenue_forecast(self, start_date: str, end_date: str, customer_no: int | None, release_status: str, debug: bool = False) -> list:
         return self._post("revenue-forecast", {
             "start_date": start_date, "end_date": end_date,
-            "customer_no": customer_no, "release_status": release_status,
+            "customer_no": customer_no, "release_status": release_status, "debug": debug,
         })
 
     def get_shipping_revenue_summary(self, start_date: str, end_date: str, customer_no: int | None = None) -> list:
