@@ -100,7 +100,7 @@ export default function RevenuePaceChart({ rows, startDate, endDate }: {
           <XAxis dataKey="label" angle={-45} textAnchor="end" height={68} interval="preserveStartEnd" tick={{fontSize:11}}/>
           <YAxis yAxisId="usd" tickFormatter={v=>"$"+Number(v).toLocaleString("en-US",{notation:"compact"})} tick={{fontSize:11}} width={72}/>
           <YAxis yAxisId="pct" orientation="right" tickFormatter={v=>v+"%"} tick={{fontSize:11}} width={45} domain={[0, (max: number) => Math.max(100, Math.ceil(max / 20) * 20)]}/>
-          <Tooltip formatter={(value, name, props) => {
+          <Tooltip formatter={(value, name) => {
             if (name === "Ingreso programado") return [money(Number(value)), name];
             if (name === "% acumulado de meta") return [Number(value).toFixed(1) + "%", name];
             return [String(value), String(name)];
