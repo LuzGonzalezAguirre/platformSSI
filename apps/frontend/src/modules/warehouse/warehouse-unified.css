@@ -1,0 +1,26 @@
+/* Unified Warehouse visual language; theme tokens work in light and dark modes. */
+.warehouse-unified { color: var(--color-text-primary); min-width: 0; display: flex; flex-direction: column; gap: 1.15rem; }
+.warehouse-unified .warehouse-heading { display:flex;align-items:center;gap:.85rem;margin-bottom:.15rem; }
+.warehouse-unified .warehouse-heading-icon { display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:color-mix(in srgb,var(--color-primary) 13%,transparent);color:var(--color-primary); }
+.warehouse-unified .warehouse-heading h1 {margin:0;font-size:1.45rem;font-weight:750;letter-spacing:-.025em}
+.warehouse-unified .warehouse-heading p {margin:.2rem 0 0;color:var(--color-text-secondary);font-size:.83rem;}
+.warehouse-unified button { transition: opacity .16s ease, background-color .16s ease, transform .16s ease; }
+.warehouse-unified button:hover:not(:disabled) { opacity:.88; }
+.warehouse-unified button:focus-visible,.warehouse-unified input:focus-visible,.warehouse-unified select:focus-visible { outline:2px solid var(--color-primary);outline-offset:2px; }
+.warehouse-unified table {width:100%;border-collapse:collapse;}
+.warehouse-unified table tbody tr:hover { background:color-mix(in srgb,var(--color-primary) 5%,transparent) !important; }
+.warehouse-unified table thead th {position:sticky;top:0;z-index:1;}
+.warehouse-unified .warehouse-forecast-filter { display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end; }
+.warehouse-unified .warehouse-forecast-filter label { display:grid;gap:.35rem;font-size:.74rem;color:var(--color-text-secondary);text-transform:uppercase;font-weight:650;letter-spacing:.04em; }
+.warehouse-unified .warehouse-forecast-filter input:not([type=checkbox]),.warehouse-unified .warehouse-forecast-filter select {background:var(--color-bg);color:var(--color-text-primary);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:.6rem .75rem;min-height:38px;font-size:.85rem;text-transform:none;}
+.warehouse-unified .warehouse-forecast-filter button,.warehouse-unified .warehouse-primary {background:var(--color-primary);color:white;border:0;border-radius:var(--radius-md);font-size:.85rem;font-weight:650;padding:.66rem 1.2rem;cursor:pointer;min-height:38px;}
+.warehouse-unified .warehouse-audit-button {border:1px solid var(--color-primary);color:var(--color-primary);background:transparent;padding:.35rem .7rem;border-radius:var(--radius-md);cursor:pointer;}
+.warehouse-unified .warehouse-metric-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.85rem;}
+.warehouse-unified .warehouse-metric {padding:1rem 1.15rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);border-top:3px solid var(--color-primary);}
+.warehouse-unified .warehouse-metric span {font-size:.71rem;color:var(--color-text-secondary);text-transform:uppercase;font-weight:650;letter-spacing:.04em;}
+.warehouse-unified .warehouse-metric strong {display:block;margin-top:.35rem;font-size:1.3rem;font-weight:750;font-variant-numeric:tabular-nums;}
+.warehouse-unified .warehouse-forecast-section h3 {display:flex;align-items:center;gap:.5rem;font-size:1rem;font-weight:700;margin:0 0 1rem;}
+.warehouse-unified .warehouse-forecast-section h3:before {content:"";display:inline-block;width:4px;height:19px;border-radius:2px;background:var(--color-primary);}
+.warehouse-unified .warehouse-muted {color:var(--color-text-secondary);font-size:.82rem;}
+.warehouse-unified .warehouse-error {padding:.8rem 1rem;border:1px solid var(--color-stopped);border-radius:var(--radius-md);color:var(--color-stopped);}
+@media(max-width:720px){.warehouse-unified .warehouse-forecast-filter{gap:.65rem}.warehouse-unified .warehouse-heading h1{font-size:1.25rem}}
