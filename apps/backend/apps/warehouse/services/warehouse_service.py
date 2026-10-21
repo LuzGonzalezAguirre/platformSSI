@@ -74,6 +74,9 @@ class WarehouseService:
         )
     def get_revenue_forecast(self, start_date: str, end_date: str,
                              customer_no: int | None, release_status: str, debug: bool = False) -> list:
+        if debug:
+            # Never serve stale audit metadata while investigating live Plex releases.
+            return self.client.get_revenue_forecast(start_date, end_date, customer_no, release_status, debug)
         return self._get_or_fetch(
             "revenue_forecast",
             lambda: self.client.get_revenue_forecast(start_date, end_date, customer_no, release_status, debug),
