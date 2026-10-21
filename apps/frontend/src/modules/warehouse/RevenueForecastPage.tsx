@@ -134,6 +134,25 @@ export default function RevenueForecastPage() {
         <tbody>{rows.filter(r=>r.Forecast_Revenue === null).map(r=><tr key={r.Release_Key}><td style={td}>{r.Release_Key}</td><td style={td}>{r.PO_No}</td><td style={td}>{r.Customer_No}</td><td style={td}>{r.Part_No_Rev}</td><td style={td}>{r.Ship_Date}</td><td style={td}>{qty(r.Rel_Qty)}</td><td style={td}>{r.Unit_Price === null?"Sin precio":money(r.Unit_Price)}</td><td style={td}>{r.Price_Issue ?? "Sin diagnóstico"}</td></tr>)}</tbody></table>
       </div>
     </section>}
+    {debug && <section className="warehouse-forecast-section" style={panel}>
+      <h3>Auditoría monetaria por release</h3>
+      <p className="warehouse-muted">Descarga todas las filas con su precio unitario, Price_Key y multiplicación aplicada. Compara contra el reporte de Plex para ubicar diferencias de precio, conversión o alcance. No altera el forecast.</p>
+      <button type="button" className="warehouse-audit-button" disabled={!rows.length} onClick={() => {
+        const columns = ["Release_Key","PO_Line_Key","PO_No","Customer_No","Part_No_Rev","Release_Type","Ship_Date","Rel_Status","Rel_Qty","Shipped","Rel_Bal","Price_Key","Unit_Price","Forecast_Revenue","Remaining_Revenue","Price_Issue"];
+        const csvEscape = (value: unknown) => '"' + String(value ?? "").replace(/"/g, '""') + '"';
+        const csv = [columns.join(","), ...rows.map(row => columns.map(col => csvEscape(row[col as keyof Row])).join(","))].join("\r\n");
+        const blob = new Blob(["\uFEFF", csv], {type:"text/csv;charset=utf-8"});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "revenue_forecast_audit_" + startDate + "_" + endDate + ".csv";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }}>Exportar auditoría CSV</button>
+      <p className="warehouse-muted">El CSV contiene {rows.length} releases; suma monetaria reportada: {money(total)}. Verifica que el período, el cliente y la moneda correspondan exactamente con Plex.</p>
+    </section>}
     <RevenuePaceChart rows={rows} startDate={startDate} endDate={endDate}/>
     {debug && auditMetric && <RevenueKpiAudit rows={rows} metric={auditMetric}
       onClose={() => setAuditMetric(null)}
