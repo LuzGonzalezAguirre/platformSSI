@@ -19,6 +19,34 @@ export type RevenueAuditRow = {
   Price_Issue: string | null;
 };
 
+// Client-side comparison is a diagnostic fallback, not a confirmed de-duplication rule.
+function getCoincidence(rows: RevenueAuditRow[]): RevenueAuditRow[] {
+  const exact = new Map<string, RevenueAuditRow[]>();
+  const overlap = new Map<string, RevenueAuditRow[]>();
+  for (const r of rows) {
+    const ek = JSON.stringify([r.PO_Line_Key, r.Ship_Date, r.Rel_Qty, r.Shipped, r.Rel_Bal, r.Release_Type]);
+    const ok = JSON.stringify([r.Customer_No, r.Part_No_Rev, r.Ship_Date]);
+    exact.set(ek, [...(exact.get(ek) ?? []), r]);
+    overlap.set(ok, [...(overlap.get(ok) ?? []), r]);
+  }
+  return rows.map(r => {
+    if (r.Coincidence) return r;
+    const matches = exact.get(JSON.stringify([r.PO_Line_Key, r.Ship_Date, r.Rel_Qty, r.Shipped, r.Rel_Bal, r.Release_Type])) ?? [];
+    const peers = overlap.get(JSON.stringify([r.Customer_No, r.Part_No_Rev, r.Ship_Date])) ?? [];
+    const otherTypes = [...new Set(peers.map(p => p.Release_Type).filter(t => t !== r.Release_Type))].sort();
+    const classification = matches.length > 1 ? "Exact-match candidate" : otherTypes.length ? "Firm/Forecast overlap candidate" : "Unique in selected range";
+    return { ...r, Coincidence: {
+      Exact_Group_Size: matches.length,
+      Exact_Release_Keys: matches.map(p => p.Release_Key).sort((a,b) => a-b),
+      Overlap_Group_Size: peers.length,
+      Other_Release_Types: otherTypes,
+      Classification: classification + " (client)",
+      Review_Required: matches.length > 1 || otherTypes.length > 0,
+      Confirmed_Duplicate: false,
+    }};
+  });
+}
+
 export type RevenueKpi = "releases" | "forecast" | "remaining" | "missing";
 
 const fmt = (value: number) => value.toLocaleString("en-US", { maximumFractionDigits: 4 });
@@ -61,9 +89,11 @@ export default function RevenueKpiAudit({
   const [onlyExceptions, setOnlyExceptions] = useState(false);
   const [onlyCoincidences, setOnlyCoincidences] = useState(false);
   const selected = definitions[metric];
-  const missing = rows.filter(r => r.Unit_Price === null || r.Forecast_Revenue === null);
-  const priced = rows.filter(r => r.Unit_Price !== null && r.Forecast_Revenue !== null);
-  const base = metric === "missing" ? missing : rows;
+  const auditedRows = useMemo(() => getCoincidence(rows), [rows]);
+  const proxyAuditAvailable = rows.length > 0 && rows.some(r => Boolean(r.Coincidence));
+  const missing = auditedRows.filter(r => r.Unit_Price === null || r.Forecast_Revenue === null);
+  const priced = auditedRows.filter(r => r.Unit_Price !== null && r.Forecast_Revenue !== null);
+  const base = metric === "missing" ? missing : auditedRows;
   const visible = useMemo(() => base.filter(row => {
     if (onlyExceptions && row.Unit_Price !== null && row.Forecast_Revenue !== null) return false;
     if (onlyCoincidences && !row.Coincidence?.Review_Required) return false;
@@ -72,8 +102,8 @@ export default function RevenueKpiAudit({
       row.Part_No_Rev, row.Release_Type, row.Price_Key].some(value =>
       String(value ?? "").toLowerCase().includes(needle));
   }), [base, onlyExceptions, onlyCoincidences, search]);
-  const count = rows.length;
-  const candidates = rows.filter(r => r.Coincidence?.Review_Required);
+  const count = auditedRows.length;
+  const candidates = auditedRows.filter(r => r.Coincidence?.Review_Required);
   const candidateRevenue = candidates.reduce((sum,r) => sum + (r.Forecast_Revenue ?? 0),0);
   const forecast = rows.reduce((sum, row) => sum + (row.Forecast_Revenue ?? 0), 0);
   const remaining = rows.reduce((sum, row) => sum + (row.Remaining_Revenue ?? 0), 0);
@@ -110,6 +140,7 @@ export default function RevenueKpiAudit({
         ["Σ Remaining", money(remaining)],
       ].map(([label, value]) => <div key={label} className="warehouse-metric"><span>{label}</span><strong>{value}</strong></div>)}
     </div>
+    {!proxyAuditAvailable && <p role="status" className="warehouse-muted"><strong>Auditoría del proxy no recibida.</strong> Las coincidencias se han calculado provisionalmente en el navegador. Actualiza el proxy y pulsa Refresh para obtener la clasificación de Plex.</p>}
     <p className="warehouse-muted"><strong>Coincidencias para revisar:</strong> {candidates.length} releases por {money(candidateRevenue)} (importe bruto asociado, NO significa duplicación confirmada). El cálculo oficial no cambia.</p>
     <p className="warehouse-muted">El total se obtiene de los valores sin redondear de la respuesta del API; la interfaz redondea solo la presentación. Los releases sin precio aparecen en la tabla y no se convierten en $0 verificados.</p>
     <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
