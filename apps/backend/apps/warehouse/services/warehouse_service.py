@@ -78,7 +78,7 @@ class WarehouseService:
             # Never serve stale audit metadata while investigating live Plex releases.
             return self.client.get_revenue_forecast(start_date, end_date, customer_no, release_status, debug)
         return self._get_or_fetch(
-            "revenue_forecast",
+            "revenue_forecast_active_v2",
             lambda: self.client.get_revenue_forecast(start_date, end_date, customer_no, release_status, debug),
             start_date=start_date, end_date=end_date,
             customer_no=customer_no, release_status=release_status, debug=debug,
