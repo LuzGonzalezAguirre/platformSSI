@@ -105,6 +105,11 @@ class PlexClient:
             "customer_no": customer_no, "release_status": release_status, "debug": debug,
         })
 
+    def get_shipping_revenue_daily(self, start_date: str, end_date: str, customer_no: int | None = None) -> list:
+        return self._post("shipping-revenue-daily", {
+            "customer_no": customer_no, "start_date": start_date, "end_date": end_date,
+        })
+
     def get_shipping_revenue_summary(self, start_date: str, end_date: str, customer_no: int | None = None) -> list:
         return self._post("shipping-revenue-summary", {
             "customer_no": customer_no, "start_date": start_date, "end_date": end_date,
