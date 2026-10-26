@@ -17,6 +17,7 @@ type Release = {
   Price_Issue: string | null;
 };
 type ActualRevenue = { Account_No: string; Revenue: number };
+type DailyInvoiceRevenue = { Invoice_Date: string; Account_No: string; Total_Lines: number; Revenue: number };
 type DailyRow = {
   date: string;
   quantity: number;
@@ -71,6 +72,7 @@ export default function RevenueForecastPage() {
   const [customer, setCustomer] = useState("");
   const [rows, setRows] = useState<Release[]>([]);
   const [actual, setActual] = useState<ActualRevenue[]>([]);
+  const [actualDaily, setActualDaily] = useState<DailyInvoiceRevenue[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadedRange, setLoadedRange] = useState("");
   const [error, setError] = useState("");
@@ -102,27 +104,33 @@ export default function RevenueForecastPage() {
         start_date: startDate, end_date: endDate,
         ...(customer ? { customer_no: Number(customer) } : {}),
       };
-      const [releases, shipping] = await Promise.all([
+      const [releases, shipping, invoicesByDay] = await Promise.all([
         apiClient.get<Release[]>("/warehouse/revenue-forecast/", { params: { ...params, status: "Active" } }),
         apiClient.get<ActualRevenue[]>("/warehouse/shipping-revenue-summary/", { params }),
+        apiClient.get<DailyInvoiceRevenue[]>("/warehouse/shipping-revenue-daily/", { params }),
       ]);
       setRows(releases.data);
       setActual(shipping.data);
+      setActualDaily(invoicesByDay.data);
       setLoadedRange(`${startDate} → ${endDate}`);
     } catch {
       setError("No se pudieron cargar los releases o el Revenue real desde Plex.");
-      setLoadedRange(""); setRows([]); setActual([]);
+      setLoadedRange(""); setRows([]); setActual([]); setActualDaily([]);
     } finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
 
   const daily = useMemo<DailyRow[]>(() => {
     const dates = datesBetween(startDate, endDate);
-    const map = new Map<string, { quantity: number; revenue: number; missing: number; releases: number }>();
+    const map = new Map<string, { quantity: number; missing: number; releases: number }>();
+    const invoiceRevenue = new Map<string, number>();
+    actualDaily.forEach(r => {
+      const date = String(r.Invoice_Date).slice(0, 10);
+      invoiceRevenue.set(date, (invoiceRevenue.get(date) ?? 0) + Number(r.Revenue || 0));
+    });
     rows.forEach(r => {
-      const item = map.get(r.Ship_Date) ?? { quantity: 0, revenue: 0, missing: 0, releases: 0 };
+      const item = map.get(r.Ship_Date) ?? { quantity: 0, missing: 0, releases: 0 };
       item.quantity += Number(r.Rel_Qty || 0);
-      item.revenue += Number(r.Forecast_Revenue || 0);
       item.missing += r.Forecast_Revenue === null ? 1 : 0;
       item.releases++;
       map.set(r.Ship_Date, item);
@@ -133,12 +141,13 @@ export default function RevenueForecastPage() {
     return dates.map(date => {
       if (isWorkday(date)) elapsed++;
       const day = map.get(date);
-      cumulative += day?.revenue ?? 0;
+      const revenue = invoiceRevenue.get(date) ?? 0;
+      cumulative += revenue;
       const targetPercent = workdays ? elapsed / workdays * 100 : 0;
       return {
         date,
         quantity: day?.quantity ?? 0,
-        revenue: day?.revenue ?? 0,
+        revenue,
         cumulative,
         forecast: hasGoal ? goal * targetPercent / 100 : 0,
         achievement: hasGoal ? cumulative / goal * 100 : 0,
@@ -148,10 +157,10 @@ export default function RevenueForecastPage() {
         workdayNumber: isWorkday(date) ? elapsed : null,
       };
     });
-  }, [rows, startDate, endDate, hasGoal, goal]);
-  const totalScheduled = rows.reduce((sum, r) => sum + Number(r.Forecast_Revenue || 0), 0);
+  }, [rows, actualDaily, startDate, endDate, hasGoal, goal]);
   const actualTotal = actual.reduce((sum, r) => sum + Number(r.Revenue || 0), 0);
-  const missingPrices = rows.filter(r => r.Forecast_Revenue === null).length;
+  const dailyInvoiceTotal = actualDaily.reduce((sum, r) => sum + Number(r.Revenue || 0), 0);
+  const revenueReconciled = Math.abs(dailyInvoiceTotal - actualTotal) < 0.01;
 
   return <main className="warehouse-unified" style={{ padding: "0 1rem 2rem" }}>
     <div className="warehouse-heading">
@@ -173,17 +182,17 @@ export default function RevenueForecastPage() {
 
     <section className="warehouse-forecast-section" style={panel}>
       <h3>Daily Revenue &amp; Sales Goal</h3>
-      <p className="warehouse-muted">La cantidad y el Revenue diario se calculan a partir de releases programados (Ship Date), no de facturas reales. La meta y su avance se distribuyen por días laborales. Los fines de semana conservan el acumulado anterior.</p>
+      <p className="warehouse-muted">Revenue diario real según Invoice Date (cuentas 41000-420 y 41000-470). Qty corresponde a releases programados por Ship Date, NO a unidades realmente facturadas. La meta se distribuye entre lunes y viernes, y los fines de semana conservan el acumulado anterior.</p>
       <table style={{width:"100%", borderCollapse:"collapse", fontSize:13}}>
         <thead><tr>
-          {["Ship Date","Day","Qty","Revenue (releases)","Workday","Month to Date","Forecast (goal)","% Sales Achievement","% Sales Goal"].map(h => <th style={th} key={h}>{h}</th>)}
+          {["Ship Date","Day","Qty (scheduled)","Revenue (invoiced)","Workday","Month to Date","Forecast (goal)","% Sales Achievement","% Sales Goal"].map(h => <th style={th} key={h}>{h}</th>)}
         </tr></thead>
         <tbody>
           {daily.map(d => <tr key={d.date}>
             <td style={td}>{d.date}</td>
             <td style={td}>{new Date(d.date + "T00:00:00Z").toLocaleDateString("en-US", {weekday:"short",timeZone:"UTC"})}</td>
             <td style={{...td,textAlign:"right"}}>{qty(d.quantity)}</td>
-            <td style={{...td,textAlign:"right"}} title={d.missing ? `${d.missing} releases sin precio verificable` : ""}>{money(d.revenue)}{d.missing ? " *" : ""}</td>
+            <td style={{...td,textAlign:"right"}}>{money(d.revenue)}</td>
             <td style={{...td,textAlign:"right"}}>{d.workdayNumber ?? "—"}</td>
             <td style={{...td,textAlign:"right"}}>{money(d.cumulative)}</td>
             <td style={{...td,textAlign:"right"}}>{hasGoal ? money(d.forecast) : "—"}</td>
@@ -202,7 +211,7 @@ export default function RevenueForecastPage() {
           </tr>
         </tbody>
       </table>
-      {missingPrices > 0 && <p className="warehouse-muted">* {missingPrices} releases sin precio verificable; las sumas programadas son parciales.</p>}
+      {!revenueReconciled && <p className="warehouse-error" role="alert">La suma diaria de facturas ({money(dailyInvoiceTotal)}) no coincide con el total por cuenta ({money(actualTotal)}). Verifica la conciliación antes de utilizar el reporte.</p>}
     </section>
 
     <section className="warehouse-forecast-section" style={panel}>
@@ -223,7 +232,7 @@ export default function RevenueForecastPage() {
 
     <section className="warehouse-forecast-section" style={panel}>
       <h3>Actual Shipping Revenue (Invoice Date)</h3>
-      <p className="warehouse-muted">Revenue facturado real por cuenta contable (41000-420 y 41000-470), filtrado por Invoice Date. No se suma al Revenue programado de la tabla diaria.</p>
+      <p className="warehouse-muted">Revenue facturado real por cuenta contable (41000-420 y 41000-470), filtrado por Invoice Date. Este total debe coincidir con el acumulado final de la tabla diaria.</p>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
         <thead><tr><th style={th}>Account No</th><th style={th}>Actual Revenue</th></tr></thead>
         <tbody>
