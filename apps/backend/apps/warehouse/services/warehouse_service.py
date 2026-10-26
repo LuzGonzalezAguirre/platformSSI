@@ -84,6 +84,13 @@ class WarehouseService:
             customer_no=customer_no, release_status=release_status, debug=debug,
         )
 
+    def get_shipping_revenue_daily(self, start_date: str, end_date: str, customer_no: int | None = None) -> list:
+        return self._get_or_fetch(
+            "shipping_revenue_daily_v1",
+            lambda: self.client.get_shipping_revenue_daily(start_date, end_date, customer_no),
+            start_date=start_date, end_date=end_date, customer_no=customer_no,
+        )
+
     def get_shipping_revenue_summary(self, start_date: str, end_date: str, customer_no: int | None = None) -> list:
         return self._get_or_fetch(
             "shipping_revenue_summary",
