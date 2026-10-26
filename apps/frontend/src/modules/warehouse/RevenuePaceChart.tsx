@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bar, CartesianGrid, Cell, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export type RevenueChartRow = {
@@ -13,6 +13,7 @@ type Point = {
   accumulated: number;
   percent: number | null;
   expectedPercent: number;
+  goalAccumulated: number | null;
   onPace: boolean;
 };
 
@@ -35,7 +36,22 @@ export default function RevenuePaceChart({ rows, startDate, endDate }: {
   startDate: string;
   endDate: string;
 }) {
-  const [goalInput, setGoalInput] = useState("");
+  const goalKey = `warehouse-revenue-goal:${startDate.slice(0, 7)}`;
+  const [goalInput, setGoalInput] = useState(() => {
+    try { return window.localStorage.getItem(`warehouse-revenue-goal:${startDate.slice(0, 7)}`) ?? ""; }
+    catch { return ""; }
+  });
+  useEffect(() => {
+    try { setGoalInput(window.localStorage.getItem(goalKey) ?? ""); }
+    catch { setGoalInput(""); }
+  }, [goalKey]);
+  const updateGoal = (value: string) => {
+    setGoalInput(value);
+    try {
+      if (value.trim()) window.localStorage.setItem(goalKey, value);
+      else window.localStorage.removeItem(goalKey);
+    } catch { /* Storage may be disabled. */ }
+  };
   const goal = Number(goalInput);
   const validGoal = goalInput.trim() !== "" && Number.isFinite(goal) && goal > 0;
 
@@ -46,11 +62,19 @@ export default function RevenuePaceChart({ rows, startDate, endDate }: {
       if (r.Forecast_Revenue === null) return;
       byDay.set(r.Ship_Date, (byDay.get(r.Ship_Date) ?? 0) + r.Forecast_Revenue);
     });
+    const workdays = dates.filter(date => {
+      const weekday = new Date(date + "T00:00:00Z").getUTCDay();
+      return weekday >= 1 && weekday <= 5;
+    });
+    const totalWorkdays = workdays.length;
+    let elapsedWorkdays = 0;
     let accumulated = 0;
-    return dates.map((date, index) => {
+    return dates.map(date => {
+      const weekday = new Date(date + "T00:00:00Z").getUTCDay();
+      if (weekday >= 1 && weekday <= 5) elapsedWorkdays++;
       const daily = byDay.get(date) ?? 0;
       accumulated += daily;
-      const expectedPercent = (index + 1) / dates.length * 100;
+      const expectedPercent = totalWorkdays ? elapsedWorkdays / totalWorkdays * 100 : 0;
       const percent = validGoal ? accumulated / goal * 100 : null;
       return {
         date,
@@ -59,6 +83,7 @@ export default function RevenuePaceChart({ rows, startDate, endDate }: {
         accumulated,
         percent,
         expectedPercent,
+        goalAccumulated: validGoal ? goal * expectedPercent / 100 : null,
         onPace: percent !== null && percent >= expectedPercent,
       };
     });
@@ -70,13 +95,14 @@ export default function RevenuePaceChart({ rows, startDate, endDate }: {
     borderRadius: "var(--radius-lg)", padding: "1.15rem 1.4rem", minWidth: 0,
   }}>
     <h3>Revenue Forecast — evolución diaria</h3>
-    <p className="warehouse-muted">Barras: importe programado por Ship Date. Línea: porcentaje acumulado de la meta capturada. Verde = avance acumulado igual o superior al ritmo lineal esperado; rojo = por debajo. No representa ventas reales facturadas.</p>
+    <p className="warehouse-muted">Releases programados por Ship Date frente a la meta mensual manual, distribuida entre días laborales (lunes a viernes). No representa ventas reales facturadas; no se excluyen feriados.</p>
     <div style={{display:"flex", gap:16, flexWrap:"wrap", alignItems:"end", marginBottom:16}}>
-      <label style={{display:"grid", gap:5}}>Meta del período (USD)
+      <label style={{display:"grid", gap:5}}>Meta mensual (USD)
         <input aria-label="Meta del período en dólares" type="number" min="0.01" step="0.01"
-          placeholder="Ingresa meta" value={goalInput} onChange={e => setGoalInput(e.target.value)}
+          placeholder="Ingresa meta" value={goalInput} onChange={e => updateGoal(e.target.value)}
           style={{padding:8, borderRadius:6, border:"1px solid var(--color-border)", background:"var(--color-bg)", color:"var(--color-text-primary)"}}/>
       </label>
+      <div className="warehouse-metric"><span>Meta mensual</span><strong>{validGoal ? money(goal) : "Sin definir"}</strong></div>
       <div className="warehouse-metric"><span>Total programado</span><strong>{money(total)}</strong></div>
       <div className="warehouse-metric"><span>% de la meta</span><strong>{validGoal ? ((total / goal) * 100).toFixed(1) + "%" : "Meta pendiente"}</strong></div>
     </div>
@@ -88,10 +114,12 @@ export default function RevenuePaceChart({ rows, startDate, endDate }: {
           <YAxis yAxisId="usd" tickFormatter={v=>"$"+Number(v).toLocaleString("en-US",{notation:"compact"})} tick={{fontSize:11}} width={72}/>
           <YAxis yAxisId="pct" orientation="right" tickFormatter={v=>v+"%"} tick={{fontSize:11}} width={45} domain={[0, (max: number) => Math.max(100, Math.ceil(max / 20) * 20)]}/>
           <Tooltip formatter={(value, name) => {
-            if (name === "Ingreso programado") return [money(Number(value)), name];
+            if (name === "Ingreso programado" || name === "Meta acumulada") return [money(Number(value)), name];
             if (name === "% acumulado de meta") return [Number(value).toFixed(1) + "%", name];
             return [String(value), String(name)];
           }} labelFormatter={label=>"Fecha: "+String(label)}/>
+          {validGoal && <Line type="stepAfter" yAxisId="usd" dataKey="goalAccumulated" name="Meta acumulada"
+            stroke="#f59e0b" strokeWidth={2.5} dot={false} isAnimationActive={false}/>}
           <Bar dataKey="daily" name="Ingreso programado" yAxisId="usd" maxBarSize={36}>
             {data.map(item=><Cell key={item.date} fill={!validGoal ? "#64748b" : item.onPace ? "#00a84f" : "#e02d35"}/>)}
           </Bar>
@@ -105,6 +133,7 @@ export default function RevenuePaceChart({ rows, startDate, endDate }: {
       <span><span style={{color:"#e02d35"}}>■</span> Bajo ritmo</span>
       <span><span style={{color:"#64748b"}}>■</span> Sin meta</span>
       <span><span style={{color:"#16c850"}}>━</span> % acumulado de meta</span>
+      <span><span style={{color:"#f59e0b"}}>━</span> Meta acumulada laboral</span>
     </div>
   </section>;
 }
