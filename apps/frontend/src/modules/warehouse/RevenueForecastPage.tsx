@@ -110,8 +110,7 @@ export default function RevenueForecastPage() {
       setActual(shipping.data);
       setLoadedRange(`${startDate} → ${endDate}`);
     } catch {
-      setError("No se pudieron cargar los releases o el Revenue real desde Plex.");
-      setLoadedRange(""); setRows([]); setActual([]);
+      setError("La actualización desde Plex falló. Se conservan los resultados de la última consulta correcta (ver período cargado). Intenta actualizar de nuevo.");
     } finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
