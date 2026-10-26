@@ -206,7 +206,7 @@ export default function RevenueForecastPage() {
             <td style={{...td,textAlign:"right"}}>{money(daily.reduce((sum,d)=>sum+d.revenue,0))}</td>
             <td style={td}></td><td style={{...td,textAlign:"right"}}>{money(daily[daily.length - 1]?.cumulative ?? 0)}</td>
             <td style={{...td,textAlign:"right"}}>{hasGoal ? money(goal) : "—"}</td>
-            <td style={{...td,textAlign:"right"}}>{hasGoal ? (totalScheduled / goal * 100).toFixed(2) + "%" : "—"}</td>
+            <td style={{...td,textAlign:"right"}}>{hasGoal ? (actualTotal / goal * 100).toFixed(2) + "%" : "—"}</td>
             <td style={{...td,textAlign:"right"}}>{hasGoal ? "100.00%" : "—"}</td>
           </tr>
         </tbody>
