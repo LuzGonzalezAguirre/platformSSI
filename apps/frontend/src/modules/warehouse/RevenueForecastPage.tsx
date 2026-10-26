@@ -27,6 +27,7 @@ type DailyRow = {
   targetPercent: number;
   missing: number;
   releases: number;
+  workdayNumber: number | null;
 };
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const qty = (value: number) => value.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -144,6 +145,7 @@ export default function RevenueForecastPage() {
         targetPercent,
         missing: day?.missing ?? 0,
         releases: day?.releases ?? 0,
+        workdayNumber: isWorkday(date) ? elapsed : null,
       };
     });
   }, [rows, startDate, endDate, hasGoal, goal]);
@@ -177,12 +179,12 @@ export default function RevenueForecastPage() {
           {["Ship Date","Day","Qty","Revenue (releases)","Workday","Month to Date","Forecast (goal)","% Sales Achievement","% Sales Goal"].map(h => <th style={th} key={h}>{h}</th>)}
         </tr></thead>
         <tbody>
-          {daily.map((d, index) => <tr key={d.date}>
+          {daily.map(d => <tr key={d.date}>
             <td style={td}>{d.date}</td>
             <td style={td}>{new Date(d.date + "T00:00:00Z").toLocaleDateString("en-US", {weekday:"short",timeZone:"UTC"})}</td>
             <td style={{...td,textAlign:"right"}}>{qty(d.quantity)}</td>
             <td style={{...td,textAlign:"right"}} title={d.missing ? `${d.missing} releases sin precio verificable` : ""}>{money(d.revenue)}{d.missing ? " *" : ""}</td>
-            <td style={{...td,textAlign:"right"}}>{isWorkday(d.date) ? daily.slice(0, index + 1).filter(x => isWorkday(x.date)).length : "—"}</td>
+            <td style={{...td,textAlign:"right"}}>{d.workdayNumber ?? "—"}</td>
             <td style={{...td,textAlign:"right"}}>{money(d.cumulative)}</td>
             <td style={{...td,textAlign:"right"}}>{hasGoal ? money(d.forecast) : "—"}</td>
             <td style={{...td,textAlign:"right",color:hasGoal ? (d.achievement >= d.targetPercent ? "#16a34a" : "#dc2626") : "var(--color-text-primary)",fontWeight:700}}>
@@ -193,7 +195,7 @@ export default function RevenueForecastPage() {
           <tr style={{background:"var(--color-bg)",fontWeight:700}}>
             <td style={td} colSpan={2}>Total</td><td style={{...td,textAlign:"right"}}>{qty(daily.reduce((sum,d)=>sum+d.quantity,0))}</td>
             <td style={{...td,textAlign:"right"}}>{money(daily.reduce((sum,d)=>sum+d.revenue,0))}</td>
-            <td style={td}></td><td style={{...td,textAlign:"right"}}>{money(daily.at(-1)?.cumulative ?? 0)}</td>
+            <td style={td}></td><td style={{...td,textAlign:"right"}}>{money(daily[daily.length - 1]?.cumulative ?? 0)}</td>
             <td style={{...td,textAlign:"right"}}>{hasGoal ? money(goal) : "—"}</td>
             <td style={{...td,textAlign:"right"}}>{hasGoal ? (totalScheduled / goal * 100).toFixed(2) + "%" : "—"}</td>
             <td style={{...td,textAlign:"right"}}>{hasGoal ? "100.00%" : "—"}</td>
