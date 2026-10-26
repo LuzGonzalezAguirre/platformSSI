@@ -1,5 +1,6 @@
 import json
 import hashlib
+import time
 from django.core.cache import cache
 from django.conf import settings
 from .plex_client import PlexClient, PlexProxyError
@@ -27,6 +28,30 @@ class WarehouseService:
         data = fetch_fn()
         cache.set(key, data, timeout=self.ttl)
         return data
+
+    def _get_or_fetch_revenue(self, operation: str, fetch_fn, **params) -> list:
+        """Avoid duplicate simultaneous requests to the Plex revenue proxy."""
+        key = self._cache_key(operation, **params)
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
+        lock_key = key + ":fetch_lock"
+        if cache.add(lock_key, "1", timeout=75):
+            try:
+                cached = cache.get(key)
+                if cached is not None:
+                    return cached
+                value = fetch_fn()
+                cache.set(key, value, timeout=self.ttl)
+                return value
+            finally:
+                cache.delete(lock_key)
+        for _ in range(20):
+            time.sleep(0.25)
+            cached = cache.get(key)
+            if cached is not None:
+                return cached
+        raise PlexProxyError("Revenue query is still running. Try again shortly.")
 
     def get_part_revisions(self, part_no: str) -> list:
         return self._get_or_fetch(
@@ -77,7 +102,7 @@ class WarehouseService:
         if debug:
             # Never serve stale audit metadata while investigating live Plex releases.
             return self.client.get_revenue_forecast(start_date, end_date, customer_no, release_status, debug)
-        return self._get_or_fetch(
+        return self._get_or_fetch_revenue(
             "revenue_forecast_active_v2",
             lambda: self.client.get_revenue_forecast(start_date, end_date, customer_no, release_status, debug),
             start_date=start_date, end_date=end_date,
@@ -85,14 +110,14 @@ class WarehouseService:
         )
 
     def get_shipping_revenue_daily(self, start_date: str, end_date: str, customer_no: int | None = None) -> list:
-        return self._get_or_fetch(
+        return self._get_or_fetch_revenue(
             "shipping_revenue_daily_v1",
             lambda: self.client.get_shipping_revenue_daily(start_date, end_date, customer_no),
             start_date=start_date, end_date=end_date, customer_no=customer_no,
         )
 
     def get_shipping_revenue_summary(self, start_date: str, end_date: str, customer_no: int | None = None) -> list:
-        return self._get_or_fetch(
+        return self._get_or_fetch_revenue(
             "shipping_revenue_summary",
             lambda: self.client.get_shipping_revenue_summary(start_date, end_date, customer_no),
             start_date=start_date, end_date=end_date, customer_no=customer_no,
