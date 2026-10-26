@@ -14,6 +14,7 @@ type Release = {
   Rel_Bal: number;
   Unit_Price: number | null;
   Forecast_Revenue: number | null;
+  Remaining_Revenue: number | null;
   Price_Issue: string | null;
 };
 type ActualRevenue = { Account_No: string; Revenue: number };
@@ -22,6 +23,8 @@ type DailyRow = {
   date: string;
   quantity: number;
   revenue: number;
+  invoiceRevenue: number;
+  remainingRevenue: number;
   cumulative: number;
   forecast: number;
   achievement: number;
@@ -122,18 +125,19 @@ export default function RevenueForecastPage() {
 
   const daily = useMemo<DailyRow[]>(() => {
     const dates = datesBetween(startDate, endDate);
-    const map = new Map<string, { quantity: number; missing: number; releases: number }>();
+    const map = new Map<string, { quantity: number; remaining: number; missing: number; releases: number }>();
     const invoiceRevenue = new Map<string, number>();
     actualDaily.forEach(r => {
       const date = String(r.Invoice_Date).slice(0, 10);
       invoiceRevenue.set(date, (invoiceRevenue.get(date) ?? 0) + Number(r.Revenue || 0));
     });
     rows.forEach(r => {
-      const item = map.get(r.Ship_Date) ?? { quantity: 0, missing: 0, releases: 0 };
-      item.quantity += Number(r.Rel_Qty || 0);
-      item.missing += r.Forecast_Revenue === null ? 1 : 0;
+      const item = map.get(String(r.Ship_Date).slice(0, 10)) ?? { quantity: 0, remaining: 0, missing: 0, releases: 0 };
+      item.quantity += Number(r.Rel_Bal || 0);
+      item.remaining += Number(r.Remaining_Revenue || 0);
+      item.missing += r.Remaining_Revenue === null ? 1 : 0;
       item.releases++;
-      map.set(r.Ship_Date, item);
+      map.set(String(r.Ship_Date).slice(0, 10), item);
     });
     const workdays = dates.filter(isWorkday).length;
     let elapsed = 0;
@@ -141,13 +145,17 @@ export default function RevenueForecastPage() {
     return dates.map(date => {
       if (isWorkday(date)) elapsed++;
       const day = map.get(date);
-      const revenue = invoiceRevenue.get(date) ?? 0;
+      const invoiced = invoiceRevenue.get(date) ?? 0;
+      const remainingRevenue = day?.remaining ?? 0;
+      const revenue = invoiced + remainingRevenue;
       cumulative += revenue;
       const targetPercent = workdays ? elapsed / workdays * 100 : 0;
       return {
         date,
         quantity: day?.quantity ?? 0,
         revenue,
+        invoiceRevenue: invoiced,
+        remainingRevenue,
         cumulative,
         forecast: hasGoal ? goal * targetPercent / 100 : 0,
         achievement: hasGoal ? cumulative / goal * 100 : 0,
@@ -161,11 +169,14 @@ export default function RevenueForecastPage() {
   const actualTotal = actual.reduce((sum, r) => sum + Number(r.Revenue || 0), 0);
   const dailyInvoiceTotal = actualDaily.reduce((sum, r) => sum + Number(r.Revenue || 0), 0);
   const revenueReconciled = Math.abs(dailyInvoiceTotal - actualTotal) < 0.01;
+  const remainingTotal = rows.reduce((sum, r) => sum + Number(r.Remaining_Revenue || 0), 0);
+  const combinedTotal = actualTotal + remainingTotal;
+  const missingRemaining = rows.filter(r => r.Remaining_Revenue === null).length;
 
   return <main className="warehouse-unified" style={{ padding: "0 1rem 2rem" }}>
     <div className="warehouse-heading">
       <span className="warehouse-heading-icon"><TrendingUp size={23}/></span>
-      <div><h1>Revenue Forecast</h1><p>Releases programados, avance contra meta mensual y Actual Shipping Revenue.</p></div>
+      <div><h1>Revenue Forecast</h1><p>Proyección combinada de releases pendientes y facturación real contra la meta mensual.</p></div>
     </div>
     <section className="warehouse-forecast-filter" style={panel}>
       <label>From<br/><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}/></label>
@@ -182,17 +193,17 @@ export default function RevenueForecastPage() {
 
     <section className="warehouse-forecast-section" style={panel}>
       <h3>Daily Revenue &amp; Sales Goal</h3>
-      <p className="warehouse-muted">Revenue diario real según Invoice Date (cuentas 41000-420 y 41000-470). Qty corresponde a releases programados por Ship Date, NO a unidades realmente facturadas. La meta se distribuye entre lunes y viernes, y los fines de semana conservan el acumulado anterior.</p>
+      <p className="warehouse-muted">Revenue combinado = Remaining Revenue de releases activos (Ship Date) + Revenue facturado (Invoice Date, cuentas 41000-420 y 41000-470). Qty representa solamente piezas pendientes de releases; NO incluye piezas ya embarcadas. La tabla combina fechas de diferente naturaleza y NO representa ventas históricas reales por día. El saldo de releases es una fotografía actual, no un historial al cierre de cada día.</p>
       <table style={{width:"100%", borderCollapse:"collapse", fontSize:13}}>
         <thead><tr>
-          {["Ship Date","Day","Qty (scheduled)","Revenue (invoiced)","Workday","Month to Date","Forecast (goal)","% Sales Achievement","% Sales Goal"].map(h => <th style={th} key={h}>{h}</th>)}
+          {["Ship Date","Day","Qty (remaining)","Revenue (combined)","Workday","Month to Date","Forecast (goal)","% Sales Achievement","% Sales Goal"].map(h => <th style={th} key={h}>{h}</th>)}
         </tr></thead>
         <tbody>
           {daily.map(d => <tr key={d.date}>
             <td style={td}>{d.date}</td>
             <td style={td}>{new Date(d.date + "T00:00:00Z").toLocaleDateString("en-US", {weekday:"short",timeZone:"UTC"})}</td>
             <td style={{...td,textAlign:"right"}}>{qty(d.quantity)}</td>
-            <td style={{...td,textAlign:"right"}}>{money(d.revenue)}</td>
+            <td style={{...td,textAlign:"right"}} title={`Facturado: ${money(d.invoiceRevenue)} + Pendiente: ${money(d.remainingRevenue)}`}>{money(d.revenue)}{d.missing > 0 ? " *" : ""}</td>
             <td style={{...td,textAlign:"right"}}>{d.workdayNumber ?? "—"}</td>
             <td style={{...td,textAlign:"right"}}>{money(d.cumulative)}</td>
             <td style={{...td,textAlign:"right"}}>{hasGoal ? money(d.forecast) : "—"}</td>
@@ -206,11 +217,12 @@ export default function RevenueForecastPage() {
             <td style={{...td,textAlign:"right"}}>{money(daily.reduce((sum,d)=>sum+d.revenue,0))}</td>
             <td style={td}></td><td style={{...td,textAlign:"right"}}>{money(daily[daily.length - 1]?.cumulative ?? 0)}</td>
             <td style={{...td,textAlign:"right"}}>{hasGoal ? money(goal) : "—"}</td>
-            <td style={{...td,textAlign:"right"}}>{hasGoal ? (actualTotal / goal * 100).toFixed(2) + "%" : "—"}</td>
+            <td style={{...td,textAlign:"right"}}>{hasGoal ? (combinedTotal / goal * 100).toFixed(2) + "%" : "—"}</td>
             <td style={{...td,textAlign:"right"}}>{hasGoal ? "100.00%" : "—"}</td>
           </tr>
         </tbody>
       </table>
+      <p className="warehouse-muted">Total combinado: {money(combinedTotal)} = Actual Shipping {money(actualTotal)} + Remaining Releases {money(remainingTotal)}. Se muestran por separado los dos componentes para su validación.{missingRemaining > 0 ? ` ${missingRemaining} releases no tienen precio validado y el valor combinado es parcial.` : ""}</p>
       {!revenueReconciled && <p className="warehouse-error" role="alert">La suma diaria de facturas ({money(dailyInvoiceTotal)}) no coincide con el total por cuenta ({money(actualTotal)}). Verifica la conciliación antes de utilizar el reporte.</p>}
     </section>
 
@@ -232,7 +244,7 @@ export default function RevenueForecastPage() {
 
     <section className="warehouse-forecast-section" style={panel}>
       <h3>Actual Shipping Revenue (Invoice Date)</h3>
-      <p className="warehouse-muted">Revenue facturado real por cuenta contable (41000-420 y 41000-470), filtrado por Invoice Date. Este total debe coincidir con el acumulado final de la tabla diaria.</p>
+      <p className="warehouse-muted">Revenue facturado real por cuenta contable (41000-420 y 41000-470), filtrado por Invoice Date. Este total coincide solamente con el componente facturado de la tabla diaria. El total combinado incluye además releases pendientes.</p>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
         <thead><tr><th style={th}>Account No</th><th style={th}>Actual Revenue</th></tr></thead>
         <tbody>
