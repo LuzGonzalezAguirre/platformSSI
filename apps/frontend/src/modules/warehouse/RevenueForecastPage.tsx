@@ -170,6 +170,8 @@ export default function RevenueForecastPage() {
   const dailyInvoiceTotal = actualDaily.reduce((sum, r) => sum + Number(r.Revenue || 0), 0);
   const revenueReconciled = Math.abs(dailyInvoiceTotal - actualTotal) < 0.01;
   const remainingTotal = rows.reduce((sum, r) => sum + Number(r.Remaining_Revenue || 0), 0);
+  const remainingQuantity = rows.reduce((sum, r) => sum + Number(r.Rel_Bal || 0), 0);
+  const pricedReleases = rows.filter(r => r.Remaining_Revenue !== null).length;
   const combinedTotal = actualTotal + remainingTotal;
   const missingRemaining = rows.filter(r => r.Remaining_Revenue === null).length;
   const dailyCombinedTotal = daily.reduce((sum, d) => sum + d.revenue, 0);
@@ -205,6 +207,20 @@ export default function RevenueForecastPage() {
     </section>
     {error && <p className="warehouse-error" role="alert">{error}</p>}
     <p className="warehouse-muted">Período cargado: {loadedRange || "sin datos"} · Meta guardada por mes en este navegador. Se consideran días laborales de lunes a viernes sin descontar feriados.</p>
+
+    <section aria-label="Remaining Releases" style={{...panel, marginBottom:"1rem", maxWidth:460}}>
+      <h3 style={{margin:"0 0 0.6rem"}}>Remaining Releases — Active</h3>
+      <div style={{fontSize:"1.9rem", fontWeight:750, color:"var(--color-text-primary)", fontVariantNumeric:"tabular-nums"}}>
+        {loadedRange ? money(remainingTotal) : "—"}
+      </div>
+      <p className="warehouse-muted" style={{margin:"0.45rem 0 0"}}>
+        {loadedRange ? `${qty(remainingQuantity)} piezas pendientes · ${pricedReleases} de ${rows.length} releases con precio validado` : "Sin consulta cargada"}
+      </p>
+      <p className="warehouse-muted" style={{margin:"0.45rem 0 0"}}>
+        Suma de Rel_Bal × Unit_Price de releases activos (Open/Scheduled) en el período seleccionado.
+        No incluye facturas. {loadedRange && missingRemaining > 0 ? `${missingRemaining} releases sin precio validado; importe parcial.` : ""}
+      </p>
+    </section>
 
     <section className="warehouse-forecast-section" style={panel}>
       <h3>Daily Revenue &amp; Sales Goal</h3>
