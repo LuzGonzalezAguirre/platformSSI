@@ -172,6 +172,21 @@ export default function RevenueForecastPage() {
   const remainingTotal = rows.reduce((sum, r) => sum + Number(r.Remaining_Revenue || 0), 0);
   const combinedTotal = actualTotal + remainingTotal;
   const missingRemaining = rows.filter(r => r.Remaining_Revenue === null).length;
+  const dailyCombinedTotal = daily.reduce((sum, d) => sum + d.revenue, 0);
+  const dailyRemainingTotal = daily.reduce((sum, d) => sum + d.remainingRevenue, 0);
+  const dailyInvoiceTotalInRange = daily.reduce((sum, d) => sum + d.invoiceRevenue, 0);
+  const dailyVsSummary = dailyInvoiceTotalInRange - actualTotal;
+  const totalVsDaily = combinedTotal - dailyCombinedTotal;
+  const outOfRangeReleases = rows.filter(r => {
+    const date = String(r.Ship_Date ?? "").slice(0, 10);
+    return date < startDate || date > endDate;
+  });
+  const outOfRangeInvoices = actualDaily.filter(r => {
+    const date = String(r.Invoice_Date ?? "").slice(0, 10);
+    return date < startDate || date > endDate;
+  });
+  const outOfRangeRemainingAmount = outOfRangeReleases.reduce((sum, r) => sum + Number(r.Remaining_Revenue || 0), 0);
+  const outOfRangeInvoiceAmount = outOfRangeInvoices.reduce((sum, r) => sum + Number(r.Revenue || 0), 0);
 
   return <main className="warehouse-unified" style={{ padding: "0 1rem 2rem" }}>
     <div className="warehouse-heading">
@@ -223,6 +238,30 @@ export default function RevenueForecastPage() {
         </tbody>
       </table>
       <p className="warehouse-muted">Total combinado: {money(combinedTotal)} = Actual Shipping {money(actualTotal)} + Remaining Releases {money(remainingTotal)}. Se muestran por separado los dos componentes para su validación.{missingRemaining > 0 ? ` ${missingRemaining} releases no tienen precio validado y el valor combinado es parcial.` : ""}</p>
+      <details style={{marginTop:16}}>
+        <summary style={{cursor:"pointer", fontWeight:700}}>Auditoría de conciliación: detalle por origen y fecha</summary>
+        <p className="warehouse-muted">Los resultados de resumen y detalle pueden usar diferentes instantes de caché Redis. Esta auditoría no ajusta ni reemplaza importes.</p>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><tbody>
+          <tr><td style={td}>Facturación por cuentas (summary)</td><td style={td}>{money(actualTotal)}</td></tr>
+          <tr><td style={td}>Facturación por fechas (daily, respuesta completa)</td><td style={td}>{money(dailyInvoiceTotal)}</td></tr>
+          <tr><td style={td}>Facturación por fechas mostradas</td><td style={td}>{money(dailyInvoiceTotalInRange)}</td></tr>
+          <tr><td style={td}>Diferencia facturación diaria - resumen</td><td style={td}>{money(dailyVsSummary)}</td></tr>
+          <tr><td style={td}>Remaining releases (respuesta completa)</td><td style={td}>{money(remainingTotal)}</td></tr>
+          <tr><td style={td}>Remaining releases en fechas mostradas</td><td style={td}>{money(dailyRemainingTotal)}</td></tr>
+          <tr><td style={td}>Total combinado calculado</td><td style={td}>{money(combinedTotal)}</td></tr>
+          <tr><td style={td}>Total de filas diarias</td><td style={td}>{money(dailyCombinedTotal)}</td></tr>
+          <tr><td style={td}><strong>Diferencia combinado - tabla diaria</strong></td><td style={td}><strong>{money(totalVsDaily)}</strong></td></tr>
+        </tbody></table>
+        <p>Releases fuera de rango: {outOfRangeReleases.length} ({money(outOfRangeRemainingAmount)}). Facturas con fecha fuera de rango: {outOfRangeInvoices.length} ({money(outOfRangeInvoiceAmount)}).</p>
+        {(outOfRangeReleases.length > 0 || outOfRangeInvoices.length > 0) && <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <thead><tr><th style={th}>Origen</th><th style={th}>Fecha original</th><th style={th}>Referencia</th><th style={th}>Importe</th></tr></thead>
+          <tbody>
+            {outOfRangeReleases.map(r => <tr key={`release-${r.Release_Key}`}><td style={td}>Release</td><td style={td}>{r.Ship_Date}</td><td style={td}>{r.Release_Key}</td><td style={td}>{money(Number(r.Remaining_Revenue || 0))}</td></tr>)}
+            {outOfRangeInvoices.map((r, i) => <tr key={`invoice-${i}`}><td style={td}>Invoice</td><td style={td}>{r.Invoice_Date}</td><td style={td}>{r.Account_No}</td><td style={td}>{money(Number(r.Revenue || 0))}</td></tr>)}
+          </tbody>
+        </table>}
+      </details>
+      {Math.abs(totalVsDaily) >= 0.01 && <p className="warehouse-error" role="alert">Diferencia de conciliación: {money(totalVsDaily)} entre resumen combinado y tabla diaria. No utilices este total como ingreso confirmado hasta resolver la diferencia.</p>}
       {!revenueReconciled && <p className="warehouse-error" role="alert">La suma diaria de facturas ({money(dailyInvoiceTotal)}) no coincide con el total por cuenta ({money(actualTotal)}). Verifica la conciliación antes de utilizar el reporte.</p>}
     </section>
 
