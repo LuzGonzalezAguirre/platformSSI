@@ -21,10 +21,12 @@ from apps.production.views.ops_report_views import OpsDailySummaryView, OpsWeekl
 from apps.production.views.ops_report_views import OpsDailyExportView
 from apps.production.views.ops_report_views import OpsDailyPDFExportView
 
+from apps.production.views.checksheet_views import ChecksheetDiagnosticView
 from apps.production.views.productivity_views import DailyProductivityView
 
 
 urlpatterns = [
+    path("checksheets/diagnostic/", production_view(ChecksheetDiagnosticView, {"POST": "view"})),
     path("business-units/",              production_view(BusinessUnitListView)),
     path("targets/weekly/",              production_view(WeeklyTargetView, {"GET": "view", "POST": "edit"})),
     path("wip/weekly/",                  production_view(WeeklyWIPView, {"GET": "view", "POST": "edit"})),
