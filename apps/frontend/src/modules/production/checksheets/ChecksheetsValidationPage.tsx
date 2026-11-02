@@ -56,11 +56,17 @@ function displayStamp(value?: string | null) {
 export default function ChecksheetsValidationPage() {
   const [form, setForm] = useState(initial);
   const [result, setResult] = useState<Diagnostic | null>(null);
+  const [queriedContext, setQueriedContext] = useState<typeof initial | null>(null);
   const [observations, setObservations] = useState<Record<string, Observation>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const operations = form.operation_numbers.split(",").map(s => s.trim()).filter(Boolean).map(Number);
-  const setField = (key: keyof typeof initial, value: string) => setForm(prev => ({ ...prev, [key]: value }));
+  const setField = (key: keyof typeof initial, value: string) => {
+    setForm(prev => ({ ...prev, [key]: value }));
+    setResult(null);
+    setQueriedContext(null);
+    setObservations({});
+  };
 
   async function load() {
     const wc = integer(form.workcenter_key);
@@ -75,6 +81,7 @@ export default function ChecksheetsValidationPage() {
     setBusy(true);
     setError("");
     setResult(null);
+    setQueriedContext(null);
     setObservations({});
     try {
       const payload = {
@@ -90,12 +97,37 @@ export default function ChecksheetsValidationPage() {
       };
       const response = await apiClient.post<{data: Diagnostic}>("/production/checksheets/diagnostic/", payload);
       setResult(response.data.data);
+      setQueriedContext({ ...form });
     } catch (err: unknown) {
       setError("No fue posible consultar el diagnóstico. Verifica fechas, conexión y permisos.");
     } finally {
       setBusy(false);
     }
   }
+
+  const evidenceDate = result?.latest_visible_inspection_date
+    ? new Date(result.latest_visible_inspection_date) : null;
+  const evaluationDate = queriedContext?.evaluation_at ? new Date(queriedContext.evaluation_at) : null;
+  const evidenceAgeHours = evidenceDate && evaluationDate
+    ? (evaluationDate.getTime() - evidenceDate.getTime()) / 3600000 : null;
+  const outdatedEvidence = evidenceAgeHours !== null && evidenceAgeHours > 24;
+  const windowMismatch = Boolean(queriedContext?.evaluation_at && queriedContext?.window_end &&
+    queriedContext.evaluation_at > queriedContext.window_end);
+  const mismatchJob = Boolean(result?.workcenter_context?.latest_observed_job_op_key &&
+    queriedContext?.job_op_key &&
+    String(result.workcenter_context.latest_observed_job_op_key) !== queriedContext.job_op_key);
+  const predictedObservation = (prediction: string): Observation | null => {
+    if (prediction === "PREDICTED_PENDING") return "ORANGE";
+    if (prediction === "PREDICTED_WITHIN_WINDOW") return "GREEN";
+    if (prediction === "NOT_REQUIRED") return "NOT_APPLICABLE";
+    return null;
+  };
+  const comparable = result?.requirements.filter(r => {
+    const observed = observations[String(r.Section_ID)] || "UNKNOWN";
+    return observed !== "UNKNOWN" && predictedObservation(r.Timer_Diagnostic.state) !== null;
+  }) || [];
+  const matches = comparable.filter(r =>
+    predictedObservation(r.Timer_Diagnostic.state) === observations[String(r.Section_ID)]).length;
 
   const inputStyle: React.CSSProperties = {
     width: "100%", minWidth: 0, padding: "9px 10px", borderRadius: 8,
@@ -141,9 +173,20 @@ export default function ChecksheetsValidationPage() {
       </section>
 
       {result && <>
+        {(outdatedEvidence || windowMismatch || mismatchJob || result.evidence_truncated) && (
+          <section role="status" style={{...cardStyle, marginTop: 16, borderLeft: "4px solid #d48a20"}}>
+            <strong>Precaución: esta consulta no confirma el estado actual de Plex.</strong>
+            {outdatedEvidence && <p>La última evidencia visible es anterior a la evaluación por más de 24 horas.
+              Puede existir retraso de sincronización o no haber registros recientes para el alcance consultado.</p>}
+            {windowMismatch && <p>La hora de evaluación queda después del fin de la ventana de evidencia.</p>}
+            {mismatchJob && <p>El último Job histórico del Workcenter no coincide con el Job seleccionado.
+              Ninguno confirma el Job actualmente activo.</p>}
+            {result.evidence_truncated && <p>Se alcanzó el límite de evidencias; los conteos pueden ser incompletos.</p>}
+          </section>
+        )}
         <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12, marginTop: 16}}>
           <div style={cardStyle}><small>Requisitos</small><h2>{result.requirements_returned}</h2></div>
-          <div style={cardStyle}><small>Checksheets recuperados</small><h2>{result.evidence_rows_scanned}</h2></div>
+          <div style={cardStyle}><small>Evidencias examinadas (modelo y plan)</small><h2>{result.evidence_rows_scanned}</h2></div>
           <div style={cardStyle}><small>Última evidencia visible</small><div>{displayStamp(result.latest_visible_inspection_date)}</div></div>
           <div style={cardStyle}><small>Estado Plex confirmado</small><h2>No</h2></div>
         </div>
@@ -180,7 +223,9 @@ export default function ChecksheetsValidationPage() {
             </table>
           </div>
           <p style={{fontSize: 13, marginTop: 15}}>
-            Comparaciones registradas en pantalla: {Object.values(observations).filter(v => v !== "UNKNOWN").length}.
+            Observaciones capturadas: {Object.values(observations).filter(v => v !== "UNKNOWN").length}.
+            Comparables con una predicción: {comparable.length}. Coincidencias: {matches}.
+            Las reglas UNVERIFIED no cuentan como aciertos ni errores.
             No se emiten alertas ni se registran falsos pendientes.
           </p>
         </section>
