@@ -82,7 +82,7 @@ export default function ChecksheetsValidationPage() {
     if (!wc || !part || !plan || (form.job_op_key && !job) ||
       operations.length > 30 || operations.some(n => !Number.isSafeInteger(n) || n <= 0) ||
       !mappingValid || (job !== null && mappingPairs.length > 0) ||
-      (mappingPairs.length > 0 && operations.some(op => !Object.hasOwn(operationJobKeys, String(op))))) {
+      (mappingPairs.length > 0 && operations.some(op => !Object.prototype.hasOwnProperty.call(operationJobKeys, String(op))))) {
       setError("Revisa los identificadores y las operaciones.");
       return;
     }
