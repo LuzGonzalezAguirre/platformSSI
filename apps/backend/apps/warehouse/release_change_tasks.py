@@ -128,8 +128,7 @@ def monitor_demand_release_changes():
         # Past releases remain in scope, even after month rollover.
         start = today - timedelta(days=60)
         end = today + timedelta(days=90)
-        rows = PlexClient().get_demand(
-            customer_no=None, include_all_customers=True, release_status="All",
+        rows = PlexClient().get_demand_status_snapshot(
             ship_date_from=start.isoformat(), ship_date_to=end.isoformat(),
         )
         if not rows:
