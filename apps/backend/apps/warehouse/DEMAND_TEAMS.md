@@ -99,14 +99,20 @@ Despliegue y pruebas:
 
 Para prueba controlada antes de habilitar la programación automática:
 1. Dejar `DEMAND_CHANGE_ALERTS_ENABLED=false` y ejecutar migraciones y tests.
-2. Cambiar a `true`, recrear contenedores (necesitan el nuevo entorno).
-3. Ejecutar **una sola vez** desde Django shell:
-   `from apps.warehouse.release_change_tasks import monitor_demand_release_changes; print(monitor_demand_release_changes())`
+2. Dejar `DEMAND_CHANGE_ALERTS_ENABLED=false` en todos los servicios.
+3. Ejecutar **una sola vez** desde Django shell, activando únicamente la
+   llamada de monitoreo de forma temporal (sin habilitar el worker):
+   
+       from django.test.utils import override_settings
+       from apps.warehouse.release_change_tasks import monitor_demand_release_changes
+       with override_settings(DEMAND_CHANGE_ALERTS_ENABLED=True):
+           print(monitor_demand_release_changes())
+
    Esperado: `seeded > 0, changed = 0` si no existían snapshots.
-4. Inspeccionar snapshots y cambios antes de permitir que los envíe el worker.
-   La tarea de envío programada funciona cada 5 minutos una vez habilitada;
-   para aislar el ensayo conviene **mantener celery_beat detenido** hasta
-   comprobar la línea base. Al reanudarlo, los eventos nuevos sí podrán enviarse.
+4. Inspeccionar snapshots y cola de cambios: el envío sigue desactivado en
+   Celery porque el archivo .env permanece en `false`.
+5. Cuando sea aprobado, cambiar el flag a `true`, recrear servicios y
+   confirmar las primeras alertas.
 
 Limitaciones: sistema de *polling*, no historial completo EDI. Eventos que
 ocurren entre dos sondeos y se revierten pueden pasar desapercibidos; cambios
