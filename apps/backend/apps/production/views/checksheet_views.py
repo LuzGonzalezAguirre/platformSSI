@@ -17,7 +17,7 @@ class ChecksheetDiagnosticView(APIView):
         if not isinstance(payload, dict):
             return Response({"detail": "Expected a JSON object."}, status=400)
         allowed = {
-            "workcenter_key", "part_key", "control_plan_key", "job_op_key",
+            "workcenter_key", "part_key", "control_plan_key", "job_op_key", "operation_job_op_keys",
             "operation_numbers", "window_start", "window_end",
             "timer_anchor", "evaluation_at", "include_checksheet_downtime",
             "include_workcenter_context",
