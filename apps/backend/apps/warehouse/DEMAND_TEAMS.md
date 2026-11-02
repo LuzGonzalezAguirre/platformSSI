@@ -61,7 +61,7 @@ falsos registros en la cola, invocarlo manualmente con un payload de prueba.
 ## Seguimiento de cambios y cierres (opt-in, PR independiente)
 
 El monitor adicional en `release_change_tasks.py` **no sustituye** la cola original
-de avisos por releases nuevos. Consulta `/demand` con `release_status="All"`
+de avisos por releases nuevos. Consulta `/demand/status-snapshot` (requiere plex-proxyO PR #19)
 (incluidos `Closed` y `Shipped`) cada 15 minutos, con ventana móvil de
 60 días hacia atrás y 90 días hacia delante sobre `Ship_Date`. Guarda el
 último estado observado por `Release_Key` en
@@ -119,3 +119,22 @@ ocurren entre dos sondeos y se revierten pueden pasar desapercibidos; cambios
 repetidos con el mismo par de estados anterior/nuevo están deduplicados;
 un cambio fuera de la ventana de Ship_Date no se observa. Un HTTP aceptado
 seguido de timeout puede producir duplicados de Teams.
+
+## Optimización de rendimiento (PR #19 plex-proxyO)
+
+El monitor de cambios **requiere** el endpoint nuevo
+`POST /demand/status-snapshot` de plex-proxyO, que devuelve Release_Key,
+Rel_Status, Rel_Qty, Ship_Date, Customer, PO_Rel y Part_No_Rev sin calcular
+inventario ni consultar notas/historial EDI. El endpoint original `/demand`
+queda intacto. Actualizar y reiniciar plex-proxyO antes de activar Celery.
+
+Prueba manual desde Django, con env de cambios en `false`:
+
+    from apps.warehouse.services.plex_client import PlexClient
+    rows = PlexClient().get_demand_status_snapshot("2026-09-03", "2027-01-31")
+    print(len(rows), {r["Rel_Status"] for r in rows})
+
+Verificar que la consulta termine en menos de 60 segundos y que se recuperen
+estados Open, Closed, Shipped. Un proxy sin el endpoint devuelve 404.
+Durante la actualización, desactivar `DEMAND_CHANGE_ALERTS_ENABLED` en los
+contenedores para no repetir los timeouts del monitor.
