@@ -95,7 +95,7 @@ Despliegue y pruebas:
     docker compose up -d --build backend celery_worker celery_beat
     docker compose exec backend python manage.py migrate
     docker compose exec backend python manage.py check
-    docker compose exec backend python manage.py test apps.warehouse.tests.test_release_change_alerts
+    docker compose exec backend python manage.py test apps.warehouse.test_release_change_alerts
 
 Para prueba controlada antes de habilitar la programación automática:
 1. Dejar `DEMAND_CHANGE_ALERTS_ENABLED=false` y ejecutar migraciones y tests.
