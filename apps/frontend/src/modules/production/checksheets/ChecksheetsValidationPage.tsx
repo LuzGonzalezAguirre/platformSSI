@@ -34,12 +34,12 @@ type Diagnostic = {
 };
 type Observation = "ORANGE" | "GREEN" | "NOT_APPLICABLE" | "UNKNOWN";
 const initial = {
-  workcenter_key: "61104",
-  part_key: "4553106",
-  control_plan_key: "475605",
-  job_op_key: "",
-  operation_job_op_keys: "345:189332745,350:189332746,355:189332747",
-  operation_numbers: "345,350,355",
+  workcenter_key: "75408",
+  part_key: "4573945",
+  control_plan_key: "446577",
+  job_op_key: "188522218",
+  operation_job_op_keys: "",
+  operation_numbers: "700,707,710,715,820,830,835,840,845,847,850,855,860,865,870,875,880,885,890,895,900,905",
   window_start: "",
   window_end: "",
   timer_anchor: "",
@@ -151,7 +151,7 @@ export default function ChecksheetsValidationPage() {
     {key: "workcenter_key", label: "Workcenter"},
     {key: "part_key", label: "Part Key"},
     {key: "control_plan_key", label: "Control Plan"},
-    {key: "job_op_key", label: "Job Op Key (alternativa a mapeo)"},
+    {key: "job_op_key", label: "Job Op Key de captura (puede incluir secciones de otras operaciones)"},
     {key: "operation_job_op_keys", label: "Operación:Job Op (separados por comas)"},
     {key: "operation_numbers", label: "Operaciones (separadas por coma)"},
     {key: "window_start", label: "Inicio de ventana", type: "datetime-local"},
