@@ -96,6 +96,13 @@ class PlexClient:
             "customer_part_no": customer_part_no,
             "release_types": release_types,
         })
+    def get_demand_status_snapshot(self, ship_date_from: str, ship_date_to: str) -> list:
+        """Fast monitoring endpoint: state/quantity/date only, no inventory/history."""
+        return self._post("demand/status-snapshot", {
+            "start_date": ship_date_from,
+            "end_date": ship_date_to,
+        })
+
     def get_delivery_performance(self, start_date: str, end_date: str) -> list:
         return self._post("delivery-performance", {"start_date": start_date, "end_date": end_date})
 
