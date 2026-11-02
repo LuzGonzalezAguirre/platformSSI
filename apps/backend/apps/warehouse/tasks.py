@@ -141,3 +141,6 @@ def send_pending_demand_teams_alerts():
                 locked.status = "error"
             locked.save(update_fields=["status", "attempts", "last_error", "sent_at"])
     return {"sent": sent}
+
+# Celery autodiscovers tasks.py; import the separate change-monitor task module.
+from apps.warehouse import release_change_tasks  # noqa: F401,E402
