@@ -59,6 +59,7 @@ export default function ChecksheetsValidationPage() {
   const [result, setResult] = useState<Diagnostic | null>(null);
   const [queriedContext, setQueriedContext] = useState<typeof initial | null>(null);
   const [observations, setObservations] = useState<Record<string, Observation>>({});
+  const [plexRemainingMinutes, setPlexRemainingMinutes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const operations = form.operation_numbers.split(",").map(s => s.trim()).filter(Boolean).map(Number);
@@ -72,6 +73,7 @@ export default function ChecksheetsValidationPage() {
     setResult(null);
     setQueriedContext(null);
     setObservations({});
+    setPlexRemainingMinutes({});
   };
 
   async function load() {
@@ -91,6 +93,7 @@ export default function ChecksheetsValidationPage() {
     setResult(null);
     setQueriedContext(null);
     setObservations({});
+    setPlexRemainingMinutes({});
     try {
       const payload = {
         workcenter_key: wc,
@@ -137,6 +140,11 @@ export default function ChecksheetsValidationPage() {
   }) || [];
   const matches = comparable.filter(r =>
     predictedObservation(r.Timer_Diagnostic.state) === observations[String(r.Section_ID)]).length;
+  const evidenceMatches = result?.requirements.filter(r =>
+    observations[String(r.Section_ID)] === "GREEN" && r.Recorded_Checksheets > 0).length || 0;
+  const timerObservations = Object.entries(plexRemainingMinutes).filter(
+    ([, value]) => value.trim() !== "" && Number.isFinite(Number(value)) && Number(value) >= 0
+  ).length;
 
   const inputStyle: React.CSSProperties = {
     width: "100%", minWidth: 0, padding: "9px 10px", borderRadius: 8,
@@ -203,12 +211,13 @@ export default function ChecksheetsValidationPage() {
         <section style={{...cardStyle, marginTop: 16}}>
           <h2 style={{fontSize: 18}}>Comparación manual con Plex</h2>
           <p style={{fontSize: 13, color: "var(--color-text-secondary)"}}>
-            Selecciona lo que observas en Plex por sección. Estas selecciones solo existen durante esta sesión de pantalla;
-            no se guardan en el servidor.
+            Registra el color observado y, cuando Plex muestre un contador, sus minutos restantes.
+            Son observaciones temporales de esta pantalla y no se guardan en el servidor.
+            Una inspección registrada es evidencia histórica, no una garantía de que siga vigente.
           </p>
           <div style={{overflowX: "auto"}}>
             <table style={{width: "100%", borderCollapse: "collapse", minWidth: 950, textAlign: "left"}}>
-              <thead><tr>{["Op.", "Sección", "Inspección", "Responsable", "Registros", "Último registro", "Predicción", "Próximo vencimiento", "Plex observado"].map(t =>
+              <thead><tr>{["Op.", "Sección", "Inspección", "Responsable", "Registros", "Último registro", "Evidencia", "Predicción", "Próximo vencimiento", "Plex observado", "Min restantes Plex", "Comparación"].map(t =>
                 <th key={t} style={{padding: 10, borderBottom: "1px solid var(--color-border)"}}>{t}</th>)}</tr></thead>
               <tbody>{result.requirements.map(r => {
                 const key = String(r.Section_ID);
@@ -218,6 +227,7 @@ export default function ChecksheetsValidationPage() {
                   <td style={{padding: 10}}>{r.Operation_Number}</td>
                   <td>{r.Section_ID}</td><td>{r.Inspection_Type}</td><td>{r.Responsible_Department || "—"}</td>
                   <td>{r.Recorded_Checksheets}</td><td>{displayStamp(r.Last_Inspection_Date)}</td>
+                  <td>{r.Recorded_Checksheets > 0 ? "Registrado" : "Sin registro visible"}</td>
                   <td title={r.Timer_Diagnostic.reason}>{predicted}</td>
                   <td>{displayStamp(r.Timer_Diagnostic.due_at)}</td>
                   <td><select aria-label={`Estado de Plex para sección ${key}`} value={observed}
@@ -228,6 +238,18 @@ export default function ChecksheetsValidationPage() {
                     <option value="ORANGE">Naranja</option>
                     <option value="NOT_APPLICABLE">No aplica</option>
                   </select></td>
+                  <td><input type="number" min="0" step="1" placeholder="—"
+                    aria-label={`Minutos restantes en Plex para sección ${key}`}
+                    value={plexRemainingMinutes[key] || ""}
+                    onChange={e => setPlexRemainingMinutes(prev => ({...prev, [key]: e.target.value}))}
+                    style={{...inputStyle, width: 95}} /></td>
+                  <td>{observed === "GREEN" && r.Recorded_Checksheets > 0
+                    ? "Evidencia coincide"
+                    : observed === "GREEN" && plexRemainingMinutes[key] !== "" && plexRemainingMinutes[key] !== undefined
+                      ? "Temporizador observado"
+                      : observed !== "UNKNOWN" && predictedObservation(predicted) !== null
+                        ? (predictedObservation(predicted) === observed ? "Predicción coincide" : "Diferencia")
+                        : "Sin validación"}</td>
                 </tr>;
               })}</tbody>
             </table>
@@ -235,6 +257,9 @@ export default function ChecksheetsValidationPage() {
           <p style={{fontSize: 13, marginTop: 15}}>
             Observaciones capturadas: {Object.values(observations).filter(v => v !== "UNKNOWN").length}.
             Comparables con una predicción: {comparable.length}. Coincidencias: {matches}.
+            Tarjetas verdes con evidencia visible: {evidenceMatches}.
+            Contadores de Plex capturados: {timerObservations}.
+            Las coincidencias de evidencia no validan por sí solas el temporizador.
             Las reglas UNVERIFIED no cuentan como aciertos ni errores.
             No se emiten alertas ni se registran falsos pendientes.
           </p>
