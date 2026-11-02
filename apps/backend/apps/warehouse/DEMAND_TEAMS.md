@@ -56,3 +56,85 @@ falsos registros en la cola, invocarlo manualmente con un payload de prueba.
 - Los cambios a un Release_Key conocido no generan notificaciones nuevas.
 - El envío depende de la conexión de platformSSI al plex-proxyO actualizado.
 - La URL de Power Automate es un secreto y nunca debe registrarse en logs.
+
+
+## Seguimiento de cambios y cierres (opt-in, PR independiente)
+
+El monitor adicional en `release_change_tasks.py` **no sustituye** la cola original
+de avisos por releases nuevos. Consulta `/demand/status-snapshot` (requiere plex-proxyO PR #19)
+(incluidos `Closed` y `Shipped`) cada 15 minutos, con ventana móvil de
+60 días hacia atrás y 90 días hacia delante sobre `Ship_Date`. Guarda el
+último estado observado por `Release_Key` en
+`warehouse_demand_release_snapshot`.
+
+**Primera observación silenciosa por Release_Key**: nunca genera avisos de
+cierres históricos. Las consultas posteriores detectan las transiciones:
+- `Open → Closed`: `RELEASE_CLOSED`.
+- `Closed → Open`: `RELEASE_REOPENED`.
+- Otros cambios de `Rel_Status`: `STATUS_CHANGED` (incluido `Shipped`).
+- Cambios en `Rel_Qty`: `QUANTITY_CHANGED`.
+- Cambios de `Ship_Date`: `SHIP_DATE_CHANGED`.
+
+Si varios campos cambian en el mismo sondeo se genera **una tarjeta** con todas
+las diferencias anteriores/nuevas. No interpretamos un saldo o cantidad cero
+como cierre. No hacemos alertas por desaparición del release del resultado
+(que podría corresponder a un cambio de ventana o fallo del proxy). La tabla
+`warehouse_demand_release_change_alert` contiene la cola, reintentos y
+resultado de entrega. Un release puede tener varios eventos, a diferencia
+de `warehouse_demand_release_alert`, que es única por Release_Key.
+
+En el `.env` agregar **solo cuando se haya validado el despliegue**:
+
+    DEMAND_CHANGE_ALERTS_ENABLED=true
+
+Por defecto es `false`. Se pasa a backend, celery_worker y celery_beat.
+Mantener `DEMAND_TEAMS_WEBHOOK_URL` configurado para el mismo flujo de Teams.
+
+Despliegue y pruebas:
+
+    docker compose up -d --build backend celery_worker celery_beat
+    docker compose exec backend python manage.py migrate
+    docker compose exec backend python manage.py check
+    docker compose exec backend python manage.py test apps.warehouse.test_release_change_alerts
+
+Para prueba controlada antes de habilitar la programación automática:
+1. Dejar `DEMAND_CHANGE_ALERTS_ENABLED=false` y ejecutar migraciones y tests.
+2. Dejar `DEMAND_CHANGE_ALERTS_ENABLED=false` en todos los servicios.
+3. Ejecutar **una sola vez** desde Django shell, activando únicamente la
+   llamada de monitoreo de forma temporal (sin habilitar el worker):
+   
+       from django.test.utils import override_settings
+       from apps.warehouse.release_change_tasks import monitor_demand_release_changes
+       with override_settings(DEMAND_CHANGE_ALERTS_ENABLED=True):
+           print(monitor_demand_release_changes())
+
+   Esperado: `seeded > 0, changed = 0` si no existían snapshots.
+4. Inspeccionar snapshots y cola de cambios: el envío sigue desactivado en
+   Celery porque el archivo .env permanece en `false`.
+5. Cuando sea aprobado, cambiar el flag a `true`, recrear servicios y
+   confirmar las primeras alertas.
+
+Limitaciones: sistema de *polling*, no historial completo EDI. Eventos que
+ocurren entre dos sondeos y se revierten pueden pasar desapercibidos; cambios
+repetidos con el mismo par de estados anterior/nuevo están deduplicados;
+un cambio fuera de la ventana de Ship_Date no se observa. Un HTTP aceptado
+seguido de timeout puede producir duplicados de Teams.
+
+## Optimización de rendimiento (PR #19 plex-proxyO)
+
+El monitor de cambios **requiere** el endpoint nuevo
+`POST /demand/status-snapshot` de plex-proxyO, que devuelve Release_Key,
+Rel_Status, Rel_Qty, Ship_Date, Customer, PO_Rel y Part_No_Rev sin calcular
+inventario ni consultar notas/historial EDI. El endpoint original `/demand`
+queda intacto. Actualizar y reiniciar plex-proxyO antes de activar Celery.
+
+Prueba manual desde Django, con env de cambios en `false`:
+
+    from apps.warehouse.services.plex_client import PlexClient
+    rows = PlexClient().get_demand_status_snapshot("2026-09-03", "2027-01-31")
+    print(len(rows), {r["Rel_Status"] for r in rows})
+
+Verificar que la consulta termine en menos de 60 segundos y que se recuperen
+estados Open, Closed, Shipped. Un proxy sin el endpoint devuelve 404.
+Durante la actualización, desactivar `DEMAND_CHANGE_ALERTS_ENABLED` en los
+contenedores para no repetir los timeouts del monitor.

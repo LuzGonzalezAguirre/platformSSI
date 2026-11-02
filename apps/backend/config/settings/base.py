@@ -128,6 +128,7 @@ PLEX_PROXY_URL    = env("PLEX_PROXY_URL", default="http://host.docker.internal:8
 PLEX_PROXY_SECRET = env("PLEX_PROXY_SECRET")
 PLEX_CACHE_TTL    = 300  # segundos — 5 minutos default
 DEMAND_TEAMS_WEBHOOK_URL = env("DEMAND_TEAMS_WEBHOOK_URL", default="")
+DEMAND_CHANGE_ALERTS_ENABLED = env.bool("DEMAND_CHANGE_ALERTS_ENABLED", default=False)
 
 QWALL_PROXY_URL    = env("QWALL_PROXY_URL", default="http://host.docker.internal:8002")
 ACTION_TRACKER_URL = env("ACTION_TRACKER_URL", default="")
@@ -137,6 +138,14 @@ QWALL_PROXY_TOKEN = env("QWALL_PROXY_TOKEN")
 
 
 CELERY_BEAT_SCHEDULE = {
+    "warehouse-demand-release-change-monitor": {
+        "task": "apps.warehouse.release_change_tasks.monitor_demand_release_changes",
+        "schedule": crontab(minute="*/15"),
+    },
+    "warehouse-demand-release-change-teams": {
+        "task": "apps.warehouse.release_change_tasks.send_demand_release_change_alerts",
+        "schedule": crontab(minute="*/5"),
+    },
     "warehouse-demand-release-check": {
         "task": "apps.warehouse.tasks.check_monthly_demand_releases",
         "schedule": crontab(minute="*/15"),

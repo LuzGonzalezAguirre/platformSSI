@@ -94,3 +94,36 @@ class DemandAlertSyncState(models.Model):
 
     class Meta:
         db_table = "warehouse_demand_alert_sync_state"
+
+
+class DemandReleaseSnapshot(models.Model):
+    """Last observed Plex release fields; never interpreted as release history."""
+    release_key = models.BigIntegerField(primary_key=True)
+    customer = models.CharField(max_length=180, blank=True, default="")
+    po = models.CharField(max_length=160, blank=True, default="")
+    part = models.CharField(max_length=160, blank=True, default="")
+    release_status = models.CharField(max_length=40)
+    quantity = models.DecimalField(max_digits=18, decimal_places=4, null=True)
+    ship_date = models.DateField(null=True)
+    first_observed_at = models.DateTimeField(auto_now_add=True)
+    last_observed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "warehouse_demand_release_snapshot"
+
+
+class DemandReleaseChangeAlert(models.Model):
+    """Queued event for a confirmed change between two observed snapshots."""
+    event_key = models.CharField(max_length=64, unique=True)
+    release_key = models.BigIntegerField(db_index=True)
+    event_type = models.CharField(max_length=40)
+    payload = models.JSONField(default=dict)
+    status = models.CharField(max_length=16, default="pending", db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "warehouse_demand_release_change_alert"
+        ordering = ["created_at"]
