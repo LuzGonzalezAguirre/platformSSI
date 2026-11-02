@@ -61,13 +61,13 @@ class DemandChangeMonitorTests(TestCase):
     @patch("apps.warehouse.release_change_tasks.PlexClient")
     def test_first_poll_silently_seeds_then_closed_transition_queues_once(self, client, cache):
         cache.add.return_value = True
-        client.return_value.get_demand.return_value = [sample_row()]
+        client.return_value.get_demand_status_snapshot.return_value = [sample_row()]
         first = monitor_demand_release_changes()
         self.assertEqual(first["seeded"], 1)
         self.assertEqual(first["changed"], 0)
         self.assertEqual(DemandReleaseChangeAlert.objects.count(), 0)
 
-        client.return_value.get_demand.return_value = [sample_row("Closed", 91)]
+        client.return_value.get_demand_status_snapshot.return_value = [sample_row("Closed", 91)]
         second = monitor_demand_release_changes()
         self.assertEqual(second["changed"], 1)
         event = DemandReleaseChangeAlert.objects.get()
@@ -83,9 +83,9 @@ class DemandChangeMonitorTests(TestCase):
     @patch("apps.warehouse.release_change_tasks.PlexClient")
     def test_zero_rows_does_not_delete_snapshots(self, client, cache):
         cache.add.return_value = True
-        client.return_value.get_demand.return_value = [sample_row()]
+        client.return_value.get_demand_status_snapshot.return_value = [sample_row()]
         monitor_demand_release_changes()
-        client.return_value.get_demand.return_value = []
+        client.return_value.get_demand_status_snapshot.return_value = []
         result = monitor_demand_release_changes()
         self.assertEqual(result["status"], "empty")
         self.assertEqual(DemandReleaseSnapshot.objects.count(), 1)
