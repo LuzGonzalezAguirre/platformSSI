@@ -34,15 +34,16 @@ type Diagnostic = {
 };
 type Observation = "ORANGE" | "GREEN" | "NOT_APPLICABLE" | "UNKNOWN";
 const initial = {
-  workcenter_key: "61098",
-  part_key: "4779610",
-  control_plan_key: "472487",
-  job_op_key: "189365170",
-  operation_numbers: "50,70",
-  window_start: "2026-10-27T12:00",
-  window_end: "2026-10-27T17:00",
-  timer_anchor: "2026-10-27T12:00",
-  evaluation_at: "2026-10-27T16:00",
+  workcenter_key: "61104",
+  part_key: "4553106",
+  control_plan_key: "475605",
+  job_op_key: "",
+  operation_job_op_keys: "345:189332745,350:189332746,355:189332747",
+  operation_numbers: "345,350,355",
+  window_start: "",
+  window_end: "",
+  timer_anchor: "",
+  evaluation_at: "",
 };
 
 function integer(value: string): number | null {
@@ -61,6 +62,11 @@ export default function ChecksheetsValidationPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const operations = form.operation_numbers.split(",").map(s => s.trim()).filter(Boolean).map(Number);
+  const mappingEntries = form.operation_job_op_keys.split(",").map(s => s.trim()).filter(Boolean);
+  const mappingPairs = mappingEntries.map(entry => entry.split(":").map(Number));
+  const mappingValid = mappingPairs.every(pair => pair.length === 2 &&
+    pair.every(value => Number.isSafeInteger(value) && value > 0));
+  const operationJobKeys = Object.fromEntries(mappingPairs.map(([op, job]) => [String(op), job]));
   const setField = (key: keyof typeof initial, value: string) => {
     setForm(prev => ({ ...prev, [key]: value }));
     setResult(null);
@@ -74,7 +80,9 @@ export default function ChecksheetsValidationPage() {
     const plan = integer(form.control_plan_key);
     const job = integer(form.job_op_key);
     if (!wc || !part || !plan || (form.job_op_key && !job) ||
-      operations.length > 30 || operations.some(n => !Number.isSafeInteger(n) || n <= 0)) {
+      operations.length > 30 || operations.some(n => !Number.isSafeInteger(n) || n <= 0) ||
+      !mappingValid || (job !== null && mappingPairs.length > 0) ||
+      (mappingPairs.length > 0 && operations.some(op => !Object.hasOwn(operationJobKeys, String(op))))) {
       setError("Revisa los identificadores y las operaciones.");
       return;
     }
@@ -89,6 +97,7 @@ export default function ChecksheetsValidationPage() {
         part_key: part,
         control_plan_key: plan,
         job_op_key: job,
+        operation_job_op_keys: mappingPairs.length ? operationJobKeys : undefined,
         operation_numbers: operations.length ? operations : undefined,
         window_start: form.window_start || undefined,
         window_end: form.window_end || undefined,
@@ -142,7 +151,8 @@ export default function ChecksheetsValidationPage() {
     {key: "workcenter_key", label: "Workcenter"},
     {key: "part_key", label: "Part Key"},
     {key: "control_plan_key", label: "Control Plan"},
-    {key: "job_op_key", label: "Job Op Key"},
+    {key: "job_op_key", label: "Job Op Key (alternativa a mapeo)"},
+    {key: "operation_job_op_keys", label: "Operación:Job Op (separados por comas)"},
     {key: "operation_numbers", label: "Operaciones (separadas por coma)"},
     {key: "window_start", label: "Inicio de ventana", type: "datetime-local"},
     {key: "window_end", label: "Fin de ventana", type: "datetime-local"},
