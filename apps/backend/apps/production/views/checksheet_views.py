@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 import httpx
+from apps.production.checksheet_catalog import catalog, summarize_monitor
 
 
 class ChecksheetDiagnosticView(APIView):
@@ -44,3 +45,56 @@ class ChecksheetDiagnosticView(APIView):
             return Response({"detail": "Plex proxy unavailable."}, status=502)
         except (httpx.HTTPStatusError, ValueError):
             return Response({"detail": "Plex checksheet diagnostic request failed."}, status=502)
+
+
+class ChecksheetMonitorView(APIView):
+    """Read-only pilot area/WC overview. Never schedules Teams alerts."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({"data": catalog()})
+
+    def post(self, request):
+        # Deliberately use server-owned catalog, not arbitrary client keys,
+        # to prevent this endpoint from becoming an unbounded ODBC scanner.
+        monitored = catalog()
+        base = str(settings.PLEX_PROXY_URL).rstrip("/")
+        token = settings.PLEX_PROXY_SECRET
+        rows = []
+        try:
+            with httpx.Client(timeout=120.0) as client:
+                for wc in monitored:
+                    summaries = []
+                    for group in wc["groups"]:
+                        response = client.post(
+                            f"{base}/production-checksheets/sequence-diagnostic",
+                            json={
+                                "workcenter_key": wc["workcenter_key"],
+                                "part_key": wc["part_key"],
+                                "control_plan_key": wc["control_plan_key"],
+                                "section_ids": group["section_ids"],
+                            },
+                            headers={"Authorization": f"Bearer {token}"},
+                        )
+                        response.raise_for_status()
+                        upstream = response.json()["data"]
+                        summary = upstream["workcenter_summary"]
+                        summaries.append({
+                            "group_key": group["group_key"],
+                            "group_name": group["name"],
+                            "department": group["department"],
+                            "status": "UNVERIFIED",
+                            "historical_sequence_state": summary["historical_sequence_state"],
+                            "complete_historical_cycles": summary["complete_historical_cycles"],
+                            "last_historical_completion_at": summary["last_historical_completion_at"],
+                            "next_expected_section_from_history": summary["next_expected_section_from_history"],
+                            "evidence_truncated": upstream["evidence_truncated"],
+                            "evidence_rows_scanned": upstream["evidence_rows_scanned"],
+                            "blocking_reasons": summary["blocking_reasons"],
+                        })
+                    rows.append({**wc, "groups": summaries})
+        except (httpx.HTTPError, ValueError, KeyError, TypeError):
+            return Response({"detail": "Plex checksheet monitor unavailable or incompatible."}, status=502)
+
+        result = summarize_monitor(rows)
+        return Response({"data": result})
