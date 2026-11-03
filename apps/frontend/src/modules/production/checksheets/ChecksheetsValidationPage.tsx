@@ -7,6 +7,8 @@ type Requirement = {
   Inspection_Type: string;
   Responsible_Department: string;
   Recorded_Checksheets: number;
+  Observed_Capture_Job_Op_Keys?: number[];
+  Evidence_Job_Scope?: string;
   Last_Inspection_Date: string | null;
   Evaluation: string;
   Timer_Diagnostic: {
@@ -33,6 +35,7 @@ type Diagnostic = {
   warnings: string[];
 };
 type Observation = "ORANGE" | "GREEN" | "NOT_APPLICABLE" | "UNKNOWN";
+type CaptureAvailability = "UNKNOWN" | "ENABLED" | "DISABLED";
 const initial = {
   workcenter_key: "75408",
   part_key: "4573945",
@@ -59,6 +62,7 @@ export default function ChecksheetsValidationPage() {
   const [result, setResult] = useState<Diagnostic | null>(null);
   const [queriedContext, setQueriedContext] = useState<typeof initial | null>(null);
   const [observations, setObservations] = useState<Record<string, Observation>>({});
+  const [captureAvailability, setCaptureAvailability] = useState<Record<string, CaptureAvailability>>({});
   const [plexRemainingMinutes, setPlexRemainingMinutes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -73,6 +77,7 @@ export default function ChecksheetsValidationPage() {
     setResult(null);
     setQueriedContext(null);
     setObservations({});
+    setCaptureAvailability({});
     setPlexRemainingMinutes({});
   };
 
@@ -93,6 +98,7 @@ export default function ChecksheetsValidationPage() {
     setResult(null);
     setQueriedContext(null);
     setObservations({});
+    setCaptureAvailability({});
     setPlexRemainingMinutes({});
     try {
       const payload = {
@@ -211,13 +217,13 @@ export default function ChecksheetsValidationPage() {
         <section style={{...cardStyle, marginTop: 16}}>
           <h2 style={{fontSize: 18}}>Comparación manual con Plex</h2>
           <p style={{fontSize: 13, color: "var(--color-text-secondary)"}}>
-            Registra el color observado y, cuando Plex muestre un contador, sus minutos restantes.
+            Registra el color observado, si el botón de captura está habilitado y, cuando Plex muestre un contador, sus minutos restantes.
             Son observaciones temporales de esta pantalla y no se guardan en el servidor.
             Una inspección registrada es evidencia histórica, no una garantía de que siga vigente.
           </p>
           <div style={{overflowX: "auto"}}>
             <table style={{width: "100%", borderCollapse: "collapse", minWidth: 950, textAlign: "left"}}>
-              <thead><tr>{["Op.", "Sección", "Inspección", "Responsable", "Registros", "Último registro", "Evidencia", "Predicción", "Próximo vencimiento", "Plex observado", "Min restantes Plex", "Comparación"].map(t =>
+              <thead><tr>{["Op.", "Sección", "Inspección", "Responsable", "Registros", "Job Op de captura (evidencia)", "Alcance de evidencias", "Último registro", "Evidencia", "Predicción", "Próximo vencimiento", "Plex observado", "Botón captura (observado)", "Min restantes Plex", "Comparación"].map(t =>
                 <th key={t} style={{padding: 10, borderBottom: "1px solid var(--color-border)"}}>{t}</th>)}</tr></thead>
               <tbody>{result.requirements.map(r => {
                 const key = String(r.Section_ID);
@@ -226,7 +232,10 @@ export default function ChecksheetsValidationPage() {
                 return <tr key={key} style={{borderBottom: "1px solid var(--color-border)"}}>
                   <td style={{padding: 10}}>{r.Operation_Number}</td>
                   <td>{r.Section_ID}</td><td>{r.Inspection_Type}</td><td>{r.Responsible_Department || "—"}</td>
-                  <td>{r.Recorded_Checksheets}</td><td>{displayStamp(r.Last_Inspection_Date)}</td>
+                  <td>{r.Recorded_Checksheets}</td>
+                  <td>{r.Observed_Capture_Job_Op_Keys?.length ? r.Observed_Capture_Job_Op_Keys.join(", ") : "—"}</td>
+                  <td>{r.Evidence_Job_Scope || "No disponible"}</td>
+                  <td>{displayStamp(r.Last_Inspection_Date)}</td>
                   <td>{r.Recorded_Checksheets > 0 ? "Registrado" : "Sin registro visible"}</td>
                   <td title={r.Timer_Diagnostic.reason}>{predicted}</td>
                   <td>{displayStamp(r.Timer_Diagnostic.due_at)}</td>
@@ -237,6 +246,14 @@ export default function ChecksheetsValidationPage() {
                     <option value="GREEN">Verde</option>
                     <option value="ORANGE">Naranja</option>
                     <option value="NOT_APPLICABLE">No aplica</option>
+                  </select></td>
+                  <td><select aria-label={`Disponibilidad de captura de Plex para sección ${key}`}
+                    value={captureAvailability[key] || "UNKNOWN"}
+                    onChange={e => setCaptureAvailability(prev => ({...prev, [key]: e.target.value as CaptureAvailability}))}
+                    style={inputStyle}>
+                    <option value="UNKNOWN">Sin comparar</option>
+                    <option value="ENABLED">Habilitado</option>
+                    <option value="DISABLED">Deshabilitado</option>
                   </select></td>
                   <td><input type="number" min="0" step="1" placeholder="—"
                     aria-label={`Minutos restantes en Plex para sección ${key}`}
@@ -256,6 +273,7 @@ export default function ChecksheetsValidationPage() {
           </div>
           <p style={{fontSize: 13, marginTop: 15}}>
             Observaciones capturadas: {Object.values(observations).filter(v => v !== "UNKNOWN").length}.
+            Botones de captura observados: {Object.values(captureAvailability).filter(v => v !== "UNKNOWN").length}.
             Comparables con una predicción: {comparable.length}. Coincidencias: {matches}.
             Tarjetas verdes con evidencia visible: {evidenceMatches}.
             Contadores de Plex capturados: {timerObservations}.
