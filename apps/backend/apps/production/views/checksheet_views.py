@@ -67,6 +67,21 @@ class ChecksheetMonitorView(APIView):
                 for wc in monitored:
                     summaries = []
                     for group in wc["groups"]:
+                        if group.get("freshness_only"):
+                            summaries.append({
+                                "group_key": group["group_key"],
+                                "group_name": group["name"],
+                                "department": group["department"],
+                                "status": "UNVERIFIED",
+                                "historical_sequence_state": "NOT_EVALUATED",
+                                "complete_historical_cycles": None,
+                                "last_historical_completion_at": None,
+                                "next_expected_section_from_history": None,
+                                "evidence_truncated": False,
+                                "evidence_rows_scanned": 0,
+                                "blocking_reasons": ["FRESHNESS_ONLY_GROUP"],
+                            })
+                            continue
                         response = client.post(
                             f"{base}/production-checksheets/sequence-diagnostic",
                             json={
@@ -109,27 +124,28 @@ class ChecksheetFreshnessView(APIView):
     def post(self, request):
         body = request.data
         if not isinstance(body, dict) or set(body) != {
-            "workcenter_key", "section_id", "observed_capture_at"
+            "workcenter_key", "group_key", "section_id", "observed_capture_at"
         }:
             return Response({"detail": "Expected WC, section and observed capture timestamp."}, status=400)
 
         wc_key = body["workcenter_key"]
         section = body["section_id"]
+        group_key = body["group_key"]
         matching = [
-            wc for wc in catalog()
+            (wc, group) for wc in catalog()
             if type(wc_key) is int and wc_key == wc["workcenter_key"]
-            and type(section) is int and any(
-                section in group["section_ids"] for group in wc["groups"]
-            )
+            for group in wc["groups"]
+            if isinstance(group_key, str) and group["group_key"] == group_key
+            and type(section) is int and section in group["section_ids"]
         ]
         if len(matching) != 1:
-            return Response({"detail": "Only configured pilot sections can be compared."}, status=400)
+            return Response({"detail": "Group and section must match the configured pilot catalog."}, status=400)
         try:
             parse_plex_local(body["observed_capture_at"])
         except (TypeError, ValueError):
             return Response({"detail": "Timestamp must be Plex-local ISO without offset."}, status=400)
 
-        wc = matching[0]
+        wc, group = matching[0]
         upstream_payload = {
             "workcenter_key": wc["workcenter_key"],
             "part_key": wc["part_key"],
@@ -158,6 +174,8 @@ class ChecksheetFreshnessView(APIView):
             return Response({"data": {
                 "workcenter_key": wc_key,
                 "section_id": section,
+                "group_key": group_key,
+                "operation_number": group["operation_numbers"][group["section_ids"].index(section)],
                 "evidence_rows_scanned": details["evidence_rows_scanned"],
                 "freshness": result,
                 "current_plex_status_verified": False,
