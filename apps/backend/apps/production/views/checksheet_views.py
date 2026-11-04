@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 import httpx
 from apps.production.checksheet_catalog import catalog, summarize_monitor
-from apps.production.checksheet_freshness import assess_capture_freshness
+from apps.production.checksheet_freshness import assess_capture_freshness, parse_plex_local
 
 
 class ChecksheetDiagnosticView(APIView):
@@ -100,3 +100,68 @@ class ChecksheetMonitorView(APIView):
 
         result = summarize_monitor(rows)
         return Response({"data": result})
+
+
+class ChecksheetFreshnessView(APIView):
+    """One-section, manual Plex observation comparison. Read-only."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        body = request.data
+        if not isinstance(body, dict) or set(body) != {
+            "workcenter_key", "section_id", "observed_capture_at"
+        }:
+            return Response({"detail": "Expected WC, section and observed capture timestamp."}, status=400)
+
+        wc_key = body["workcenter_key"]
+        section = body["section_id"]
+        matching = [
+            wc for wc in catalog()
+            if type(wc_key) is int and wc_key == wc["workcenter_key"]
+            and type(section) is int and any(
+                section in group["section_ids"] for group in wc["groups"]
+            )
+        ]
+        if len(matching) != 1:
+            return Response({"detail": "Only configured pilot sections can be compared."}, status=400)
+        try:
+            parse_plex_local(body["observed_capture_at"])
+        except (TypeError, ValueError):
+            return Response({"detail": "Timestamp must be Plex-local ISO without offset."}, status=400)
+
+        wc = matching[0]
+        upstream_payload = {
+            "workcenter_key": wc["workcenter_key"],
+            "part_key": wc["part_key"],
+            "control_plan_key": wc["control_plan_key"],
+            "section_ids": [section],
+            "include_workcenter_context": False,
+        }
+        try:
+            with httpx.Client(timeout=75.0) as client:
+                upstream = client.post(
+                    str(settings.PLEX_PROXY_URL).rstrip("/")
+                    + "/production-checksheets/diagnostic",
+                    json=upstream_payload,
+                    headers={"Authorization": "Bearer " + settings.PLEX_PROXY_SECRET},
+                )
+            upstream.raise_for_status()
+            details = upstream.json()["data"]
+            requirements = details["requirements"]
+            if len(requirements) != 1:
+                return Response({"detail": "No unique Plex section was returned."}, status=502)
+            result = assess_capture_freshness(
+                body["observed_capture_at"],
+                requirements[0]["Last_Inspection_Date"],
+                details["evidence_truncated"],
+            )
+            return Response({"data": {
+                "workcenter_key": wc_key,
+                "section_id": section,
+                "evidence_rows_scanned": details["evidence_rows_scanned"],
+                "freshness": result,
+                "current_plex_status_verified": False,
+                "teams_notifications_enabled": False,
+            }})
+        except (httpx.HTTPError, ValueError, KeyError, TypeError):
+            return Response({"detail": "Plex freshness diagnostic unavailable."}, status=502)
