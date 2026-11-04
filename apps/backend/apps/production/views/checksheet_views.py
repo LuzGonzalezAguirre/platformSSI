@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 import httpx
 from apps.production.checksheet_catalog import catalog, summarize_monitor
+from apps.production.checksheet_freshness import assess_capture_freshness
 
 
 class ChecksheetDiagnosticView(APIView):
@@ -80,6 +81,7 @@ class ChecksheetMonitorView(APIView):
                         upstream = response.json()["data"]
                         summary = upstream["workcenter_summary"]
                         summaries.append({
+                            "freshness": assess_capture_freshness(None, None),
                             "group_key": group["group_key"],
                             "group_name": group["name"],
                             "department": group["department"],
