@@ -33,12 +33,20 @@ type Monitor = {
   current_plex_status_verified: boolean;
   teams_notifications_enabled: boolean;
 };
+type CatalogGroup = {
+  group_key: string;
+  name: string;
+  department: string;
+  section_ids: number[];
+  operation_numbers: number[];
+};
 type CatalogWC = {
   area_key: string;
   area_name: string;
   workcenter_key: number;
   workcenter_name: string;
   part_no_rev: string;
+  groups: CatalogGroup[];
 };
 
 export default function ChecksheetsMonitorPage() {
@@ -47,6 +55,9 @@ export default function ChecksheetsMonitorPage() {
   const [monitor, setMonitor] = useState<Monitor | null>(null);
   const [loading, setLoading] = useState(false);
   const [observedTime, setObservedTime] = useState("");
+  const [selectedWc, setSelectedWc] = useState<number | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const [selectedSection, setSelectedSection] = useState<number | null>(null);
   const [freshness, setFreshness] = useState<{
     state: string; reason: string; observed_capture_at?: string;
     latest_odbc_capture_at?: string | null;
@@ -76,8 +87,8 @@ export default function ChecksheetsMonitorPage() {
   }
 
   async function compareCapture() {
-    if (!observedTime) {
-      setError("Indica la fecha y hora observada en Plex.");
+    if (!observedTime || selectedWc === null || !selectedGroup || selectedSection === null) {
+      setError("Selecciona Workcenter, grupo, sección y hora de una captura real.");
       return;
     }
     setFreshnessLoading(true);
@@ -87,8 +98,9 @@ export default function ChecksheetsMonitorPage() {
       const res = await apiClient.post<{data: {freshness: NonNullable<typeof freshness>}}>(
         "/production/checksheets/freshness/",
         {
-          workcenter_key: 75408,
-          section_id: 2345917,
+          workcenter_key: selectedWc,
+          group_key: selectedGroup,
+          section_id: selectedSection,
           observed_capture_at: observedTime,
         }
       );
@@ -100,6 +112,8 @@ export default function ChecksheetsMonitorPage() {
     }
   }
 
+  const chosenWc = catalog.find(w => w.workcenter_key === selectedWc);
+  const chosenGroup = chosenWc?.groups.find(g => g.group_key === selectedGroup);
   const filtered = (monitor?.areas || []).filter(a => area === "ALL" || a.area_key === area);
   const cardStyle: React.CSSProperties = {
     padding: 18, border: "1px solid var(--color-border)", borderRadius: 12,
@@ -127,22 +141,56 @@ export default function ChecksheetsMonitorPage() {
       <a href="/production/checksheets-validation">Validación detallada</a>
     </div>
     <section style={{...cardStyle, marginBottom: 18}}>
-      <h2 style={{marginTop: 0, fontSize: 18}}>Validación de frescura — piloto WC 75408</h2>
-      <p>Compara la última captura observada en Plex de la sección 2345917
-        (Op. 895, inspección de 120 min) con la última disponible en ODBC.
-        La comparación es manual y no confirma cumplimiento ni genera alertas.</p>
-      <label htmlFor="observed-plex-time">Fecha y hora de captura en Plex (hora local)</label>
+      <h2 style={{marginTop: 0, fontSize: 18}}>Validación de frescura — captura confirmada en Plex</h2>
+      <p>Selecciona el Workcenter, grupo y operación correspondientes a una captura
+        confirmada en la interfaz de Plex. La fecha debe ser la de esa inspección,
+        no la hora actual de consulta. No confirma cumplimiento ni genera alertas.</p>
+      <div style={{display: "flex", flexWrap: "wrap", gap: 12, alignItems: "end", marginBottom: 12}}>
+        <label style={{display: "grid", gap: 4}}>Workcenter
+          <select value={selectedWc ?? ""} onChange={e => {
+            setSelectedWc(e.target.value ? Number(e.target.value) : null);
+            setSelectedGroup(""); setSelectedSection(null); setFreshness(null);
+          }} style={{padding: 8}}>
+            <option value="">Selecciona WC</option>
+            {catalog.map(w => <option key={w.workcenter_key} value={w.workcenter_key}>
+              {w.area_name} — {w.workcenter_name} ({w.workcenter_key})
+            </option>)}
+          </select>
+        </label>
+        <label style={{display: "grid", gap: 4}}>Grupo de inspección
+          <select value={selectedGroup} disabled={!chosenWc} onChange={e => {
+            setSelectedGroup(e.target.value); setSelectedSection(null); setFreshness(null);
+          }} style={{padding: 8}}>
+            <option value="">Selecciona grupo</option>
+            {chosenWc?.groups.map(g => <option key={g.group_key} value={g.group_key}>
+              {g.name}
+            </option>)}
+          </select>
+        </label>
+        <label style={{display: "grid", gap: 4}}>Operación / Sección
+          <select value={selectedSection ?? ""} disabled={!chosenGroup} onChange={e => {
+            setSelectedSection(e.target.value ? Number(e.target.value) : null); setFreshness(null);
+          }} style={{padding: 8}}>
+            <option value="">Selecciona sección</option>
+            {chosenGroup?.section_ids.map((id, i) => <option key={id} value={id}>
+              Op. {chosenGroup.operation_numbers[i]} — Sección {id}
+            </option>)}
+          </select>
+        </label>
+      </div>
+      <label htmlFor="observed-plex-time">Fecha y hora de captura confirmada en Plex (hora local, no hora actual)</label>
       <div style={{display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8}}>
         <input id="observed-plex-time" type="datetime-local" step="1"
           value={observedTime} onChange={e => {setObservedTime(e.target.value); setFreshness(null);}}
           style={{padding: 8}} />
-        <button type="button" disabled={freshnessLoading} onClick={compareCapture}
-          style={{padding: "9px 18px"}}>
+        <button type="button" disabled={freshnessLoading || !chosenGroup || selectedSection === null || !observedTime}
+          onClick={compareCapture} style={{padding: "9px 18px"}}>
           {freshnessLoading ? "Comparando..." : "Comparar captura con ODBC"}
         </button>
       </div>
       {freshness && <div role="status" style={{marginTop: 12}}>
         <p><strong>Frescura respecto de la observación:</strong> {freshness.state}</p>
+        <p>Sección seleccionada: {selectedSection} · Grupo: {chosenGroup?.name}</p>
         <p>Referencia Plex: {freshness.observed_capture_at || "—"}</p>
         <p>Última captura ODBC: {freshness.latest_odbc_capture_at || "No encontrada"}</p>
         <small>La evaluación es por sección, no por Workcenter completo. Estado de cumplimiento: UNVERIFIED.</small>
