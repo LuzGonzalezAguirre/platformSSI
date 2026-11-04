@@ -46,6 +46,12 @@ export default function ChecksheetsMonitorPage() {
   const [catalog, setCatalog] = useState<CatalogWC[]>([]);
   const [monitor, setMonitor] = useState<Monitor | null>(null);
   const [loading, setLoading] = useState(false);
+  const [observedTime, setObservedTime] = useState("");
+  const [freshness, setFreshness] = useState<{
+    state: string; reason: string; observed_capture_at?: string;
+    latest_odbc_capture_at?: string | null;
+  } | null>(null);
+  const [freshnessLoading, setFreshnessLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -66,6 +72,31 @@ export default function ChecksheetsMonitorPage() {
       setError("No fue posible consultar Plex. Se conservó la última respuesta visible.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function compareCapture() {
+    if (!observedTime) {
+      setError("Indica la fecha y hora observada en Plex.");
+      return;
+    }
+    setFreshnessLoading(true);
+    setError("");
+    setFreshness(null);
+    try {
+      const res = await apiClient.post<{data: {freshness: NonNullable<typeof freshness>}}>(
+        "/production/checksheets/freshness/",
+        {
+          workcenter_key: 75408,
+          section_id: 2345917,
+          observed_capture_at: observedTime,
+        }
+      );
+      setFreshness(res.data.data.freshness);
+    } catch {
+      setError("No se pudo comparar la captura con ODBC.");
+    } finally {
+      setFreshnessLoading(false);
     }
   }
 
@@ -95,6 +126,28 @@ export default function ChecksheetsMonitorPage() {
       </button>
       <a href="/production/checksheets-validation">Validación detallada</a>
     </div>
+    <section style={{...cardStyle, marginBottom: 18}}>
+      <h2 style={{marginTop: 0, fontSize: 18}}>Validación de frescura — piloto WC 75408</h2>
+      <p>Compara la última captura observada en Plex de la sección 2345917
+        (Op. 895, inspección de 120 min) con la última disponible en ODBC.
+        La comparación es manual y no confirma cumplimiento ni genera alertas.</p>
+      <label htmlFor="observed-plex-time">Fecha y hora de captura en Plex (hora local)</label>
+      <div style={{display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8}}>
+        <input id="observed-plex-time" type="datetime-local" step="1"
+          value={observedTime} onChange={e => {setObservedTime(e.target.value); setFreshness(null);}}
+          style={{padding: 8}} />
+        <button type="button" disabled={freshnessLoading} onClick={compareCapture}
+          style={{padding: "9px 18px"}}>
+          {freshnessLoading ? "Comparando..." : "Comparar captura con ODBC"}
+        </button>
+      </div>
+      {freshness && <div role="status" style={{marginTop: 12}}>
+        <p><strong>Frescura respecto de la observación:</strong> {freshness.state}</p>
+        <p>Referencia Plex: {freshness.observed_capture_at || "—"}</p>
+        <p>Última captura ODBC: {freshness.latest_odbc_capture_at || "No encontrada"}</p>
+        <small>La evaluación es por sección, no por Workcenter completo. Estado de cumplimiento: UNVERIFIED.</small>
+      </div>}
+    </section>
     {error && <p role="alert">{error}</p>}
     {!monitor && <section style={cardStyle}>
       <strong>Catálogo piloto</strong>
