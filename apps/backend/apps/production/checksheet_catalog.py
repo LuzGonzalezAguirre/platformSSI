@@ -16,6 +16,22 @@ CHECKSHEET_WORKCENTERS = (
         "configuration_scope": "VALIDATED_PILOT_NOT_DYNAMIC_CURRENT_JOB",
         "groups": (
             {
+                "group_key": "MACHINE_QUALIFICATION",
+                "name": "Calificación de la máquina",
+                "department": "UNASSIGNED",
+                "freshness_only": True,
+                "section_ids": (2345859, 2345863, 2345862, 2345866, 2345872, 2345874, 2345877, 2345883, 2345882, 2345886, 2345891, 2345895),
+                "operation_numbers": (820, 830, 835, 840, 845, 850, 855, 860, 865, 870, 880, 885),
+            },
+            {
+                "group_key": "PRODUCTION_SHIFT_START",
+                "name": "Inicio turno / Cambio turno / Cambio modelo",
+                "department": "PRODUCTION",
+                "freshness_only": True,
+                "section_ids": (2345865, 2345867, 2345869, 2530352, 2345870, 2345875, 2345879, 2345881, 2345885, 2345889, 2345893, 2345905, 2345897, 2345900, 2345910),
+                "operation_numbers": (835, 840, 845, 847, 850, 855, 860, 865, 870, 875, 880, 885, 890, 895, 905),
+            },
+            {
                 "group_key": "PRODUCTION_PERIODIC_120",
                 "name": "Inicio turno / Cambio turno / Cambio modelo / 2 Hrs",
                 "department": "PRODUCTION",
