@@ -13,7 +13,7 @@ type ApiData<T> = { data: T[] };
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 const daysAgoUTC = (days: number) => new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 const fmt = (s?: string | null) => s ? new Date(s.endsWith("Z") ? s : s + "Z").toLocaleString("es-MX", { timeZone: "America/Tijuana", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
-const label = (value: string) => ({ DUPLICATE_SAME: "Duplicado en el mismo pallet", DUPLICATE_OTHER: "Duplicado en otro pallet", QWALL_REJECT: "Rechazo Q-Wall" } as Record<string,string>)[value] || value.replaceAll("_", " ");
+const label = (value: string) => ({ DUPLICATE_SAME: "Duplicado en el mismo pallet", DUPLICATE_OTHER: "Duplicado en otro pallet", QWALL_REJECT: "Rechazo Q-Wall" } as Record<string,string>)[value] || value.replace(/_/g, " ");
 const pct = (numerator: number, denominator: number) => denominator ? Math.min(100, Math.round(numerator / denominator * 100)) : 0;
 
 export default function PackAndShipPage() {
