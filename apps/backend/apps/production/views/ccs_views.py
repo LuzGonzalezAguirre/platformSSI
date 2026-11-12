@@ -328,3 +328,41 @@ class CcsAttendanceDailyView(APIView):
         ])
  
         return Response({"saved": saved, "summary": summary})
+
+# PackAndShip: CCS read-only integration via authenticated Q-Wall proxy.
+class _PackAndShipReportView(APIView):
+    permission_classes = [IsAuthenticated]
+    resource = ""
+
+    def get(self, request):
+        from datetime import date, timedelta
+        from django.utils.dateparse import parse_date
+        today = date.today()
+        start = request.query_params.get("start_date", (today - timedelta(days=7)).isoformat())
+        end = request.query_params.get("end_date", today.isoformat())
+        start_date, end_date = parse_date(start), parse_date(end)
+        if not start_date or not end_date or end_date < start_date or (end_date - start_date).days > 366:
+            return Response({"error": "Invalid date range (maximum 366 days)"}, status=400)
+        params = {"start_date": start, "end_date": end}
+        if self.resource != "kpis":
+            raw_limit = request.query_params.get("limit", "500")
+            try:
+                limit = int(raw_limit)
+                if not 1 <= limit <= 2000:
+                    raise ValueError()
+            except (ValueError, TypeError):
+                return Response({"error": "limit must be between 1 and 2000"}, status=400)
+            params["limit"] = limit
+        return _proxy_get("/pack-and-ship/" + self.resource, params)
+
+class PackAndShipKpisView(_PackAndShipReportView):
+    resource = "kpis"
+
+class PackAndShipPalletsView(_PackAndShipReportView):
+    resource = "pallets"
+
+class PackAndShipPiecesView(_PackAndShipReportView):
+    resource = "pieces"
+
+class PackAndShipIncidentsView(_PackAndShipReportView):
+    resource = "incidents"

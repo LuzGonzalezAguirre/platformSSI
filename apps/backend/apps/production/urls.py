@@ -63,3 +63,14 @@ urlpatterns = [
     path("productivity/daily/", production_view(DailyProductivityView)),
     path("safety/counter-history/", production_view(SafetyCounterHistoryView)),
 ]
+# PackAndShip read-only dashboards
+from apps.production.views.ccs_views import (
+    PackAndShipKpisView, PackAndShipPalletsView,
+    PackAndShipPiecesView, PackAndShipIncidentsView,
+)
+urlpatterns += [
+    path("pack-and-ship/kpis/", production_view(PackAndShipKpisView)),
+    path("pack-and-ship/pallets/", production_view(PackAndShipPalletsView)),
+    path("pack-and-ship/pieces/", production_view(PackAndShipPiecesView)),
+    path("pack-and-ship/incidents/", production_view(PackAndShipIncidentsView)),
+]

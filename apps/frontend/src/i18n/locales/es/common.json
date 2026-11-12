@@ -15,6 +15,7 @@
     "items": {
       "operationalPanel": "Vista General",
       "productionOpsDaily": "Reporte Diario Ops",
+    "productionPackAndShip": "Pack and Ship",
       "productionTargets": "Configuración de Metas",
       "productionSafety": "Seguridad",
       "productionAssistance": "Asistencia",

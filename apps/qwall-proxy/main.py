@@ -1946,3 +1946,121 @@ def settings_save_lot_configuration(bu_id: int, body: LotConfigurationBody):
     finally:
         if conn:
             conn.close()
+
+
+# PackAndShip CCS reporting: read-only queries, never authorize or modify packing.
+from datetime import date as _pas_date, timedelta as _pas_timedelta
+from fastapi import APIRouter as _PaSRouter
+
+pack_and_ship_router = _PaSRouter(prefix="/pack-and-ship", tags=["Pack and Ship"])
+
+def _pas_dates(start_date: _pas_date, end_date: _pas_date):
+    if end_date < start_date or (end_date - start_date).days > 366:
+        raise HTTPException(status_code=422, detail="Invalid date range (maximum 366 days)")
+    return start_date.isoformat(), (end_date + _pas_timedelta(days=1)).isoformat()
+
+def _pas_fetch(sql: str, params: tuple):
+    conn = None
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+        cursor.execute(sql, *params)
+        columns = [column[0] for column in cursor.description]
+        result = []
+        for row in cursor.fetchall():
+            record = {}
+            for col, value in zip(columns, row):
+                record[col] = value.isoformat() if hasattr(value, "isoformat") else value
+            result.append(record)
+        return {"data": result}
+    except pyodbc.Error:
+        raise HTTPException(status_code=502, detail="CCS reporting query unavailable")
+    finally:
+        if conn is not None:
+            conn.close()
+
+@pack_and_ship_router.get("/pallets", dependencies=[Depends(verify)])
+def pas_pallets(start_date: _pas_date, end_date: _pas_date, limit: int = Query(500, ge=1, le=2000)):
+    """Pallet creation cohort in UTC, with frozen level capacity and actual counts."""
+    start, stop = _pas_dates(start_date, end_date)
+    sql = """
+        SELECT TOP (?) c.container_id, c.container_code, c.configuration_id, c.status,
+            c.created_at, c.closed_at, u.name AS created_by,
+            COALESCE(cap.required_pieces, 0) AS required_pieces,
+            COALESCE(qty.packed_pieces, 0) AS packed_pieces
+        FROM dbo.ssi_PaS_Containers c
+        LEFT JOIN dbo.ssi_PaS_Users u ON u.user_id=c.created_by_user_id
+        OUTER APPLY (
+          SELECT SUM(l.required_pieces) AS required_pieces
+          FROM dbo.ssi_PaS_ContainerLevels l WHERE l.container_id=c.container_id
+        ) cap
+        OUTER APPLY (
+          SELECT COUNT_BIG(*) AS packed_pieces
+          FROM dbo.ssi_PaS_ContainerLevels l
+          JOIN dbo.ssi_PaS_ContainerPieces p ON p.container_level_id=l.container_level_id
+          WHERE l.container_id=c.container_id
+        ) qty
+        WHERE c.created_at >= ? AND c.created_at < ?
+        ORDER BY c.created_at DESC, c.container_id DESC
+    """
+    return _pas_fetch(sql, (limit, start, stop))
+
+@pack_and_ship_router.get("/pieces", dependencies=[Depends(verify)])
+def pas_pieces(start_date: _pas_date, end_date: _pas_date, limit: int = Query(500, ge=1, le=2000)):
+    """Piece scan cohort in UTC; only successfully inserted pieces count."""
+    start, stop = _pas_dates(start_date, end_date)
+    sql = """
+        SELECT TOP (?) p.container_piece_id, p.product_id, p.verified_inspection_id,
+            p.scanned_at, u.name AS scanned_by, c.container_code, c.status AS container_status,
+            l.level_number, q.frameSN AS serial_ssi, q.fpcaSN AS serial_client,
+            pn.ssiPN AS part_number, bu.bu_name AS business_unit
+        FROM dbo.ssi_PaS_ContainerPieces p
+        JOIN dbo.ssi_PaS_ContainerLevels l ON l.container_level_id=p.container_level_id
+        JOIN dbo.ssi_PaS_Containers c ON c.container_id=l.container_id
+        JOIN dbo.ssi_Products q ON q.product_id=p.product_id
+        JOIN dbo.ssi_PartNumbers pn ON pn.pn_id=q.pn_id
+        LEFT JOIN dbo.ssi_BusinessUnits bu ON bu.bu_id=pn.bu_id
+        LEFT JOIN dbo.ssi_PaS_Users u ON u.user_id=p.scanned_by_user_id
+        WHERE p.scanned_at >= ? AND p.scanned_at < ?
+        ORDER BY p.scanned_at DESC, p.container_piece_id DESC
+    """
+    return _pas_fetch(sql, (limit, start, stop))
+
+@pack_and_ship_router.get("/incidents", dependencies=[Depends(verify)])
+def pas_incidents(start_date: _pas_date, end_date: _pas_date, limit: int = Query(500, ge=1, le=2000)):
+    """One row per rejection event, including multiple events for one blocking rejection."""
+    start, stop = _pas_dates(start_date, end_date)
+    sql = """
+        SELECT TOP (?) e.event_id, e.event_token, e.rejection_id, e.detected_at,
+            e.rejection_type, e.ssi_scan, e.client_scan, e.rejection_reason,
+            c.container_code, c.container_id, u.name AS detected_by,
+            r.status AS approval_status, r.resolved_at
+        FROM dbo.ssi_PaS_ScanRejectionEvents e
+        JOIN dbo.ssi_PaS_Containers c ON c.container_id=e.container_id
+        JOIN dbo.ssi_PaS_ScanRejections r ON r.rejection_id=e.rejection_id
+        LEFT JOIN dbo.ssi_PaS_Users u ON u.user_id=e.detected_by_user_id
+        WHERE e.detected_at >= ? AND e.detected_at < ?
+        ORDER BY e.detected_at DESC, e.event_id DESC
+    """
+    return _pas_fetch(sql, (limit, start, stop))
+
+@pack_and_ship_router.get("/kpis", dependencies=[Depends(verify)])
+def pas_kpis(start_date: _pas_date, end_date: _pas_date):
+    """Each KPI has an explicit UTC period and metric cohort."""
+    start, stop = _pas_dates(start_date, end_date)
+    sql = """
+       SELECT
+        (SELECT COUNT_BIG(*) FROM dbo.ssi_PaS_Containers
+         WHERE created_at >= ? AND created_at < ?) AS pallets_created,
+        (SELECT COUNT_BIG(*) FROM dbo.ssi_PaS_Containers
+         WHERE closed_at >= ? AND closed_at < ? AND status='CLOSED') AS pallets_closed,
+        (SELECT COUNT_BIG(*) FROM dbo.ssi_PaS_ContainerPieces
+         WHERE scanned_at >= ? AND scanned_at < ?) AS pieces_packed,
+        (SELECT COUNT_BIG(*) FROM dbo.ssi_PaS_ScanRejectionEvents
+         WHERE detected_at >= ? AND detected_at < ?) AS incidents,
+        (SELECT COUNT_BIG(*) FROM dbo.ssi_PaS_ScanRejections
+         WHERE status='BLOCKED') AS blocked_rejections_current
+    """
+    return _pas_fetch(sql, (start,stop,start,stop,start,stop,start,stop))
+
+app.include_router(pack_and_ship_router)
