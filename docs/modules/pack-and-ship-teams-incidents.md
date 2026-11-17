@@ -142,3 +142,32 @@ ORDER BY TABLE_NAME, ORDINAL_POSITION;
 Los `rejection_type` almacenados son la fuente de verdad; las etiquetas
 `DUPLICATE_SAME`, `DUPLICATE_OTHER` y `QWALL_REJECT` existen en
 las traducciones de la UI, pero no constituyen un catálogo exhaustivo.
+
+## Catálogo confirmado de incidencias y aprobadores (17 noviembre 2026)
+
+Según la consulta facilitada por operación, los tipos registrados en CCS son
+`DUPLICATE_SAME` y `QWALL_REJECT`. La tarjeta los presenta como:
+- `DUPLICATE_SAME`: **Pieza duplicada en el mismo lote**
+- `QWALL_REJECT`: **Pieza rechazada por Q-Wall**
+
+La implementación mantiene un alias para `DUPLICATE_OTHER` si en el futuro
+aparece, y muestra un texto legible para tipos no reconocidos sin descartarlos.
+
+`dbo.ssi_PaS_RejectionDepartments` contiene los siguientes registros observados:
+
+| Departamento | Activo |
+|---|---|
+| Manufactura | No |
+| Calidad | Sí |
+| Producción | Sí |
+
+El proxy consulta la tabla **cada vez que procesa un lote de eventos nuevos**.
+Solo incluye departamentos con indicador activo `1`; la tarjeta muestra
+`Se espera aprobación de: Calidad, Producción` para la configuración actual.
+La lectura del proxy valida la estructura de tres columnas observada
+(ID, nombre, indicador activo); si cambia, devuelve error y se conserva
+el cursor para evitar encolar alertas con aprobadores no verificados.
+
+Las alertas ya guardadas en la cola de PostgreSQL preservan su payload
+original. Para comprobar la nueva presentación sin reactivar alertas
+anteriores, crear un **nuevo** evento de prueba o incidencia real.
