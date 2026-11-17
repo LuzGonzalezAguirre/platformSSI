@@ -52,3 +52,10 @@
 @media(max-width:1100px){.pas-standard .pas-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:900px){.pas-standard .pas-top-grid{grid-template-columns:1fr}}
 @media(max-width:750px){.pas-standard .pas-header{margin:-1rem -1rem 0;padding:1rem}.pas-standard .pas-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.pas-report-tabs{flex-shrink:0}
+.pas-report-tabs button{min-width:95px}
+.pas-report-toolbar{margin:14px 0 16px;align-items:center}
+.pas-report-toolbar .pas-search{max-width:650px}
+.pas-report-toolbar .pas-search input{background:transparent;box-shadow:none}
+@media(max-width:750px){.pas-report-toolbar{align-items:stretch}.pas-report-toolbar .pas-search{max-width:none;min-width:180px}.pas-report-tabs{width:100%}.pas-report-tabs button{flex:1}}
