@@ -102,6 +102,10 @@ export default function PackAndShipPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [search, setSearch] = useState("");
+  const [reportTab, setReportTab] = useState<"pallets" | "pieces">("pallets");
+  const [serialLookup, setSerialLookup] = useState<Piece[] | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] =("");
   const [status, setStatus] = useState("ALL");
   const [group, setGroup] = useState<Group>("day");
   const [loading, setLoading] = useState(true);
@@ -170,12 +174,37 @@ export default function PackAndShipPage() {
     (status === "ALL" || row.status === status) &&
     [row.container_code, row.created_by || ""].some(text => text.toLowerCase().includes(search.toLowerCase())),
   ), [pallets, status, search]);
+  const shownPieces = useMemo(() => pieces.filter(row =>
+    [row.serial_ssi || "", row.serial_client || "", row.container_code, row.part_number || ""]
+      .some(value => value.toLowerCase().includes(search.toLowerCase()))
+  ), [pieces, search]);
+  const runSerialLookup = async () => {
+    const serial = search.trim();
+    if (!serial || serial.length > 128) {
+      setLookupError(tr("invalidSerial"));
+      setSerialLookup(null);
+      return;
+    }
+    setLookupLoading(true);
+    setLookupError("");
+    try {
+      const result = await apiClient.get<{ data: Piece[] }>("/production/pack-and-ship/pieces/find/", {
+        params: { serial },
+      });
+      setSerialLookup(result.data.data);
+    } catch (e: unknown) {
+      setSerialLookup(null);
+      setLookupError(e instanceof Error ? e.message : tr("loadError"));
+    } finally {
+      setLookupLoading(false);
+    }
+  };
   const kpiDefinitions: { key: KpiKey; accent: string }[] = [
     { key: "pallets_created", accent: "#2563eb" }, { key: "pallets_closed", accent: "#10b981" },
     { key: "pieces_packed", accent: "#3b82f6" }, { key: "incidents", accent: "#f59e0b" },
     { key: "blocked_rejections_current", accent: "#ef4444" },
   ];
-  const onApply = () => { setDialog(null); apply(); setRevision(v => v + 1); };
+  const onApply = () => { setDialog(null); setSerialLookup(null); setLookupError(""); apply(); setRevision(v => v + 1); };
 
   const header = (columns: string[]) => <thead><tr>{columns.map(col => <th key={col}>{tr(`columns.${col}`)}</th>)}</tr></thead>;
   const palletTable = (items: Pallet[]) => <div className="pas-table-scroll"><table className="pas-table">
@@ -271,18 +300,42 @@ export default function PackAndShipPage() {
       </section>
     </div>
     <section className="pas-panel">
-      <div className="pas-panel-head"><div><h2>{tr("reportTitle")}</h2><p className="pas-muted">{tr("reportNote")}</p></div>
-        <div className="pas-toolbar">
-          <label className="pas-search"><Search size={16}/><input aria-label={tr("search")} value={search}
-            onChange={e => setSearch(e.target.value)} placeholder={tr("search")}/></label>
+      <div className="pas-panel-head"><div><h2>{tr("reportTitle")}</h2>
+        <p className="pas-muted">{reportTab === "pallets" ? tr("reportNote") : tr("pieceReportNote")}</p></div>
+        <div className="pas-tabs pas-report-tabs" role="tablist" aria-label={tr("reportTitle")}>
+          <button type="button" role="tab" aria-selected={reportTab === "pallets"}
+            className={reportTab === "pallets" ? "active" : ""}
+            onClick={() => { setReportTab("pallets"); setSearch(""); setSerialLookup(null); setLookupError(""); }}>
+            {tr("tabs.pallets")}</button>
+          <button type="button" role="tab" aria-selected={reportTab === "pieces"}
+            className={reportTab === "pieces" ? "active" : ""}
+            onClick={() => { setReportTab("pieces"); setSearch(""); setSerialLookup(null); setLookupError(""); }}>
+            {tr("tabs.pieces")}</button>
+        </div></div>
+      <div className="pas-toolbar pas-report-toolbar">
+        <label className="pas-search"><Search size={16}/><input
+          aria-label={reportTab === "pieces" ? tr("searchSerial") : tr("search")}
+          value={search} onChange={e => { setSearch(e.target.value); setSerialLookup(null); setLookupError(""); }}
+          onKeyDown={e => { if (e.key === "Enter" && reportTab === "pieces") void runSerialLookup(); }}
+          placeholder={reportTab === "pieces" ? tr("searchSerial") : tr("search")}/></label>
+        {reportTab === "pallets" ? (
           <select aria-label={tr("filterStatus")} value={status} onChange={e => setStatus(e.target.value)}>
             <option value="ALL">{tr("allStatuses")}</option>
             {["OPEN","CLOSED","PARTIAL","CANCELLED","TRANSFERRED"].map(v =>
               <option key={v} value={v}>{statusLabel(v)}</option>)}
           </select>
-        </div></div>
-      {palletTable(filtered)}
-      <p className="pas-muted pas-count">{filtered.length} {tr("records")}</p>
+        ) : (
+          <button type="button" className="pas-button primary" disabled={lookupLoading || !search.trim()}
+            onClick={() => void runSerialLookup()}>{lookupLoading ? tr("loading") : tr("findAnyDate")}</button>
+        )}
+      </div>
+      {lookupError && reportTab === "pieces" && <div role="alert" className="pas-error">{lookupError}</div>}
+      {reportTab === "pallets" ? <>{palletTable(filtered)}
+        <p className="pas-muted pas-count">{filtered.length} {tr("records")}</p></> :
+        <>{serialLookup !== null && <p className="pas-info">{tr("globalSearchNotice")}</p>}
+          {pieceTable(serialLookup ?? shownPieces)}
+          <p className="pas-muted pas-count">{(serialLookup ?? shownPieces).length} {tr("records")}</p>
+        </>}
     </section>
     {dialog && <div className="pas-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setDialog(null); }}>
       <section role="dialog" aria-modal="true" aria-label={dialog.kind === "pallet" ? dialog.pallet.container_code : tr(`kpis.${dialog.key}`)} className="pas-modal">
