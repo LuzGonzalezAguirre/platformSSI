@@ -252,7 +252,7 @@ export default function PackAndShipPage() {
           <LineChart data={data} margin={{top: 12,right: 16,left: -12,bottom: 5}}>
             <CartesianGrid vertical={false} stroke="var(--color-border)" strokeDasharray="3 3"/>
             <XAxis dataKey="date" tick={{fontSize:11}} /><YAxis tick={{fontSize:11}} unit="h"/>
-            <Tooltip formatter={(value: number) => [`${value} h`, tr("hoursAvg")]} />
+            <Tooltip formatter={(value) => [`${Number(value).toFixed(2)} h`, tr("hoursAvg")]} />
             <Line type="monotone" dataKey="hours" name={tr("hoursAvg")} stroke="#2563eb" strokeWidth={2} dot={{r:3}} connectNulls={false}/>
           </LineChart></ResponsiveContainer> : <p className="pas-empty">{tr("noClosedData")}</p>}</div>
       </section>
@@ -263,7 +263,7 @@ export default function PackAndShipPage() {
           <BarChart data={data} margin={{top:12,right:16,left:-12,bottom:5}}>
             <CartesianGrid vertical={false} stroke="var(--color-border)" strokeDasharray="3 3"/>
             <XAxis dataKey="date" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} allowDecimals={false}/>
-            <Tooltip formatter={(value: number) => [value, tr("kpis.pallets_closed")]} />
+            <Tooltip formatter={(value) => [Number(value), tr("kpis.pallets_closed")]} />
             <Bar dataKey="count" name={tr("kpis.pallets_closed")} fill="#10b981" radius={[4,4,0,0]}/>
           </BarChart></ResponsiveContainer> : <p className="pas-empty">{tr("noClosedData")}</p>}</div>
       </section>
