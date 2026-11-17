@@ -2063,9 +2063,6 @@ def pas_kpis(start_date: _pas_date, end_date: _pas_date):
     """
     return _pas_fetch(sql, (start,stop,start,stop,start,stop,start,stop))
 
-app.include_router(pack_and_ship_router)
-
-
 # PackAndShip analytical cohorts: closed pallets are selected by CLOSED date
 # (not by creation date), so daily counts and completion durations are complete.
 @pack_and_ship_router.get("/closed-pallets", dependencies=[Depends(verify)])
@@ -2128,3 +2125,6 @@ def pas_pallet_pieces(container_id: int, limit: int = Query(2000,ge=1,le=2000)):
         WHERE c.container_id=?
         ORDER BY l.level_number,p.scanned_at,p.container_piece_id
     """,(limit,container_id))
+
+# Router registration must follow all @pack_and_ship_router route declarations.
+app.include_router(pack_and_ship_router)
