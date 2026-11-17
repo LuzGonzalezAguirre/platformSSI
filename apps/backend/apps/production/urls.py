@@ -83,3 +83,6 @@ urlpatterns += [
     path("pack-and-ship/trends/", production_view(PackAndShipTrendsView)),
     path("pack-and-ship/pallets/<int:container_id>/pieces/", production_view(PackAndShipPalletPiecesView)),
 ]
+
+from apps.production.views.ccs_views import PackAndShipBlockedView
+urlpatterns += [path("pack-and-ship/blocked/", production_view(PackAndShipBlockedView))]
