@@ -392,3 +392,12 @@ class PackAndShipBlockedView(APIView):
 
     def get(self, request):
         return _proxy_get("/pack-and-ship/blocked", {"limit": 2000})
+
+class PackAndShipFindPieceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serial = request.query_params.get("serial", "").strip()
+        if not serial or len(serial) > 128:
+            return Response({"error": "serial must contain 1 to 128 characters"}, status=400)
+        return _proxy_get("/pack-and-ship/pieces/find", {"serial": serial})
