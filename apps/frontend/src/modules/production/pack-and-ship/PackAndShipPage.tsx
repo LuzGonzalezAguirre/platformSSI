@@ -95,6 +95,7 @@ export default function PackAndShipPage() {
   const [closedPallets, setClosedPallets] = useState<Pallet[]>([]);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [blocked, setBlocked] = useState<Incident[]>([]);
   const [trends, setTrends] = useState<Trend[]>([]);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [palletPieces, setPalletPieces] = useState<Piece[]>([]);
@@ -120,19 +121,20 @@ export default function PackAndShipPage() {
           throw new Error(tr("invalidRange"));
         }
         const params = { start_date: applied.start, end_date: applied.end };
-        const [summary, opened, closed, scans, events, series] = await Promise.all([
+        const [summary, opened, closed, scans, events, series, pending] = await Promise.all([
           get<Kpis>("kpis", params, controller.signal),
           get<Pallet>("pallets", { ...params, limit: rowsLimit }, controller.signal),
           get<Pallet>("closed-pallets", { ...params, limit: rowsLimit }, controller.signal),
           get<Piece>("pieces", { ...params, limit: rowsLimit }, controller.signal),
           get<Incident>("incidents", { ...params, limit: rowsLimit }, controller.signal),
           get<Trend>("trends", params, controller.signal),
+          get<Incident>("blocked", {limit: rowsLimit}, controller.signal),
         ]);
         if (controller.signal.aborted) return;
         setKpis(summary[0] || null);
         setPallets(opened); setClosedPallets(closed); setPieces(scans);
-        setIncidents(events); setTrends(series);
-        setTruncated([opened, closed, scans, events].some(rows => rows.length >= rowsLimit));
+        setIncidents(events); setTrends(series); setBlocked(pending);
+        setTruncated([opened, closed, scans, events, pending].some(rows => rows.length >= rowsLimit));
       } catch (e: unknown) {
         if (!controller.signal.aborted) setError(e instanceof Error ? e.message : tr("loadError"));
       } finally {
@@ -196,8 +198,8 @@ export default function PackAndShipPage() {
   </table></div>;
   const incidentTable = (items: Incident[]) => <div className="pas-table-scroll"><table className="pas-table">
     {header(["event", "container", "type", "reason", "approval", "detected", "ssiSerial", "clientSerial"])}
-    <tbody>{items.map(i => <tr key={i.event_id}>
-      <td>#{i.event_id}</td><td>{i.container_code}</td><td>{incidentType(i.rejection_type)}</td>
+    <tbody>{items.map(i => <tr key={i.event_id ?? `blocked-${i.rejection_id}`}>
+      <td>#{i.event_id ?? i.rejection_id}</td><td>{i.container_code}</td><td>{incidentType(i.rejection_type)}</td>
       <td className="pas-wrap">{i.rejection_reason}</td><td>{i.approval_status}</td>
       <td>{time(i.detected_at, locale)}</td><td>{i.ssi_scan}</td><td>{i.client_scan || "—"}</td>
     </tr>)}{!items.length && <tr><td colSpan={8} className="pas-empty">{tr("noData")}</td></tr>}</tbody>
@@ -225,7 +227,7 @@ export default function PackAndShipPage() {
     if (key === "pallets_closed") return palletTable(closedPallets);
     if (key === "pieces_packed") return pieceTable(pieces);
     if (key === "incidents") return incidentTable(incidents);
-    return <div><p className="pas-muted">{tr("blockedNote")}</p>{incidentTable(incidents.filter(i => i.approval_status === "BLOCKED"))}</div>;
+    return incidentTable(blocked);
   };
   return <div className="pas-page pas-standard">
     <header className="pas-header"><div><h1>{tr("title")}</h1><p className="pas-muted">{tr("subtitle")}</p></div>
