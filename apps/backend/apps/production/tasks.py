@@ -5,6 +5,8 @@ first successful run records a silent baseline. Messages go through the same
 Power Automate Adaptive Card contract used by Warehouse Demand.
 """
 import logging
+from datetime import datetime, timezone as dt_timezone
+from zoneinfo import ZoneInfo
 from urllib.parse import urlparse
 
 import requests
@@ -45,31 +47,71 @@ def _fetch_ccs(resource, params=None):
     return body["data"]
 
 
+def _tijuana_detected_at(value):
+    """CCS detection timestamps are UTC; render with the plant's timezone.
+
+    SQL Server datetime values usually arrive as ISO timestamps without a zone.
+    As in the report endpoints, treat those values as UTC, not server-local.
+    """
+    if value is None or not str(value).strip():
+        return "—"
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        raw = str(value).strip()
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return raw[:100]
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt_timezone.utc)
+    local = parsed.astimezone(ZoneInfo("America/Tijuana"))
+    return local.strftime("%d/%m/%Y %I:%M:%S %p") + " (Tijuana)"
+
+
+def _approval_departments(row):
+    """Only announce departments actually supplied by a verified CCS source."""
+    raw = row.get("approval_departments") or []
+    if isinstance(raw, str):
+        raw = [x.strip() for x in raw.split(",") if x.strip()]
+    if not isinstance(raw, (list, tuple)):
+        return []
+    return list(dict.fromkeys(str(item).strip() for item in raw if str(item).strip()))
+
+
 def build_pack_ship_incident_card(row):
-    """Build the same attachment envelope consumed by ActionTracker/Demand flows."""
+    """Power Automate Adaptive Card, with CCS event_id retained only in metadata."""
     event_id = int(row["event_id"])
+    departments = _approval_departments(row)
+    def display(value, limit=250):
+        return (str(value).strip()[:limit] if value is not None and str(value).strip() else "—")
+
     facts = [
-        ("Evento", f"#{event_id}"),
-        ("Pallet", row.get("container_code")),
-        ("Tipo", row.get("rejection_type")),
+        ("No. de Lote", row.get("container_code")),
+        ("Tipo de incidencia", row.get("rejection_type")),
         ("Motivo", row.get("rejection_reason")),
-        ("Detectado", row.get("detected_at")),
+        ("Detectado", _tijuana_detected_at(row.get("detected_at"))),
         ("Operador", row.get("detected_by")),
-        ("Estado actual", row.get("approval_status")),
+        ("Estado", row.get("approval_status")),
         ("Serial SSI", row.get("ssi_scan")),
         ("Serial cliente", row.get("client_scan")),
     ]
-    def display(value, limit=250):
-        return (str(value).strip()[:limit] if value is not None and str(value).strip() else "—")
+    # Show no invented departments if CCS does not yet expose the approval
+    # configuration for this rejection. 'Pending' is not an approver list.
+    if departments:
+        facts.append(("Se espera aprobación de", ", ".join(departments)))
+    else:
+        facts.append(("Se espera aprobación de", "Departamentos por consultar en configuración CCS"))
+
     card = {
         "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
         "type": "AdaptiveCard",
         "version": "1.4",
         "msteams": {"width": "Full"},
         "body": [
-            {"type": "Container", "style": "attention", "bleed": True, "items": [
-                {"type": "TextBlock", "text": "PRODUCTION · PACK AND SHIP VOLVO",
-                 "weight": "Bolder", "size": "Small"},
+            {"type": "Container", "style": "accent", "bleed": True, "items": [
+                {"type": "TextBlock", "text": "PACK AND SHIP VOLVO",
+                 "weight": "Bolder", "size": "Medium", "color": "Accent"},
                 {"type": "TextBlock", "text": "Nueva incidencia de escaneo",
                  "weight": "Bolder", "size": "Large", "wrap": True},
             ]},
