@@ -42,7 +42,18 @@ class PackShipCardTests(SimpleTestCase):
         facts = {fact["title"]: fact["value"] for fact in body[1]["facts"]}
         self.assertNotIn("Evento", facts)
         self.assertEqual(facts["No. de Lote"], "P978748")
+        self.assertEqual(facts["Tipo de incidencia"], "Pieza duplicada en el mismo lote")
         self.assertEqual(facts["Detectado"], "12/11/2026 02:46:00 AM (Tijuana)")
+
+    def test_qwall_incident_alias(self):
+        payload = build_pack_ship_incident_card({
+            **row(14), "rejection_type": "QWALL_REJECT",
+        })
+        facts = {
+            f["title"]: f["value"]
+            for f in payload["attachments"][0]["content"]["body"][1]["facts"]
+        }
+        self.assertEqual(facts["Tipo de incidencia"], "Pieza rechazada por Q-Wall")
 
     def test_current_utc_timestamp_is_rendered_in_tijuana(self):
         payload = build_pack_ship_incident_card({
@@ -66,6 +77,7 @@ class PackShipAlertMonitorTests(TestCase):
         cache.add.return_value = True
         fetch.side_effect = lambda resource, params=None: (
             [{"last_event_id": 10}] if resource == "alert-head"
+            else [{"name": "Calidad"}, {"name": "Producción"}] if resource == "approval-departments"
             else [row(11), row(12)] if params["after_event_id"] == 10 else []
         )
         self.assertEqual(monitor_pack_ship_incidents()["status"], "seeded")
@@ -74,6 +86,12 @@ class PackShipAlertMonitorTests(TestCase):
         self.assertEqual(PackShipIncidentCursor.objects.get().last_event_id, 12)
         self.assertEqual(monitor_pack_ship_incidents()["queued"], 0)
         self.assertEqual(PackShipIncidentAlert.objects.count(), 2)
+        alert = PackShipIncidentAlert.objects.get(event_id=11)
+        facts = {
+            f["title"]: f["value"]
+            for f in alert.payload["attachments"][0]["content"]["body"][1]["facts"]
+        }
+        self.assertEqual(facts["Se espera aprobación de"], "Calidad, Producción")
 
     @patch("apps.production.tasks.cache")
     @patch("apps.production.tasks._fetch_ccs")
