@@ -101,12 +101,16 @@ def monitor_pack_ship_incidents():
         with transaction.atomic():
             # The single-row cursor guards against historical floods on first
             # enable. Seed only after successfully reading the proxy.
-            cursor, created = PackShipIncidentCursor.objects.select_for_update().get_or_create(
-                source=SOURCE,
-                defaults={"last_event_id": int(_fetch_ccs("alert-head")[0]["last_event_id"])},
-            )
-            if created:
-                return {"status": "seeded", "last_event_id": cursor.last_event_id, "queued": 0}
+            cursor = PackShipIncidentCursor.objects.select_for_update().filter(source=SOURCE).first()
+            if cursor is None:
+                head = _fetch_ccs("alert-head")
+                if len(head) != 1:
+                    raise RuntimeError("Invalid incident head response")
+                last_event_id = int(head[0]["last_event_id"])
+                PackShipIncidentCursor.objects.create(
+                    source=SOURCE, last_event_id=last_event_id,
+                )
+                return {"status": "seeded", "last_event_id": last_event_id, "queued": 0}
 
         queued = scanned = 0
         for _ in range(MAX_BATCHES):
