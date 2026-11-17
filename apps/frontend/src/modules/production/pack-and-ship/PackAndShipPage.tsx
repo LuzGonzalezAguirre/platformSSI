@@ -232,7 +232,7 @@ export default function PackAndShipPage() {
   return <div className="pas-page pas-standard">
     <header className="pas-header"><div><h1>{tr("title")}</h1><p className="pas-muted">{tr("subtitle")}</p></div>
       <FilterBar draft={draft} setDraft={setDraft} onApply={onApply} loading={loading}
-        showBU={false} showWorkcenter={false} showShift={false} />
+        showBU={false} showWorkcenter={false} showShift={false} defaultDatePreset="last_7_days" />
     </header>
     {error && <div className="pas-error" role="alert">{error}</div>}
     {loading && <div className="pas-info" role="status">{tr("loading")}</div>}
