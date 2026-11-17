@@ -2064,3 +2064,67 @@ def pas_kpis(start_date: _pas_date, end_date: _pas_date):
     return _pas_fetch(sql, (start,stop,start,stop,start,stop,start,stop))
 
 app.include_router(pack_and_ship_router)
+
+
+# PackAndShip analytical cohorts: closed pallets are selected by CLOSED date
+# (not by creation date), so daily counts and completion durations are complete.
+@pack_and_ship_router.get("/closed-pallets", dependencies=[Depends(verify)])
+def pas_closed_pallets(start_date: _pas_date, end_date: _pas_date, limit: int = Query(2000, ge=1, le=2000)):
+    start, stop = _pas_dates(start_date, end_date)
+    return _pas_fetch("""
+        SELECT TOP (?) c.container_id, c.container_code, c.status,
+          c.created_at, c.closed_at, u.name AS created_by,
+          DATEDIFF_BIG(SECOND,c.created_at,c.closed_at) AS fill_seconds,
+          COALESCE(cap.required_pieces,0) AS required_pieces,
+          COALESCE(qty.packed_pieces,0) AS packed_pieces
+        FROM dbo.ssi_PaS_Containers c
+        LEFT JOIN dbo.ssi_PaS_Users u ON u.user_id=c.created_by_user_id
+        OUTER APPLY (
+          SELECT SUM(l.required_pieces) AS required_pieces
+          FROM dbo.ssi_PaS_ContainerLevels l WHERE l.container_id=c.container_id
+        ) cap
+        OUTER APPLY (
+          SELECT COUNT_BIG(*) AS packed_pieces FROM dbo.ssi_PaS_ContainerPieces p
+          JOIN dbo.ssi_PaS_ContainerLevels l ON l.container_level_id=p.container_level_id
+          WHERE l.container_id=c.container_id
+        ) qty
+        WHERE c.status='CLOSED' AND c.closed_at >= ? AND c.closed_at < ?
+          AND c.closed_at >= c.created_at
+        ORDER BY c.closed_at DESC,c.container_id DESC
+    """, (limit,start,stop))
+
+@pack_and_ship_router.get("/trends", dependencies=[Depends(verify)])
+def pas_trends(start_date: _pas_date, end_date: _pas_date):
+    start, stop = _pas_dates(start_date, end_date)
+    return _pas_fetch("""
+        SELECT CONVERT(varchar(10),CAST(c.closed_at AS date),23) AS date,
+          COUNT_BIG(*) AS pallets_closed,
+          CAST(AVG(CAST(DATEDIFF_BIG(SECOND,c.created_at,c.closed_at) AS FLOAT)) AS FLOAT)
+            AS avg_fill_seconds,
+          CAST(MIN(DATEDIFF_BIG(SECOND,c.created_at,c.closed_at)) AS BIGINT) AS min_fill_seconds,
+          CAST(MAX(DATEDIFF_BIG(SECOND,c.created_at,c.closed_at)) AS BIGINT) AS max_fill_seconds
+        FROM dbo.ssi_PaS_Containers c
+        WHERE c.status='CLOSED' AND c.closed_at>=? AND c.closed_at<?
+          AND c.closed_at>=c.created_at
+        GROUP BY CAST(c.closed_at AS date)
+        ORDER BY date
+    """,(start,stop))
+
+@pack_and_ship_router.get("/pallets/{container_id}/pieces", dependencies=[Depends(verify)])
+def pas_pallet_pieces(container_id: int, limit: int = Query(2000,ge=1,le=2000)):
+    return _pas_fetch("""
+        SELECT TOP (?) p.container_piece_id,p.product_id,p.scanned_at,
+          u.name AS scanned_by,l.level_number,
+          q.frameSN AS serial_ssi,q.fpcaSN AS serial_client,
+          pn.ssiPN AS part_number, bu.bu_name AS business_unit,
+          c.container_code,c.status AS container_status
+        FROM dbo.ssi_PaS_ContainerPieces p
+        JOIN dbo.ssi_PaS_ContainerLevels l ON l.container_level_id=p.container_level_id
+        JOIN dbo.ssi_PaS_Containers c ON c.container_id=l.container_id
+        JOIN dbo.ssi_Products q ON q.product_id=p.product_id
+        JOIN dbo.ssi_PartNumbers pn ON pn.pn_id=q.pn_id
+        LEFT JOIN dbo.ssi_BusinessUnits bu ON bu.bu_id=pn.bu_id
+        LEFT JOIN dbo.ssi_PaS_Users u ON u.user_id=p.scanned_by_user_id
+        WHERE c.container_id=?
+        ORDER BY l.level_number,p.scanned_at,p.container_piece_id
+    """,(limit,container_id))
