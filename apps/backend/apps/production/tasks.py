@@ -86,9 +86,16 @@ def build_pack_ship_incident_card(row):
     def display(value, limit=250):
         return (str(value).strip()[:limit] if value is not None and str(value).strip() else "—")
 
+    type_names = {
+        "DUPLICATE_SAME": "Pieza duplicada en el mismo lote",
+        "QWALL_REJECT": "Pieza rechazada por Q-Wall",
+        "DUPLICATE_OTHER": "Pieza duplicada en otro lote",
+    }
+    raw_type = str(row.get("rejection_type") or "")
+    friendly_type = type_names.get(raw_type, raw_type.replace("_", " ").capitalize())
     facts = [
         ("No. de Lote", row.get("container_code")),
-        ("Tipo de incidencia", row.get("rejection_type")),
+        ("Tipo de incidencia", friendly_type),
         ("Motivo", row.get("rejection_reason")),
         ("Detectado", _tijuana_detected_at(row.get("detected_at"))),
         ("Operador", row.get("detected_by")),
@@ -164,8 +171,13 @@ def monitor_pack_ship_incidents():
                 })
                 if not rows:
                     break
+                # Resolve the CCS approval configuration for this poll, not a
+                # hard-coded list: active departments can change at runtime.
+                active_rows = _fetch_ccs("approval-departments")
+                departments = [str(item["name"]).strip() for item in active_rows if str(item.get("name") or "").strip()]
                 last_id = previous
                 for row in rows:
+                    row = {**row, "approval_departments": departments}
                     event_id = int(row["event_id"])
                     if event_id <= last_id:
                         raise RuntimeError("Non-ascending event_id in CCS incident feed")
