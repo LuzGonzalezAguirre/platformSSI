@@ -2126,6 +2126,29 @@ def pas_pallet_pieces(container_id: int, limit: int = Query(2000,ge=1,le=2000)):
         ORDER BY l.level_number,p.scanned_at,p.container_piece_id
     """,(limit,container_id))
 
+@pack_and_ship_router.get("/pieces/find", dependencies=[Depends(verify)])
+def pas_find_piece(serial: str = Query(..., min_length=1, max_length=128)):
+    """Find the current pallet assignment of an SSI/client serial across all dates."""
+    serial = serial.strip()
+    if not serial:
+        raise HTTPException(status_code=400, detail="serial cannot be empty")
+    return _pas_fetch("""
+        SELECT TOP (100) p.container_piece_id, p.product_id, p.scanned_at,
+          u.name AS scanned_by, c.container_id, c.container_code, c.status AS container_status,
+          l.level_number, q.frameSN AS serial_ssi, q.fpcaSN AS serial_client,
+          pn.ssiPN AS part_number, bu.bu_name AS business_unit
+        FROM dbo.ssi_PaS_ContainerPieces p
+        JOIN dbo.ssi_PaS_ContainerLevels l ON l.container_level_id=p.container_level_id
+        JOIN dbo.ssi_PaS_Containers c ON c.container_id=l.container_id
+        JOIN dbo.ssi_Products q ON q.product_id=p.product_id
+        JOIN dbo.ssi_PartNumbers pn ON pn.pn_id=q.pn_id
+        LEFT JOIN dbo.ssi_BusinessUnits bu ON bu.bu_id=pn.bu_id
+        LEFT JOIN dbo.ssi_PaS_Users u ON u.user_id=p.scanned_by_user_id
+        WHERE q.frameSN = ? OR q.fpcaSN = ?
+        ORDER BY p.scanned_at DESC,p.container_piece_id DESC
+    """, (serial, serial))
+
+
 # Router registration must follow all @pack_and_ship_router route declarations.
 
 @pack_and_ship_router.get("/blocked", dependencies=[Depends(verify)])
