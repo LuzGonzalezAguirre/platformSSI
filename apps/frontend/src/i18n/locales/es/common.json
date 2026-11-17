@@ -66,7 +66,16 @@
       "reason": "Motivo",
       "approval": "Autorización",
       "detected": "Detectado"
-    }
+    },
+    "tabs": {
+      "pallets": "Pallets",
+      "pieces": "Piezas"
+    },
+    "pieceReportNote": "Piezas escaneadas en el periodo. Busca por Serial SSI o Serial Client para localizar su pallet.",
+    "searchSerial": "Buscar Serial SSI, Serial Client, pallet o número de parte",
+    "findAnyDate": "Buscar SN en todo el historial",
+    "globalSearchNotice": "Resultado de búsqueda exacta por serial en todos los periodos, independiente del filtro de fechas.",
+    "invalidSerial": "Ingresa un número de serie de 1 a 128 caracteres."
   },
   "nav": {
     "sections": {
@@ -84,7 +93,7 @@
     "items": {
       "operationalPanel": "Vista General",
       "productionOpsDaily": "Reporte Diario Ops",
-    "productionPackAndShip": "Pack and Ship",
+      "productionPackAndShip": "Pack and Ship",
       "productionTargets": "Configuración de Metas",
       "productionSafety": "Seguridad",
       "productionAssistance": "Asistencia",
