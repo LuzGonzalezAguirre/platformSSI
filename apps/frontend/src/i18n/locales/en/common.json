@@ -1,6 +1,6 @@
 {
   "packAndShip": {
-    "title": "Pack and Ship",
+    "title": "Pack and Ship Volvo",
     "subtitle": "Packaging activity, pallet fill times, and completion trends.",
     "loading": "Loading CCS data...",
     "loadError": "Unable to retrieve CCS data.",
