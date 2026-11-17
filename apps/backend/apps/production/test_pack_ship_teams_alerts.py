@@ -43,7 +43,10 @@ class PackShipCardTests(SimpleTestCase):
         self.assertNotIn("Evento", facts)
         self.assertEqual(facts["No. de Lote"], "P978748")
         self.assertEqual(facts["Tipo de incidencia"], "Pieza duplicada en el mismo lote")
-        self.assertEqual(facts["Detectado"], "12/11/2026 02:46:00 AM (Tijuana)")
+        self.assertEqual(facts["Operador"], "Test operator")
+        self.assertEqual(facts["Serial SSI"], "sample-ssi")
+        self.assertEqual(facts["Serial cliente"], "sample-client")
+        self.assertEqual(facts["Detectado"], "12/11/2026 02:46:00 AM")
 
     def test_qwall_incident_alias(self):
         payload = build_pack_ship_incident_card({
@@ -64,7 +67,7 @@ class PackShipCardTests(SimpleTestCase):
             f["title"]: f["value"]
             for f in payload["attachments"][0]["content"]["body"][1]["facts"]
         }
-        self.assertEqual(facts["Detectado"], "17/11/2026 11:57:27 AM (Tijuana)")
+        self.assertEqual(facts["Detectado"], "17/11/2026 11:57:27 AM")
         self.assertEqual(facts["Se espera aprobación de"], "Calidad, Producción")
 
 
