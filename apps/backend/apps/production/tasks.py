@@ -66,7 +66,7 @@ def _tijuana_detected_at(value):
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=dt_timezone.utc)
     local = parsed.astimezone(ZoneInfo("America/Tijuana"))
-    return local.strftime("%d/%m/%Y %I:%M:%S %p") + " (Tijuana)"
+    return local.strftime("%d/%m/%Y %I:%M:%S %p")
 
 
 def _approval_departments(row):
