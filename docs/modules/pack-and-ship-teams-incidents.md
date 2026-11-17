@@ -101,3 +101,44 @@ Para pausar sin perder los registros:
   pendientes se continúan leyendo en ciclos siguientes.
 - Si se restaura CCS desde un respaldo que reinicie los `event_id`, será
   necesario revisar manualmente el cursor antes de reactivar el monitor.
+
+## Formato de tarjeta (noviembre 2026)
+- Encabezado: `PACK AND SHIP VOLVO` (sin Production), estilo Adaptive Card
+  `accent`. El cliente Teams controla el color final según su tema: no se
+  puede imponer un hexadecimal morado arbitrario usando `Container.style`.
+- `event_id` permanece en la metadata de deduplicación y **no** es visible
+  entre los hechos de la tarjeta.
+- `Pallet` pasa a `No. de Lote`.
+- `detected_at` proveniente de CCS se interpreta como UTC y se presenta en
+  `America/Tijuana` (ejemplo: 2026-11-17 19:57:27 UTC =
+  2026-11-17 11:57:27 AM Tijuana). Se informa la hora de detección, **no** la
+  hora de envío de Teams.
+- El payload admite `approval_departments` cuando el backend lo reciba de
+  una fuente CCS validada. **Todavía no existe lectura de departamentos activos
+  en el feed**, por lo que muestra un marcador explicativo para no anunciar
+  aprobaciones inexistentes. Antes de activar en producción, conectar este campo
+  a la configuración real y validar qué departamentos están activos.
+
+### Descubrir tipos y configuración de aprobación en CCS (solo lectura)
+
+```sql
+SELECT rejection_type, COUNT(*) AS total
+FROM dbo.ssi_PaS_ScanRejectionEvents
+GROUP BY rejection_type
+ORDER BY total DESC;
+
+SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME LIKE '%PaS%'
+  AND (
+    COLUMN_NAME LIKE '%approv%'
+    OR COLUMN_NAME LIKE '%department%'
+    OR COLUMN_NAME LIKE '%role%'
+    OR COLUMN_NAME LIKE '%active%'
+  )
+ORDER BY TABLE_NAME, ORDINAL_POSITION;
+```
+
+Los `rejection_type` almacenados son la fuente de verdad; las etiquetas
+`DUPLICATE_SAME`, `DUPLICATE_OTHER` y `QWALL_REJECT` existen en
+las traducciones de la UI, pero no constituyen un catálogo exhaustivo.
