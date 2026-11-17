@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { RefreshCw, Play } from "lucide-react";
 import DateRangeSelector, { PresetGroup } from "./DateRangeSelector";
+import type { DatePreset } from "./date-presets";
 import BUSelect from "./BUSelect";
 import WorkcenterSelect from "./WorkcenterSelect";
 import ShiftSelect from "./ShiftSelect";
@@ -21,13 +22,14 @@ interface Props {
   showShift?: boolean;
   filterScope?: "default" | "cogp";
   dateExtraGroups?: PresetGroup[];
+  defaultDatePreset?: DatePreset;
 }
 
 export default function FilterBar({
   draft, setDraft, onApply, loading, extra, before, after, dateAddon,
   showBU = true, showWorkcenter = true, showShift = true,
   filterScope = "default",
-  dateExtraGroups,
+  dateExtraGroups, defaultDatePreset = "today",
 }: Props) {
   const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("es") ? "es" : "en";
@@ -39,7 +41,7 @@ export default function FilterBar({
       <DateRangeSelector
         value={{ start: draft.start, end: draft.end }}
         onChange={(range) => setDraft({ ...draft, ...range })}
-        defaultPreset="today"
+        defaultPreset={defaultDatePreset}
         extraGroups={dateExtraGroups}
         triggerAddon={dateAddon}
       />

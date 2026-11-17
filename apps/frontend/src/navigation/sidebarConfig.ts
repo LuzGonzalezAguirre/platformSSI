@@ -36,6 +36,12 @@ export const sidebarConfig: NavSection[] = [
 
       },
       {
+        id: "production.pack-and-ship",
+        labelKey: "nav.items.productionPackAndShip",
+        path: "/production/pack-and-ship",
+        icon: "PackageCheck",
+      },
+      {
         id: "production.targets",
         labelKey: "nav.items.productionTargets",
         path: "/production/targets",

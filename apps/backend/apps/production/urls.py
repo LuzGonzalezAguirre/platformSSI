@@ -63,3 +63,26 @@ urlpatterns = [
     path("productivity/daily/", production_view(DailyProductivityView)),
     path("safety/counter-history/", production_view(SafetyCounterHistoryView)),
 ]
+# PackAndShip read-only dashboards
+from apps.production.views.ccs_views import (
+    PackAndShipKpisView, PackAndShipPalletsView,
+    PackAndShipPiecesView, PackAndShipIncidentsView,
+)
+urlpatterns += [
+    path("pack-and-ship/kpis/", production_view(PackAndShipKpisView)),
+    path("pack-and-ship/pallets/", production_view(PackAndShipPalletsView)),
+    path("pack-and-ship/pieces/", production_view(PackAndShipPiecesView)),
+    path("pack-and-ship/incidents/", production_view(PackAndShipIncidentsView)),
+]
+
+from apps.production.views.ccs_views import (
+    PackAndShipClosedPalletsView, PackAndShipTrendsView, PackAndShipPalletPiecesView,
+)
+urlpatterns += [
+    path("pack-and-ship/closed-pallets/", production_view(PackAndShipClosedPalletsView)),
+    path("pack-and-ship/trends/", production_view(PackAndShipTrendsView)),
+    path("pack-and-ship/pallets/<int:container_id>/pieces/", production_view(PackAndShipPalletPiecesView)),
+]
+
+from apps.production.views.ccs_views import PackAndShipBlockedView
+urlpatterns += [path("pack-and-ship/blocked/", production_view(PackAndShipBlockedView))]

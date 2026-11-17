@@ -19,6 +19,7 @@ import SafetyPage from "./modules/production/safety/SafetyPage";
 import AssistancePage from "./modules/production/assistance/AssistancePage";
 import LeysillaPage from "./modules/production/leysilla/LeysillaPage";
 import OpsReportPage from "./modules/production/ops-report/OpsReportPage";
+import PackAndShipPage from "./modules/production/pack-and-ship/PackAndShipPage";
 import OverviewPage from "./modules/maintenance/overview/OverviewPage";
 import WorkRequestsPage from "./modules/maintenance/work-requests/WorkRequestsPage";
 import QualityDashboard from "./modules/quality/QualityDashboard";
@@ -101,6 +102,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/production/ops-daily-report" element={withPermission("production", <OpsReportPage />)} />
+        <Route path="/production/pack-and-ship" element={withPermission("production", <PackAndShipPage />)} />
         <Route path="/production/targets" element={withPermission("production", <TargetsPage />)} />
         <Route path="/production/safety" element={withPermission("production", <SafetyPage />)} />
         <Route path="/production/assistance" element={withPermission("production", <AssistancePage />)} />

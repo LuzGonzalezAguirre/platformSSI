@@ -1,4 +1,73 @@
 {
+  "packAndShip": {
+    "title": "Pack and Ship",
+    "subtitle": "Packaging activity, pallet fill times, and completion trends.",
+    "loading": "Loading CCS data...",
+    "loadError": "Unable to retrieve CCS data.",
+    "invalidRange": "Invalid date range (maximum 366 days).",
+    "truncated": "Detail lists are limited to 2,000 rows per request; KPIs and trends are calculated in CCS.",
+    "viewDetail": "View details",
+    "fillTrend": "Average pallet fill time",
+    "fillTrendNote": "Hours from creation to closure for CLOSED pallets, grouped by UTC closing date.",
+    "hoursAvg": "Average (hours)",
+    "dailyPalletTrend": "Completed pallet trend",
+    "closedByDate": "Number of CLOSED pallets by UTC closing date.",
+    "noClosedData": "No completed pallets in this period.",
+    "reportTitle": "Detailed pallet report",
+    "reportNote": "Pallets created in the selected period. Click a row to inspect its pieces.",
+    "palletDetail": "Pallet details",
+    "noData": "No records for this period.",
+    "search": "Search pallet or operator",
+    "filterStatus": "Filter by status",
+    "allStatuses": "All statuses",
+    "records": "records",
+    "close": "Close",
+    "blockedNote": "The KPI counts all currently blocked rejections in CCS. This list only includes events within the selected period; older blocks may not appear.",
+    "group": {
+      "day": "Day",
+      "week": "Week",
+      "month": "Month"
+    },
+    "kpis": {
+      "pallets_created": "Created pallets",
+      "pallets_closed": "Closed pallets",
+      "pieces_packed": "Packed pieces",
+      "incidents": "Incidents",
+      "blocked_rejections_current": "Pending blocks"
+    },
+    "status": {
+      "OPEN": "Open",
+      "CLOSED": "Closed",
+      "PARTIAL": "Partial",
+      "CANCELLED": "Cancelled",
+      "TRANSFERRED": "Transferred"
+    },
+    "incidentTypes": {
+      "DUPLICATE_SAME": "Duplicate in same pallet",
+      "DUPLICATE_OTHER": "Duplicate in another pallet",
+      "QWALL_REJECT": "Q-Wall rejection"
+    },
+    "columns": {
+      "container": "Pallet",
+      "status": "Status",
+      "pieces": "Pieces",
+      "progress": "Progress",
+      "fillTime": "Fill time",
+      "created": "Created",
+      "closed": "Closed",
+      "operator": "Operator",
+      "part": "Part number",
+      "ssiSerial": "SSI serial",
+      "clientSerial": "Client serial",
+      "level": "Level",
+      "scanned": "Scanned",
+      "event": "Event",
+      "type": "Type",
+      "reason": "Reason",
+      "approval": "Approval",
+      "detected": "Detected"
+    }
+  },
   "nav": {
     "sections": {
       "production": "Production",
@@ -15,6 +84,7 @@
     "items": {
       "operationalPanel": "Overview",
       "productionOpsDaily": "Ops Daily Report",
+    "productionPackAndShip": "Pack and Ship",
       "productionTargets": "Targets Configuration",
       "productionSafety": "Safety",
       "productionAssistance": "Assistance",

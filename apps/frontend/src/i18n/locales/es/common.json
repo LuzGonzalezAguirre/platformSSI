@@ -1,4 +1,73 @@
 {
+  "packAndShip": {
+    "title": "Pack and Ship",
+    "subtitle": "Seguimiento de empaque, tiempos de llenado y cierre de pallets.",
+    "loading": "Consultando CCS...",
+    "loadError": "No fue posible consultar CCS.",
+    "invalidRange": "El rango de fechas no es válido (máximo 366 días).",
+    "truncated": "El detalle muestra un máximo de 2,000 registros por consulta; los KPIs y las tendencias se calculan directamente en CCS.",
+    "viewDetail": "Ver detalle",
+    "fillTrend": "Tiempo promedio de llenado",
+    "fillTrendNote": "Horas desde la creación hasta el cierre de pallets CLOSED, por fecha de cierre UTC.",
+    "hoursAvg": "Promedio (horas)",
+    "dailyPalletTrend": "Tendencia de pallets cerrados",
+    "closedByDate": "Cantidad de pallets CLOSED por fecha de cierre UTC.",
+    "noClosedData": "No hay pallets cerrados en el periodo.",
+    "reportTitle": "Reporte detallado de pallets",
+    "reportNote": "Pallets creados en el periodo. Haz clic en una fila para ver sus piezas.",
+    "palletDetail": "Detalle del pallet",
+    "noData": "Sin registros para este periodo.",
+    "search": "Buscar contenedor u operador",
+    "filterStatus": "Filtrar por estado",
+    "allStatuses": "Todos los estados",
+    "records": "registros",
+    "close": "Cerrar",
+    "blockedNote": "El KPI muestra todos los bloqueos actuales en CCS. Este listado solo contiene eventos dentro del periodo seleccionado; los bloqueos previos pueden no aparecer.",
+    "group": {
+      "day": "Día",
+      "week": "Semana",
+      "month": "Mes"
+    },
+    "kpis": {
+      "pallets_created": "Pallets creados",
+      "pallets_closed": "Pallets cerrados",
+      "pieces_packed": "Piezas empacadas",
+      "incidents": "Incidencias",
+      "blocked_rejections_current": "Bloqueos pendientes"
+    },
+    "status": {
+      "OPEN": "Abierto",
+      "CLOSED": "Cerrado",
+      "PARTIAL": "Parcial",
+      "CANCELLED": "Cancelado",
+      "TRANSFERRED": "Transferido"
+    },
+    "incidentTypes": {
+      "DUPLICATE_SAME": "Duplicado en el mismo pallet",
+      "DUPLICATE_OTHER": "Duplicado en otro pallet",
+      "QWALL_REJECT": "Rechazo de Q-Wall"
+    },
+    "columns": {
+      "container": "Contenedor",
+      "status": "Estado",
+      "pieces": "Piezas",
+      "progress": "Avance",
+      "fillTime": "Tiempo de llenado",
+      "created": "Creado",
+      "closed": "Cerrado",
+      "operator": "Operador",
+      "part": "Número de parte",
+      "ssiSerial": "Serial SSI",
+      "clientSerial": "Serial cliente",
+      "level": "Nivel",
+      "scanned": "Escaneado",
+      "event": "Evento",
+      "type": "Tipo",
+      "reason": "Motivo",
+      "approval": "Autorización",
+      "detected": "Detectado"
+    }
+  },
   "nav": {
     "sections": {
       "production": "Produccion",
@@ -15,6 +84,7 @@
     "items": {
       "operationalPanel": "Vista General",
       "productionOpsDaily": "Reporte Diario Ops",
+    "productionPackAndShip": "Pack and Ship",
       "productionTargets": "Configuración de Metas",
       "productionSafety": "Seguridad",
       "productionAssistance": "Asistencia",
