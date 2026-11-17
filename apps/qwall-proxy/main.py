@@ -1986,10 +1986,13 @@ def pas_pallets(start_date: _pas_date, end_date: _pas_date, limit: int = Query(5
     sql = """
         SELECT TOP (?) c.container_id, c.container_code, c.configuration_id, c.status,
             c.created_at, c.closed_at, u.name AS created_by,
+            pn.ssiPN AS part_number,
             COALESCE(cap.required_pieces, 0) AS required_pieces,
             COALESCE(qty.packed_pieces, 0) AS packed_pieces
         FROM dbo.ssi_PaS_Containers c
         LEFT JOIN dbo.ssi_PaS_Users u ON u.user_id=c.created_by_user_id
+        LEFT JOIN dbo.ssi_PaS_PalletConfigurations cfg ON cfg.configuration_id=c.configuration_id
+        LEFT JOIN dbo.ssi_PartNumbers pn ON pn.pn_id=cfg.pn_id
         OUTER APPLY (
           SELECT SUM(l.required_pieces) AS required_pieces
           FROM dbo.ssi_PaS_ContainerLevels l WHERE l.container_id=c.container_id
@@ -2071,11 +2074,14 @@ def pas_closed_pallets(start_date: _pas_date, end_date: _pas_date, limit: int = 
     return _pas_fetch("""
         SELECT TOP (?) c.container_id, c.container_code, c.status,
           c.created_at, c.closed_at, u.name AS created_by,
+          pn.ssiPN AS part_number,
           DATEDIFF_BIG(SECOND,c.created_at,c.closed_at) AS fill_seconds,
           COALESCE(cap.required_pieces,0) AS required_pieces,
           COALESCE(qty.packed_pieces,0) AS packed_pieces
         FROM dbo.ssi_PaS_Containers c
         LEFT JOIN dbo.ssi_PaS_Users u ON u.user_id=c.created_by_user_id
+        LEFT JOIN dbo.ssi_PaS_PalletConfigurations cfg ON cfg.configuration_id=c.configuration_id
+        LEFT JOIN dbo.ssi_PartNumbers pn ON pn.pn_id=cfg.pn_id
         OUTER APPLY (
           SELECT SUM(l.required_pieces) AS required_pieces
           FROM dbo.ssi_PaS_ContainerLevels l WHERE l.container_id=c.container_id
