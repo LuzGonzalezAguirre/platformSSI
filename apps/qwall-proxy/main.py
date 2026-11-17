@@ -2165,6 +2165,24 @@ def pas_incident_alert_head():
     """, ())
 
 
+@pack_and_ship_router.get("/incidents/approval-departments", dependencies=[Depends(verify)])
+def pas_incident_approval_departments():
+    """Return active department names from the CCS rejection approval configuration.
+
+    CCS currently has three columns in order: department ID, name, active flag.
+    Validate that shape before using any values; fail rather than guessing names.
+    """
+    rows = _pas_fetch("SELECT * FROM dbo.ssi_PaS_RejectionDepartments", ())["data"]
+    departments = []
+    for record in rows:
+        values = list(record.values())
+        if len(values) != 3 or not isinstance(values[1], str) or values[2] not in (0, 1, False, True):
+            raise HTTPException(status_code=502, detail="Unexpected CCS rejection department schema")
+        if bool(values[2]) and values[1].strip():
+            departments.append({"name": values[1].strip()})
+    return {"data": departments}
+
+
 @pack_and_ship_router.get("/incidents/alert-feed", dependencies=[Depends(verify)])
 def pas_incident_alert_feed(
     after_event_id: int = Query(..., ge=0),
