@@ -17,4 +17,7 @@ __all__ = [
     "SafetySettings", "SafetyIncident", "SafetyCounterEvent",
     "COUNTER_RESETTING_TYPES", 
     "PlantEmployee", "AttendanceRecord", "EarnedHoursRecord", "CcsAttendanceRecord",
+    "PackShipIncidentCursor", "PackShipIncidentAlert",
 ]
+
+from .pack_ship_alerts import PackShipIncidentCursor, PackShipIncidentAlert

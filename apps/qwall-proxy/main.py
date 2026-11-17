@@ -2155,6 +2155,54 @@ def pas_find_piece(serial: str = Query(..., min_length=1, max_length=128)):
     """, (serial, serial))
 
 
+# Incremental, cursor-based feed: production incident alerts must never depend on a
+# date window or the UI's 2,000-row limit. Read only; leaves CCS untouched.
+@pack_and_ship_router.get("/incidents/alert-head", dependencies=[Depends(verify)])
+def pas_incident_alert_head():
+    return _pas_fetch("""
+        SELECT COALESCE(MAX(event_id), 0) AS last_event_id
+        FROM dbo.ssi_PaS_ScanRejectionEvents
+    """, ())
+
+
+@pack_and_ship_router.get("/incidents/approval-departments", dependencies=[Depends(verify)])
+def pas_incident_approval_departments():
+    """Return active department names from the CCS rejection approval configuration.
+
+    CCS currently has three columns in order: department ID, name, active flag.
+    Validate that shape before using any values; fail rather than guessing names.
+    """
+    rows = _pas_fetch("SELECT * FROM dbo.ssi_PaS_RejectionDepartments", ())["data"]
+    departments = []
+    for record in rows:
+        values = list(record.values())
+        if len(values) != 3 or not isinstance(values[1], str) or values[2] not in (0, 1, False, True):
+            raise HTTPException(status_code=502, detail="Unexpected CCS rejection department schema")
+        if bool(values[2]) and values[1].strip():
+            departments.append({"name": values[1].strip()})
+    return {"data": departments}
+
+
+@pack_and_ship_router.get("/incidents/alert-feed", dependencies=[Depends(verify)])
+def pas_incident_alert_feed(
+    after_event_id: int = Query(..., ge=0),
+    limit: int = Query(250, ge=1, le=500),
+):
+    return _pas_fetch("""
+        SELECT TOP (?) e.event_id, e.event_token, e.rejection_id,
+            e.detected_at, e.rejection_type, e.rejection_reason,
+            e.ssi_scan, e.client_scan,
+            e.container_id, c.container_code, u.name AS detected_by,
+            r.status AS approval_status, r.resolved_at
+        FROM dbo.ssi_PaS_ScanRejectionEvents e
+        JOIN dbo.ssi_PaS_Containers c ON c.container_id=e.container_id
+        JOIN dbo.ssi_PaS_ScanRejections r ON r.rejection_id=e.rejection_id
+        LEFT JOIN dbo.ssi_PaS_Users u ON u.user_id=e.detected_by_user_id
+        WHERE e.event_id > ?
+        ORDER BY e.event_id ASC
+    """, (limit, after_event_id))
+
+
 # Router registration must follow all @pack_and_ship_router route declarations.
 
 @pack_and_ship_router.get("/blocked", dependencies=[Depends(verify)])

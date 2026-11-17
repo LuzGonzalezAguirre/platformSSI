@@ -129,6 +129,8 @@ PLEX_PROXY_SECRET = env("PLEX_PROXY_SECRET")
 PLEX_CACHE_TTL    = 300  # segundos — 5 minutos default
 DEMAND_TEAMS_WEBHOOK_URL = env("DEMAND_TEAMS_WEBHOOK_URL", default="")
 DEMAND_CHANGE_ALERTS_ENABLED = env.bool("DEMAND_CHANGE_ALERTS_ENABLED", default=False)
+PACK_SHIP_TEAMS_ALERTS_ENABLED = env.bool("PACK_SHIP_TEAMS_ALERTS_ENABLED", default=False)
+PACK_SHIP_TEAMS_WEBHOOK_URL = env("PACK_SHIP_TEAMS_WEBHOOK_URL", default="")
 
 QWALL_PROXY_URL    = env("QWALL_PROXY_URL", default="http://host.docker.internal:8002")
 ACTION_TRACKER_URL = env("ACTION_TRACKER_URL", default="")
@@ -138,6 +140,15 @@ QWALL_PROXY_TOKEN = env("QWALL_PROXY_TOKEN")
 
 
 CELERY_BEAT_SCHEDULE = {
+    "pack-ship-volvo-incident-monitor": {
+        "task": "apps.production.tasks.monitor_pack_ship_incidents",
+        "schedule": crontab(minute="*/2"),
+    },
+    "pack-ship-volvo-incident-teams": {
+        "task": "apps.production.tasks.send_pack_ship_incident_alerts",
+        "schedule": crontab(minute="*/2"),
+    },
+
     "warehouse-demand-release-change-monitor": {
         "task": "apps.warehouse.release_change_tasks.monitor_demand_release_changes",
         "schedule": crontab(minute="*/15"),
