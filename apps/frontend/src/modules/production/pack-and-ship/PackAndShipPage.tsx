@@ -329,6 +329,7 @@ export default function PackAndShipPage() {
           onKeyDown={e => { if (e.key === "Enter" && reportTab === "pieces") void runSerialLookup(); }}
           placeholder={reportTab === "pieces" ? tr("searchSerial") : tr("search")}/></label>
         {reportTab === "pallets" ? (
+          <>
           <select aria-label={tr("filterPartNumber")} value={partNumber} onChange={e => setPartNumber(e.target.value)}>
             <option value="ALL">{tr("allPartNumbers")}</option>
             {availablePartNumbers.map(part => <option key={part} value={part}>{part}</option>)}
@@ -338,6 +339,7 @@ export default function PackAndShipPage() {
             {["OPEN","CLOSED","PARTIAL","CANCELLED","TRANSFERRED"].map(v =>
               <option key={v} value={v}>{statusLabel(v)}</option>)}
           </select>
+          </>
         ) : (
           <button type="button" className="pas-button primary" disabled={lookupLoading || !search.trim()}
             onClick={() => void runSerialLookup()}>{lookupLoading ? tr("loading") : tr("findAnyDate")}</button>
