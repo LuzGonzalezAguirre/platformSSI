@@ -86,3 +86,6 @@ urlpatterns += [
 
 from apps.production.views.ccs_views import PackAndShipBlockedView
 urlpatterns += [path("pack-and-ship/blocked/", production_view(PackAndShipBlockedView))]
+
+from apps.production.views.ccs_views import PackAndShipFindPieceView
+urlpatterns += [path("pack-and-ship/pieces/find/", production_view(PackAndShipFindPieceView))]
