@@ -18,6 +18,7 @@ interface Pallet {
   container_id: number; container_code: string; status: string;
   created_at: string; closed_at: string | null; created_by: string | null;
   required_pieces: number; packed_pieces: number; fill_seconds?: number | null;
+  part_number: string | null;
 }
 interface Piece {
   container_piece_id: number; container_code: string; part_number: string;
@@ -107,6 +108,7 @@ export default function PackAndShipPage() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState("");
   const [status, setStatus] = useState("ALL");
+  const [partNumber, setPartNumber] = useState("ALL");
   const [group, setGroup] = useState<Group>("day");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -170,10 +172,16 @@ export default function PackAndShipPage() {
   }, [dialog]);
 
   const data = useMemo(() => aggregate(trends, group), [trends, group]);
+  const availablePartNumbers = useMemo(() =>
+    Array.from(new Set(pallets.map(row => row.part_number).filter((part): part is string => !!part)))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+  [pallets]);
   const filtered = useMemo(() => pallets.filter(row =>
     (status === "ALL" || row.status === status) &&
-    [row.container_code, row.created_by || ""].some(text => text.toLowerCase().includes(search.toLowerCase())),
-  ), [pallets, status, search]);
+    (partNumber === "ALL" || row.part_number === partNumber) &&
+    [row.container_code, row.created_by || "", row.part_number || ""]
+      .some(text => text.toLowerCase().includes(search.toLowerCase())),
+  ), [pallets, status, partNumber, search]);
   const shownPieces = useMemo(() => pieces.filter(row =>
     [row.serial_ssi || "", row.serial_client || "", row.container_code, row.part_number || ""]
       .some(value => value.toLowerCase().includes(search.toLowerCase()))
@@ -208,15 +216,16 @@ export default function PackAndShipPage() {
 
   const header = (columns: string[]) => <thead><tr>{columns.map(col => <th key={col}>{tr(`columns.${col}`)}</th>)}</tr></thead>;
   const palletTable = (items: Pallet[]) => <div className="pas-table-scroll"><table className="pas-table">
-    {header(["container", "status", "pieces", "progress", "fillTime", "created", "closed", "operator"])}
+    {header(["container", "part", "status", "pieces", "progress", "fillTime", "created", "closed", "operator"])}
     <tbody>{items.map(p => <tr key={p.container_id} onClick={() => setDialog({ kind: "pallet", pallet: p })}
       className="pas-clickable" tabIndex={0} role="button" onKeyDown={event => { if (event.key === "Enter") setDialog({ kind: "pallet", pallet: p }); }}>
       <td><strong>{p.container_code}</strong></td>
+      <td>{p.part_number || "—"}</td>
       <td><span className={`pas-status ${p.status.toLowerCase()}`}>{statusLabel(p.status)}</span></td>
       <td>{p.packed_pieces}/{p.required_pieces}</td>
       <td><span className="pas-progress"><span style={{ width: `${percent(p.packed_pieces, p.required_pieces)}%` }} /></span> {percent(p.packed_pieces, p.required_pieces)}%</td>
       <td>{duration(durationSeconds(p))}</td><td>{time(p.created_at, locale)}</td><td>{time(p.closed_at, locale)}</td><td>{p.created_by || "—"}</td>
-    </tr>)}{items.length === 0 && <tr><td colSpan={8} className="pas-empty">{tr("noData")}</td></tr>}</tbody>
+    </tr>)}{items.length === 0 && <tr><td colSpan={9} className="pas-empty">{tr("noData")}</td></tr>}</tbody>
   </table></div>;
   const pieceTable = (items: Piece[]) => <div className="pas-table-scroll"><table className="pas-table">
     {header(["container", "part", "ssiSerial", "clientSerial", "level", "operator", "scanned"])}
@@ -241,6 +250,7 @@ export default function PackAndShipPage() {
       return <>
         <div className="pas-detail-summary"><strong>{p.container_code}</strong>
           <span className={`pas-status ${p.status.toLowerCase()}`}>{statusLabel(p.status)}</span>
+          <span>{tr("columns.part")}: {p.part_number || "—"}</span>
           <span>{p.packed_pieces}/{p.required_pieces} {tr("columns.pieces")}</span>
           <span><Clock3 size={15} /> {duration(durationSeconds(p))}</span>
           <span>{time(p.created_at, locale)} → {time(p.closed_at, locale)}</span>
@@ -319,6 +329,10 @@ export default function PackAndShipPage() {
           onKeyDown={e => { if (e.key === "Enter" && reportTab === "pieces") void runSerialLookup(); }}
           placeholder={reportTab === "pieces" ? tr("searchSerial") : tr("search")}/></label>
         {reportTab === "pallets" ? (
+          <select aria-label={tr("filterPartNumber")} value={partNumber} onChange={e => setPartNumber(e.target.value)}>
+            <option value="ALL">{tr("allPartNumbers")}</option>
+            {availablePartNumbers.map(part => <option key={part} value={part}>{part}</option>)}
+          </select>
           <select aria-label={tr("filterStatus")} value={status} onChange={e => setStatus(e.target.value)}>
             <option value="ALL">{tr("allStatuses")}</option>
             {["OPEN","CLOSED","PARTIAL","CANCELLED","TRANSFERRED"].map(v =>
