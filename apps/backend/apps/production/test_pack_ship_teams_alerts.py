@@ -36,7 +36,26 @@ class PackShipCardTests(SimpleTestCase):
         attachment = card["attachments"][0]
         self.assertEqual(attachment["contentType"], "application/vnd.microsoft.card.adaptive")
         self.assertEqual(attachment["content"]["type"], "AdaptiveCard")
-        self.assertEqual(attachment["content"]["body"][1]["facts"][1]["value"], "P978748")
+        body = attachment["content"]["body"]
+        self.assertEqual(body[0]["items"][0]["text"], "PACK AND SHIP VOLVO")
+        self.assertEqual(body[0]["style"], "accent")
+        facts = {fact["title"]: fact["value"] for fact in body[1]["facts"]}
+        self.assertNotIn("Evento", facts)
+        self.assertEqual(facts["No. de Lote"], "P978748")
+        self.assertEqual(facts["Detectado"], "12/11/2026 02:46:00 AM (Tijuana)")
+
+    def test_current_utc_timestamp_is_rendered_in_tijuana(self):
+        payload = build_pack_ship_incident_card({
+            **row(13), "detected_at": "2026-11-17T19:57:27+00:00",
+            "approval_departments": ["Calidad", "Producción"],
+        })
+        facts = {
+            f["title"]: f["value"]
+            for f in payload["attachments"][0]["content"]["body"][1]["facts"]
+        }
+        self.assertEqual(facts["Detectado"], "17/11/2026 11:57:27 AM (Tijuana)")
+        self.assertEqual(facts["Se espera aprobación de"], "Calidad, Producción")
+
 
 
 @override_settings(PACK_SHIP_TEAMS_ALERTS_ENABLED=True)
