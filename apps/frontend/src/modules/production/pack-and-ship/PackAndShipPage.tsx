@@ -105,7 +105,7 @@ export default function PackAndShipPage() {
   const [reportTab, setReportTab] = useState<"pallets" | "pieces">("pallets");
   const [serialLookup, setSerialLookup] = useState<Piece[] | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupError, setLookupError] =("");
+  const [lookupError, setLookupError] = useState("");
   const [status, setStatus] = useState("ALL");
   const [group, setGroup] = useState<Group>("day");
   const [loading, setLoading] = useState(true);
