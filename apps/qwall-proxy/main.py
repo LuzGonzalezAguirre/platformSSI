@@ -2127,4 +2127,20 @@ def pas_pallet_pieces(container_id: int, limit: int = Query(2000,ge=1,le=2000)):
     """,(limit,container_id))
 
 # Router registration must follow all @pack_and_ship_router route declarations.
+
+@pack_and_ship_router.get("/blocked", dependencies=[Depends(verify)])
+def pas_blocked(limit: int = Query(2000, ge=1, le=2000)):
+    """Current unresolved blocks, independent of any selected report date range."""
+    return _pas_fetch("""
+        SELECT TOP (?) r.rejection_id, r.container_id, c.container_code,
+          r.rejection_type, r.ssi_scan, r.client_scan, r.rejection_reason,
+          r.detected_at, r.status AS approval_status, r.resolved_at,
+          u.name AS detected_by
+        FROM dbo.ssi_PaS_ScanRejections r
+        JOIN dbo.ssi_PaS_Containers c ON c.container_id=r.container_id
+        LEFT JOIN dbo.ssi_PaS_Users u ON u.user_id=r.detected_by_user_id
+        WHERE r.status='BLOCKED'
+        ORDER BY r.detected_at DESC, r.rejection_id DESC
+    """,(limit,))
+
 app.include_router(pack_and_ship_router)
