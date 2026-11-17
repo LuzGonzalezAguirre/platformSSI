@@ -366,3 +366,23 @@ class PackAndShipPiecesView(_PackAndShipReportView):
 
 class PackAndShipIncidentsView(_PackAndShipReportView):
     resource = "incidents"
+
+
+class PackAndShipClosedPalletsView(_PackAndShipReportView):
+    resource = "closed-pallets"
+
+class PackAndShipTrendsView(_PackAndShipReportView):
+    resource = "trends"
+
+class PackAndShipPalletPiecesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, container_id: int):
+        raw = request.query_params.get("limit", "2000")
+        try:
+            limit = int(raw)
+            if not 1 <= limit <= 2000:
+                raise ValueError()
+        except (ValueError, TypeError):
+            return Response({"error": "limit must be between 1 and 2000"}, status=400)
+        return _proxy_get(f"/pack-and-ship/pallets/{container_id}/pieces", {"limit": limit})
