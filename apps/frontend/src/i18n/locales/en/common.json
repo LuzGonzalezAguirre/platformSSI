@@ -75,7 +75,9 @@
     "searchSerial": "Search SSI serial, client serial, pallet or part number",
     "findAnyDate": "Find SN across all dates",
     "globalSearchNotice": "Exact serial search results across all dates, independent of the selected date range.",
-    "invalidSerial": "Enter a serial number between 1 and 128 characters."
+    "invalidSerial": "Enter a serial number between 1 and 128 characters.",
+    "filterPartNumber": "Filter by part number",
+    "allPartNumbers": "All part numbers"
   },
   "nav": {
     "sections": {
