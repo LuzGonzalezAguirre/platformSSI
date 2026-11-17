@@ -386,3 +386,9 @@ class PackAndShipPalletPiecesView(APIView):
         except (ValueError, TypeError):
             return Response({"error": "limit must be between 1 and 2000"}, status=400)
         return _proxy_get(f"/pack-and-ship/pallets/{container_id}/pieces", {"limit": limit})
+
+class PackAndShipBlockedView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return _proxy_get("/pack-and-ship/blocked", {"limit": 2000})
