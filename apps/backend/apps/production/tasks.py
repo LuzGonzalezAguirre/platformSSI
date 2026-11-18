@@ -194,6 +194,17 @@ def monitor_pack_ship_incidents():
                     scanned += 1
                 cursor.last_event_id = last_id
                 cursor.save(update_fields=["last_event_id", "updated_at"])
+            # The DB transaction is committed. Dispatch immediately instead of
+            # waiting for the separate periodic sender (previously ~120 seconds).
+            # The periodic task remains a recovery path if Redis is unavailable.
+            if last_id > previous:
+                try:
+                    send_pack_ship_incident_alerts.delay()
+                except Exception as exc:
+                    logger.warning(
+                        "PackShip immediate dispatch unavailable: %s",
+                        type(exc).__name__,
+                    )
             if len(rows) < BATCH_SIZE:
                 break
         return {"status": "checked", "queued": queued, "scanned": scanned}
