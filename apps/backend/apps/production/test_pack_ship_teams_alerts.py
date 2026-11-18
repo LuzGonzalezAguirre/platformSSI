@@ -74,9 +74,10 @@ class PackShipCardTests(SimpleTestCase):
 
 @override_settings(PACK_SHIP_TEAMS_ALERTS_ENABLED=True)
 class PackShipAlertMonitorTests(TestCase):
+    @patch("apps.production.tasks.send_pack_ship_incident_alerts.delay")
     @patch("apps.production.tasks.cache")
     @patch("apps.production.tasks._fetch_ccs")
-    def test_first_poll_is_silent_and_followup_is_idempotent(self, fetch, cache):
+    def test_first_poll_is_silent_and_followup_is_idempotent(self, fetch, cache, send_now):
         cache.add.return_value = True
         fetch.side_effect = lambda resource, params=None: (
             [{"last_event_id": 10}] if resource == "alert-head"
@@ -85,7 +86,9 @@ class PackShipAlertMonitorTests(TestCase):
         )
         self.assertEqual(monitor_pack_ship_incidents()["status"], "seeded")
         self.assertEqual(PackShipIncidentAlert.objects.count(), 0)
+        send_now.assert_not_called()
         self.assertEqual(monitor_pack_ship_incidents()["queued"], 2)
+        send_now.assert_called_once_with()
         self.assertEqual(PackShipIncidentCursor.objects.get().last_event_id, 12)
         self.assertEqual(monitor_pack_ship_incidents()["queued"], 0)
         self.assertEqual(PackShipIncidentAlert.objects.count(), 2)

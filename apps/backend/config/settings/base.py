@@ -142,11 +142,12 @@ QWALL_PROXY_TOKEN = env("QWALL_PROXY_TOKEN")
 CELERY_BEAT_SCHEDULE = {
     "pack-ship-volvo-incident-monitor": {
         "task": "apps.production.tasks.monitor_pack_ship_incidents",
-        "schedule": crontab(minute="*/2"),
+        "schedule": crontab(minute="*"),
     },
     "pack-ship-volvo-incident-teams": {
         "task": "apps.production.tasks.send_pack_ship_incident_alerts",
-        "schedule": crontab(minute="*/2"),
+        # Fallback for failed immediate dispatch, retries, and old pending entries.
+        "schedule": crontab(minute="*"),
     },
 
     "warehouse-demand-release-change-monitor": {
