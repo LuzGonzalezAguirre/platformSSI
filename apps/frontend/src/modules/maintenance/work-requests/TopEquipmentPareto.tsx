@@ -26,7 +26,7 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang, unplannedT
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const descriptions = new Map<string, string>();
   rows.forEach((row) => {
-    if (row.equipment_id) descriptions.set(row.equipment_id.toLocaleLowerCase(), row.equipment_description || row.equipment_id);
+    if (row.equipment_id) descriptions.set(String(row.equipment_id).toLocaleLowerCase(), row.equipment_description || String(row.equipment_id));
   });
 
   const top = [...byEquipment].sort((a, b) => b.hours - a.hours).slice(0, 8);
