@@ -37,6 +37,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="demandreleasesnapshot",
+            name="change_sequence",
+            field=models.PositiveIntegerField(default=0),
+        ),
+        migrations.AddField(
+            model_name="demandreleasesnapshot",
             name="extended_baseline_ready",
             field=models.BooleanField(default=False),
         ),
