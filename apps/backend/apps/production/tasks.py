@@ -98,17 +98,10 @@ def build_pack_ship_incident_card(row):
         ("Tipo de incidencia", friendly_type),
         ("Motivo", row.get("rejection_reason")),
         ("Detectado", _tijuana_detected_at(row.get("detected_at"))),
-        ("Operador", row.get("detected_by")),
-        ("Estado", row.get("approval_status")),
-        ("Serial SSI", row.get("ssi_scan")),
-        ("Serial cliente", row.get("client_scan")),
     ]
-    # Show no invented departments if CCS does not yet expose the approval
-    # configuration for this rejection. 'Pending' is not an approver list.
-    if departments:
-        facts.append(("Se espera aprobación de", ", ".join(departments)))
-    else:
-        facts.append(("Se espera aprobación de", "Departamentos por consultar en configuración CCS"))
+    # Only the departments active in CCS are announced; do not invent names.
+    approvers = ", ".join(departments) if departments else "Departamentos por confirmar"
+    subtitle = f"Nueva Incidencia en espera de: {approvers}"
 
     card = {
         "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -119,7 +112,7 @@ def build_pack_ship_incident_card(row):
             {"type": "Container", "style": "accent", "bleed": True, "items": [
                 {"type": "TextBlock", "text": "PACK AND SHIP VOLVO",
                  "weight": "Bolder", "size": "Medium", "color": "Accent"},
-                {"type": "TextBlock", "text": "Nueva incidencia de escaneo",
+                {"type": "TextBlock", "text": subtitle,
                  "weight": "Bolder", "size": "Large", "wrap": True},
             ]},
             {"type": "FactSet", "facts": [
