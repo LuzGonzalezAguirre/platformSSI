@@ -112,6 +112,7 @@ class DemandReleaseSnapshot(models.Model):
     customer_part = models.CharField(max_length=160, blank=True, default="")
     ship_to_carrier = models.CharField(max_length=160, blank=True, default="")
     extended_baseline_ready = models.BooleanField(default=False)
+    change_sequence = models.PositiveIntegerField(default=0)
     first_observed_at = models.DateTimeField(auto_now_add=True)
     last_observed_at = models.DateTimeField(auto_now=True)
 
