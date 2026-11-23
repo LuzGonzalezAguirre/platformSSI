@@ -43,9 +43,8 @@ class PackShipCardTests(SimpleTestCase):
         self.assertNotIn("Evento", facts)
         self.assertEqual(facts["No. de Lote"], "P978748")
         self.assertEqual(facts["Tipo de incidencia"], "Pieza duplicada en el mismo lote")
-        self.assertEqual(facts["Operador"], "Test operator")
-        self.assertEqual(facts["Serial SSI"], "sample-ssi")
-        self.assertEqual(facts["Serial cliente"], "sample-client")
+        self.assertEqual(list(facts), ["No. de Lote", "Tipo de incidencia", "Motivo", "Detectado"])
+        self.assertEqual(body[0]["items"][1]["text"], "Nueva Incidencia en espera de: Departamentos por confirmar")
         self.assertEqual(facts["Detectado"], "12/11/2026 02:46:00 AM")
 
     def test_qwall_incident_alias(self):
@@ -68,7 +67,8 @@ class PackShipCardTests(SimpleTestCase):
             for f in payload["attachments"][0]["content"]["body"][1]["facts"]
         }
         self.assertEqual(facts["Detectado"], "17/11/2026 11:57:27 AM")
-        self.assertEqual(facts["Se espera aprobación de"], "Calidad, Producción")
+        self.assertEqual(payload["attachments"][0]["content"]["body"][0]["items"][1]["text"], "Nueva Incidencia en espera de: Calidad, Producción")
+        self.assertEqual(list(facts), ["No. de Lote", "Tipo de incidencia", "Motivo", "Detectado"])
 
 
 
@@ -97,7 +97,7 @@ class PackShipAlertMonitorTests(TestCase):
             f["title"]: f["value"]
             for f in alert.payload["attachments"][0]["content"]["body"][1]["facts"]
         }
-        self.assertEqual(facts["Se espera aprobación de"], "Calidad, Producción")
+        self.assertEqual(alert.payload["attachments"][0]["content"]["body"][0]["items"][1]["text"], "Nueva Incidencia en espera de: Calidad, Producción")
 
     @patch("apps.production.tasks.cache")
     @patch("apps.production.tasks._fetch_ccs")
