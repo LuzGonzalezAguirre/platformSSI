@@ -155,7 +155,12 @@ export default function DeliveryPerformancePage() {
     };
     const chosen = data.detail.filter(x => !customer || x.customer === customer);
     const within = chosen.filter(x => x.planned_ship_date >= dateFrom && x.planned_ship_date <= dateTo);
-    const referenceMonthPrefix = dateTo.slice(0, 7);
+    // A week can cross months. Show the last month with actual selected releases,
+    // rather than blindly using the month of the To/reference date.
+    const referenceMonthPrefix = within.reduce(
+      (latest, row) => row.planned_ship_date > latest ? row.planned_ship_date : latest,
+      dateFrom,
+    ).slice(0, 7);
     const monday = isoDate(mondayOf(reference));
     const monthRows = within.filter(x => x.planned_ship_date.slice(0, 7) === referenceMonthPrefix);
     const weekRows = within.filter(x => x.planned_ship_date >= monday);
@@ -182,7 +187,7 @@ export default function DeliveryPerformancePage() {
         ...aggregate(chosen.filter(x => x.planned_ship_date >= first && x.planned_ship_date <= last && x.planned_ship_date <= dateTo)),
       };
     });
-    return { monthlyCustomers: byCustomer(monthRows), weeklyCustomers: byCustomer(weekRows), monthly, weeks, detail: within, totals: aggregate(within) };
+    return { monthlyCustomers: byCustomer(monthRows), weeklyCustomers: byCustomer(weekRows), monthly, weeks, detail: within, totals: aggregate(within), customerMonthPrefix: referenceMonthPrefix };
   }, [data, dateFrom, dateTo, customer, i18n.language, validRange, referenceYear, referenceMonth]);
 
   useEffect(() => {
@@ -317,14 +322,14 @@ export default function DeliveryPerformancePage() {
         )}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 16, width: "100%", minWidth: 0 }}>
-        {chart("monthlyCustomers", tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, monthLabel(referenceMonth, i18n.language, referenceYear) + " " + referenceYear)}
+        {chart("monthlyCustomers", tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, monthLabel(Number(view.customerMonthPrefix.slice(5, 7)), i18n.language, Number(view.customerMonthPrefix.slice(0, 4))) + " " + view.customerMonthPrefix.slice(0, 4))}
         {chart("weeklyCustomers", tx("OTD semanal por cliente", "Weekly OTD by customer"), view.weeklyCustomers, tx("Semana", "Week") + " " + referenceWeek.week + "/" + referenceWeek.year)}
         {chart("weeklyTrend", tx("Tendencia semanal", "Weekly trend"), view.weeks, tx("Últimas 6 semanas desde Hasta", "Last 6 weeks as of To date"))}
         {chart("monthlyTrend", tx("Tendencia mensual", "Monthly trend"), view.monthly, tx("Enero hasta el mes de referencia", "January through reference month"))}
       </div>
       {expandedChart && <div role="dialog" aria-modal="true" aria-label={tx("Gráfica ampliada", "Expanded chart")}
         style={{ position: "fixed", inset: 0, zIndex: 9999, padding: 20, background: "var(--color-background, #101820)", display: "flex", flexDirection: "column" }}>
-        {expandedChart === "monthlyCustomers" && chart("monthlyCustomers", tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, monthLabel(referenceMonth, i18n.language, referenceYear) + " " + referenceYear, true)}
+        {expandedChart === "monthlyCustomers" && chart("monthlyCustomers", tx("OTD mensual por cliente", "Monthly OTD by customer"), view.monthlyCustomers, monthLabel(Number(view.customerMonthPrefix.slice(5, 7)), i18n.language, Number(view.customerMonthPrefix.slice(0, 4))) + " " + view.customerMonthPrefix.slice(0, 4), true)}
         {expandedChart === "weeklyCustomers" && chart("weeklyCustomers", tx("OTD semanal por cliente", "Weekly OTD by customer"), view.weeklyCustomers, tx("Semana", "Week") + " " + referenceWeek.week + "/" + referenceWeek.year, true)}
         {expandedChart === "weeklyTrend" && chart("weeklyTrend", tx("Tendencia semanal", "Weekly trend"), view.weeks, tx("Últimas 6 semanas desde Hasta", "Last 6 weeks as of To date"), true)}
         {expandedChart === "monthlyTrend" && chart("monthlyTrend", tx("Tendencia mensual", "Monthly trend"), view.monthly, tx("Enero hasta el mes de referencia", "January through reference month"), true)}
@@ -372,10 +377,10 @@ export default function DeliveryPerformancePage() {
         <summary style={{ fontSize: 16, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}>{tx("Detalle de liberaciones", "Release detail")} ({view.detail.length})</summary>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead><tr>{["Customer", "Part", "Revision", "PO", "Release", "Due Date", "Ship Date", "Scheduled", "Early", "On Time", "Late", "OTD", tx("Conciliación", "Reconciliation")].map(label => <th key={label} style={tableCell}>{label}</th>)}</tr></thead>
+            <thead><tr>{["Customer", "Part", "Revision", "PO", "Release", "Release Key", "Due Date", "Ship Date", "Scheduled", "Early", "On Time", "Late", "OTD", tx("Conciliación", "Reconciliation")].map(label => <th key={label} style={tableCell}>{label}</th>)}</tr></thead>
             <tbody>{view.detail.map(x => <tr key={x.release_key}>
               <td style={tableCell}>{x.customer}</td><td style={tableCell}>{x.part}</td><td style={tableCell}>{x.revision}</td>
-              <td style={tableCell}>{x.po}</td><td style={tableCell} title={x.release_key}>{x.release_no || "—"}</td>
+              <td style={tableCell}>{x.po}</td><td style={tableCell}>{x.release_no || "—"}</td><td style={{ ...tableCell, fontVariantNumeric: "tabular-nums" }}>{x.release_key}</td>
               <td style={tableCell}>{x.due_date}</td><td style={tableCell}>{x.planned_ship_date}</td>
               <td style={tableCell}>{x.scheduled}</td><td style={tableCell}>{x.early}</td><td style={tableCell}>{x.on_time}</td><td style={tableCell}>{x.late}</td>
               <td style={tableCell}>{pct(x.performance_pct)}</td>
