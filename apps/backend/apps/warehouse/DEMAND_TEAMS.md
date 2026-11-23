@@ -138,3 +138,36 @@ Verificar que la consulta termine en menos de 60 segundos y que se recuperen
 estados Open, Closed, Shipped. Un proxy sin el endpoint devuelve 404.
 Durante la actualización, desactivar `DEMAND_CHANGE_ALERTS_ENABLED` en los
 contenedores para no repetir los timeouts del monitor.
+
+## Monitoreo de cambios de releases (snapshot)
+
+La tarea `apps.warehouse.release_change_tasks.monitor_demand_release_changes` usa
+`POST /demand/status-snapshot` de plex-proxyO. El proxy que ejecuta la
+instalación debe contener esa ruta: un 404 significa que el proceso activo
+tiene una versión anterior o que Django apunta a otra instancia.
+Confirmar en el proxy la ruta `/openapi.json` y reiniciar el proceso correcto.
+
+La comparación por `Release_Key` contempla estado (`Closed`, `Open`,
+`Shipped`, etc.), reapertura, cantidad solicitada, cantidad embarcada,
+Ship Date, Due Date, estado de PO, tipo de release, cliente, PO, parte,
+parte de cliente y Ship To. Se crea una sola tarjeta por ciclo de observación
+con todos los cambios identificados. La versión ampliada requiere la migración
+`0009_demand_extended_snapshot`.
+
+Los campos añadidos usan una primera captura silenciosa para snapshots
+existentes: los valores históricos desconocidos no producen alertas falsas
+por diferencias con los valores predeterminados de la migración. Los cierres
+repetidos después de una reapertura se registran como eventos distintos.
+
+El monitoreo observa Ship Date entre 60 días atrás y 90 días adelante.
+No detecta cambios de registros fuera de esa ventana, cambios entre
+observaciones que se reviertan antes de la siguiente consulta, ni eliminaciones
+físicas de Plex; la ausencia de una fila no debe interpretarse automáticamente
+como eliminación o cancelación. En cambios de estado sí se utiliza `Rel_Status`,
+no el estado de entrega de Teams.
+
+La programación en Celery corre el monitor cada 15 minutos y el despacho
+cada 5 minutos si `DEMAND_CHANGE_ALERTS_ENABLED=True`. Mantener los envíos
+deshabilitados hasta confirmar el endpoint y la primera línea base. No guardar
+la URL real del webhook en código ni logs. Verificar el estado real en
+`warehouse_demand_release_snapshot` y `warehouse_demand_release_change_alert`.
