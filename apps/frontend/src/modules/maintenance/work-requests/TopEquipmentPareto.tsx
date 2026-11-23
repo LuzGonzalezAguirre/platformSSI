@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { GroupedItem } from "./types";
+import { GroupedItem, WorkRequest } from "./types";
+import EquipmentWorkRequestsModal from "./EquipmentWorkRequestsModal";
 
 interface Props {
   byEquipment: GroupedItem[];
-  rows: { equipment_id: string; equipment_description: string; maintenance_hours: number }[];
+  rows: WorkRequest[];
   lang: string;
   unplannedTotalHours: number;
 }
@@ -22,9 +23,10 @@ function compactLabel(value: string, max = 18) {
 export default function TopEquipmentPareto({ byEquipment, rows, lang, unplannedTotalHours }: Props) {
   const l = lang === "es";
   const [hovered, setHovered] = useState<number | null>(null);
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const descriptions = new Map<string, string>();
   rows.forEach((row) => {
-    if (row.equipment_id) descriptions.set(row.equipment_id, row.equipment_description || row.equipment_id);
+    if (row.equipment_id) descriptions.set(String(row.equipment_id).toLocaleLowerCase(), row.equipment_description || String(row.equipment_id));
   });
 
   const top = [...byEquipment].sort((a, b) => b.hours - a.hours).slice(0, 8);
@@ -36,7 +38,7 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang, unplannedT
     running += item.hours;
     return {
       ...item,
-      fullLabel: descriptions.get(item.label) || item.label || (l ? "Sin equipo" : "Unknown equipment"),
+      fullLabel: item.equipment_description || descriptions.get(item.label.toLocaleLowerCase()) || item.label || (l ? "Sin equipo" : "Unknown equipment"),
       cumulativePct: denominator > 0 ? Math.min((running / denominator) * 100, 100) : 0,
     };
   });
@@ -64,6 +66,7 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang, unplannedT
   const yPct = (v: number) => padT + chartH * (1 - v / 100);
   const points = data.map((d, i) => `${cx(i)},${yPct(d.cumulativePct)}`).join(" ");
   const active = hovered === null ? null : data[hovered];
+  const selectedEquipment = data.find((item) => item.label === selectedEquipmentId);
 
   return (
     <div style={card}>
@@ -76,6 +79,9 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang, unplannedT
           <span style={{ color: "#f59e0b" }}>● {l ? "% acumulado" : "Cumulative %"}</span>
           <span style={{ color: "#ef4444" }}>-- 80%</span>
         </div>
+      </div>
+      <div style={{ fontSize: "0.72rem", color: "var(--color-text-secondary)", marginBottom: "0.4rem" }}>
+        {l ? "Selecciona una barra para revisar los WR y las horas que la componen." : "Select a bar to review every contributing WR and its hours."}
       </div>
       <div style={{ position: "relative" }}>
         {active && (
@@ -100,13 +106,13 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang, unplannedT
           {data.map((d, i) => {
             const h = (d.hours / maxHours) * chartH;
             const x = cx(i);
-            return <g key={d.label} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} style={{ cursor: "pointer" }}>
+            return <g key={d.label} role="button" tabIndex={0} aria-label={`${d.fullLabel}: ${d.hours.toFixed(2)} h, ${d.count} Work Requests`} onClick={() => setSelectedEquipmentId(d.label)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedEquipmentId(d.label); } }} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} style={{ cursor: "pointer", outlineOffset: 3 }}>
               <title>{d.fullLabel}</title>
               <rect x={x - barW / 2} y={padT + chartH - h} width={barW} height={h} rx={3} fill="#3b82f6" opacity={hovered === i ? 1 : .78} />
               <text x={x} y={padT + chartH - h - 5} textAnchor="middle" fontSize={8} fontWeight={700} fill="#3b82f6">{d.hours.toFixed(1)}h</text>
               <text x={x} y={padT + chartH + 16} textAnchor="middle" fontSize={7.5} fill="var(--color-text-secondary)">{compactLabel(d.fullLabel)}</text>
               {d.actions?.slice(0, 2).map((action, actionIndex) => (
-                <a key={action.item_id} href={action.url} target="_blank" rel="noreferrer">
+                <a key={action.item_id} href={action.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
                   <text x={x} y={padT + chartH + 29 + actionIndex * 11} textAnchor="middle" fontSize={7.5} fontWeight={800} fill="var(--color-primary)">{action.code}</text>
                 </a>
               ))}
@@ -116,7 +122,15 @@ export default function TopEquipmentPareto({ byEquipment, rows, lang, unplannedT
           {data.map((d, i) => <circle key={`p-${d.label}`} cx={cx(i)} cy={yPct(d.cumulativePct)} r={hovered === i ? 4 : 3} fill="#f59e0b" stroke="var(--color-surface)" strokeWidth={1} />)}
         </svg>
       </div>
-
+      {selectedEquipment && (
+        <EquipmentWorkRequestsModal
+          key={selectedEquipment.label}
+          equipment={selectedEquipment}
+          rows={rows}
+          lang={lang}
+          onClose={() => setSelectedEquipmentId(null)}
+        />
+      )}
     </div>
   );
 }

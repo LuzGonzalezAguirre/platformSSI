@@ -228,6 +228,8 @@ El Pareto de Maintenance Overview usa exclusivamente Work Requests con tipo de P
 
 Las barras presentan los ocho equipos con mayor suma de `maintenance_hours` (horas reales, no `scheduled_hours`). El denominador del porcentaje acumulado suma las horas reales de mantenimiento no planeado de **todos los equipos identificados**, no solo los ocho seleccionados. Los demás KPIs/agrupaciones del Dashboard de Work Requests mantienen su definición previa.
 
+Cada barra permite abrir un modal de auditoría que reutiliza los registros `rows` del mismo dashboard, sin consultar las tablas de downtime. La agregación entrega `work_request_nos` para identificar exactamente qué WR contribuyen por equipo; el modal muestra número de WR, horas reales, horas programadas, promedio real, estados y una tabla con búsqueda. En cada WR se pueden desplegar todos los campos recibidos de Plex. Si la cantidad o la suma de `maintenance_hours` no coincide con los valores de la barra, se presenta una advertencia de conciliación. La ventana se define por `request_date` del WR, no por la fecha de finalización o por el evento de paro.
+
 ### Acciones automáticas desde el Top 3
 
 El proceso de staging semanal sigue creando candidatos a acción **solamente para los tres equipos principales** de la última semana laboral terminada (lunes-viernes), usando la **misma agregación de mantenimiento no planeado** que el Pareto. No se amplía a ocho acciones. El envío se realiza mediante el endpoint existente `/maintenance-offenders/stage`, respetando su mecanismo de idempotencia; la creación efectiva de acciones depende del receptor.

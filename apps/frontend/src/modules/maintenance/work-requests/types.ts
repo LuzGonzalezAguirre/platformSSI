@@ -39,6 +39,11 @@ export interface GroupedItem {
   count: number;
   hours: number;
   actions?: ActionTrackerAction[];
+  equipment_id?: string;
+  equipment_description?: string;
+  physical_area?: string;
+  department?: string;
+  work_request_nos?: string[];
 }
 
 export interface DayItem {
