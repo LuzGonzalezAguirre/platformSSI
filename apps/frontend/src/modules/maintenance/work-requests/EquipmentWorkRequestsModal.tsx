@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import type { GroupedItem, WorkRequest } from "./types";
@@ -176,7 +176,8 @@ export default function EquipmentWorkRequestsModal({ equipment, rows, lang, onCl
                   const no = String(row.work_request_no);
                   const isExpanded = expanded.includes(no);
                   return (
-                    <tr key={no} style={{ background: isExpanded ? "var(--color-bg)" : "transparent" }}>
+                    <Fragment key={no}>
+                    <tr style={{ background: isExpanded ? "var(--color-bg)" : "transparent" }}>
                       <td style={{ ...cell, fontWeight: 700 }}>{no}</td>
                       <td style={cell}>{fmt(row.request_date)}</td>
                       <td style={cell}>{fmt(row.status)}</td>
@@ -188,8 +189,12 @@ export default function EquipmentWorkRequestsModal({ equipment, rows, lang, onCl
                         <button type="button" aria-expanded={isExpanded} onClick={() => toggle(no)} style={{ display: "flex", gap: 4, alignItems: "center", color: "var(--color-primary)", background: "transparent", border: 0, cursor: "pointer", fontSize: "0.75rem", fontWeight: 700 }}>
                           {es ? "Ver" : "View"} {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                         </button>
-                        {isExpanded && (
-                          <div style={{ marginTop: "0.65rem", borderTop: "1px solid var(--color-border)", paddingTop: "0.6rem", minWidth: 330 }}>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr style={{ background: "var(--color-bg)" }}>
+                        <td colSpan={8} style={{ ...cell, padding: "1rem" }}>
+                          <div>
                             <div style={{ ...secondary, marginBottom: "0.35rem", fontWeight: 700 }}>{es ? "Todos los campos recibidos desde Plex" : "All fields received from Plex"}</div>
                             <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "minmax(110px, 0.7fr) minmax(160px, 1fr)", columnGap: "0.7rem", rowGap: "0.35rem" }}>
                               {Object.entries(row).map(([key, value]) => (
@@ -200,9 +205,10 @@ export default function EquipmentWorkRequestsModal({ equipment, rows, lang, onCl
                               ))}
                             </dl>
                           </div>
-                        )}
-                      </td>
-                    </tr>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                   );
                 })}
                 {filtered.length === 0 && <tr><td colSpan={8} style={{ ...cell, textAlign: "center" }}>{es ? "No se encontraron Work Requests" : "No Work Requests found"}</td></tr>}
