@@ -59,6 +59,7 @@ def normalize_release(row):
         "due_date": parse_date(row.get("Due_Date")),
         "shipped": parse_quantity(row.get("Shipped")),
         "po_status": str(row.get("PO_Status") or "").strip(),
+        "release_type": str(row.get("Rel_Type") or "").strip(),
         "customer_part": str(row.get("Cust_Part") or "").strip(),
         "ship_to_carrier": str(row.get("Ship_To_Carrier") or "").strip(),
     }
@@ -93,6 +94,8 @@ def release_differences(previous, current, include_extended=True):
             changed.append("SHIPPED_CHANGED")
         if previous["po_status"].lower() != current["po_status"].lower():
             changed.append("PO_STATUS_CHANGED")
+        if previous["release_type"].lower() != current["release_type"].lower():
+            changed.append("RELEASE_TYPE_CHANGED")
         if previous["customer_part"] != current["customer_part"]:
             changed.append("CUSTOMER_PART_CHANGED")
         if previous["ship_to_carrier"] != current["ship_to_carrier"]:
@@ -120,6 +123,7 @@ def change_payload(before, after, event_types):
         "DUE_DATE_CHANGED": "Fecha de entrega modificada",
         "SHIPPED_CHANGED": "Cantidad embarcada modificada",
         "PO_STATUS_CHANGED": "Estado de PO modificado",
+        "RELEASE_TYPE_CHANGED": "Tipo de release modificado",
         "CUSTOMER_PART_CHANGED": "Parte del cliente modificada",
         "SHIP_TO_CHANGED": "Destino de embarque modificado",
         "CUSTOMER_CHANGED": "Cliente modificado",
@@ -138,6 +142,7 @@ def change_payload(before, after, event_types):
         {"title": "Due Date", "value": f'{before.get("due_date")} → {after.get("due_date")}'},
         {"title": "Shipped", "value": f'{before.get("shipped")} → {after.get("shipped")}'},
         {"title": "PO Status", "value": f'{before.get("po_status")} → {after.get("po_status")}'},
+        {"title": "Release Type", "value": f'{before.get("release_type")} → {after.get("release_type")}'},
         {"title": "Eventos", "value": ", ".join(event_types)},
     ]
     card = {
@@ -193,7 +198,7 @@ def monitor_demand_release_changes():
                     defaults={
                         **{field: current[field] for field in (
                             "customer", "po", "part", "release_status", "quantity", "ship_date",
-                            "due_date", "shipped", "po_status", "customer_part", "ship_to_carrier",
+                            "due_date", "shipped", "po_status", "release_type", "customer_part", "ship_to_carrier",
                         )},
                         "extended_baseline_ready": True,
                     },
@@ -204,7 +209,7 @@ def monitor_demand_release_changes():
                 previous = {
                     field: getattr(snapshot, field) for field in (
                         "release_key", "customer", "po", "part", "release_status", "quantity", "ship_date",
-                        "due_date", "shipped", "po_status", "customer_part", "ship_to_carrier",
+                        "due_date", "shipped", "po_status", "release_type", "customer_part", "ship_to_carrier",
                     )
                 }
                 diffs = release_differences(
@@ -228,7 +233,7 @@ def monitor_demand_release_changes():
                     changed += int(event_created)
                 observed_fields = (
                     "customer", "po", "part", "release_status", "quantity", "ship_date",
-                    "due_date", "shipped", "po_status", "customer_part", "ship_to_carrier",
+                    "due_date", "shipped", "po_status", "release_type", "customer_part", "ship_to_carrier",
                 )
                 for field in observed_fields:
                     setattr(snapshot, field, current[field])
