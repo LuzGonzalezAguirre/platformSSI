@@ -108,6 +108,7 @@ class DemandReleaseSnapshot(models.Model):
     due_date = models.DateField(null=True)
     shipped = models.DecimalField(max_digits=18, decimal_places=4, null=True)
     po_status = models.CharField(max_length=40, blank=True, default="")
+    release_type = models.CharField(max_length=80, blank=True, default="")
     customer_part = models.CharField(max_length=160, blank=True, default="")
     ship_to_carrier = models.CharField(max_length=160, blank=True, default="")
     extended_baseline_ready = models.BooleanField(default=False)
