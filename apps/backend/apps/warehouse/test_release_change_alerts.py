@@ -24,6 +24,7 @@ def sample_row(status="Open", quantity=91, ship_date="2026-10-28"):
         "Due_Date": "2026-11-02",
         "Shipped": 0,
         "PO_Status": "Open",
+        "Rel_Type": "Firm (862)",
         "Cust_Part": "CUM-123",
         "Ship_To_Carrier": "12345",
     }
@@ -61,12 +62,13 @@ class DemandChangeDetectionTests(SimpleTestCase):
             "Due_Date": "2026-11-03",
             "Shipped": 10,
             "PO_Status": "Closed",
+            "Rel_Type": "Forecast",
             "Cust_Part": "CUM-456",
             "Ship_To_Carrier": "67890",
         })
         self.assertEqual(release_differences(before, after), [
             "DUE_DATE_CHANGED", "SHIPPED_CHANGED", "PO_STATUS_CHANGED",
-            "CUSTOMER_PART_CHANGED", "SHIP_TO_CHANGED",
+            "RELEASE_TYPE_CHANGED", "CUSTOMER_PART_CHANGED", "SHIP_TO_CHANGED",
         ])
 
     def test_extended_first_observation_suppresses_backfill_alert(self):
