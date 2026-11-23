@@ -31,9 +31,20 @@ def normalize_release(row):
         quantity = Decimal(str(raw_qty)) if raw_qty is not None else None
     except (InvalidOperation, TypeError, ValueError):
         raise ValueError("Invalid release quantity")
-    date_string = str(row.get("Ship_Date") or "")[:10]
     from datetime import date
-    ship_date = date.fromisoformat(date_string) if date_string else None
+    def parse_date(value):
+        text = str(value or "")[:10]
+        return date.fromisoformat(text) if text else None
+
+    def parse_quantity(value):
+        if value is None:
+            return None
+        try:
+            return Decimal(str(value))
+        except (InvalidOperation, TypeError, ValueError):
+            raise ValueError("Invalid shipped quantity")
+
+    ship_date = parse_date(row.get("Ship_Date"))
     status = str(row.get("Rel_Status") or "").strip()
     if not status:
         raise ValueError("Release without Rel_Status cannot be monitored safely")
@@ -45,11 +56,16 @@ def normalize_release(row):
         "release_status": status,
         "quantity": quantity,
         "ship_date": ship_date,
+        "due_date": parse_date(row.get("Due_Date")),
+        "shipped": parse_quantity(row.get("Shipped")),
+        "po_status": str(row.get("PO_Status") or "").strip(),
+        "customer_part": str(row.get("Cust_Part") or "").strip(),
+        "ship_to_carrier": str(row.get("Ship_To_Carrier") or "").strip(),
     }
 
 
-def release_differences(previous, current):
-    """Return event types for field transitions, never for a first observation."""
+def release_differences(previous, current, include_extended=True):
+    """Return transitions; new fields are ignored until their first baseline read."""
     changed = []
     old_status = str(previous["release_status"]).strip().lower()
     new_status = str(current["release_status"]).strip().lower()
@@ -64,6 +80,23 @@ def release_differences(previous, current):
         changed.append("QUANTITY_CHANGED")
     if previous["ship_date"] != current["ship_date"]:
         changed.append("SHIP_DATE_CHANGED")
+    if previous["customer"] != current["customer"]:
+        changed.append("CUSTOMER_CHANGED")
+    if previous["po"] != current["po"]:
+        changed.append("PO_CHANGED")
+    if previous["part"] != current["part"]:
+        changed.append("PART_CHANGED")
+    if include_extended:
+        if previous["due_date"] != current["due_date"]:
+            changed.append("DUE_DATE_CHANGED")
+        if previous["shipped"] != current["shipped"]:
+            changed.append("SHIPPED_CHANGED")
+        if previous["po_status"].lower() != current["po_status"].lower():
+            changed.append("PO_STATUS_CHANGED")
+        if previous["customer_part"] != current["customer_part"]:
+            changed.append("CUSTOMER_PART_CHANGED")
+        if previous["ship_to_carrier"] != current["ship_to_carrier"]:
+            changed.append("SHIP_TO_CHANGED")
     return changed
 
 
@@ -72,6 +105,8 @@ def serializable_release(row):
         **row,
         "quantity": str(row["quantity"]) if row["quantity"] is not None else None,
         "ship_date": row["ship_date"].isoformat() if row["ship_date"] else None,
+        "due_date": row["due_date"].isoformat() if row.get("due_date") else None,
+        "shipped": str(row["shipped"]) if row.get("shipped") is not None else None,
     }
 
 
@@ -82,6 +117,14 @@ def change_payload(before, after, event_types):
         "STATUS_CHANGED": "Estado de release modificado",
         "QUANTITY_CHANGED": "Cantidad de release modificada",
         "SHIP_DATE_CHANGED": "Fecha de embarque modificada",
+        "DUE_DATE_CHANGED": "Fecha de entrega modificada",
+        "SHIPPED_CHANGED": "Cantidad embarcada modificada",
+        "PO_STATUS_CHANGED": "Estado de PO modificado",
+        "CUSTOMER_PART_CHANGED": "Parte del cliente modificada",
+        "SHIP_TO_CHANGED": "Destino de embarque modificado",
+        "CUSTOMER_CHANGED": "Cliente modificado",
+        "PO_CHANGED": "Orden de compra modificada",
+        "PART_CHANGED": "Número de parte modificado",
     }
     primary = event_types[0]
     facts = [
@@ -92,6 +135,9 @@ def change_payload(before, after, event_types):
         {"title": "Estado", "value": f'{before["release_status"]} → {after["release_status"]}'},
         {"title": "Cantidad", "value": f'{before["quantity"]} → {after["quantity"]}'},
         {"title": "Ship Date", "value": f'{before["ship_date"]} → {after["ship_date"]}'},
+        {"title": "Due Date", "value": f'{before.get("due_date")} → {after.get("due_date")}'},
+        {"title": "Shipped", "value": f'{before.get("shipped")} → {after.get("shipped")}'},
+        {"title": "PO Status", "value": f'{before.get("po_status")} → {after.get("po_status")}'},
         {"title": "Eventos", "value": ", ".join(event_types)},
     ]
     card = {
@@ -144,19 +190,26 @@ def monitor_demand_release_changes():
                 key = current["release_key"]
                 snapshot, new = DemandReleaseSnapshot.objects.select_for_update().get_or_create(
                     release_key=key,
-                    defaults={field: current[field] for field in (
-                        "customer", "po", "part", "release_status", "quantity", "ship_date"
-                    )},
+                    defaults={
+                        **{field: current[field] for field in (
+                            "customer", "po", "part", "release_status", "quantity", "ship_date",
+                            "due_date", "shipped", "po_status", "customer_part", "ship_to_carrier",
+                        )},
+                        "extended_baseline_ready": True,
+                    },
                 )
                 if new:
                     created += 1
                     continue
                 previous = {
                     field: getattr(snapshot, field) for field in (
-                        "release_key", "customer", "po", "part", "release_status", "quantity", "ship_date"
+                        "release_key", "customer", "po", "part", "release_status", "quantity", "ship_date",
+                        "due_date", "shipped", "po_status", "customer_part", "ship_to_carrier",
                     )
                 }
-                diffs = release_differences(previous, current)
+                diffs = release_differences(
+                    previous, current, include_extended=snapshot.extended_baseline_ready,
+                )
                 if diffs:
                     old_data = serializable_release(previous)
                     new_data = serializable_release(current)
@@ -173,10 +226,15 @@ def monitor_demand_release_changes():
                         },
                     )
                     changed += int(event_created)
-                for field in ("customer", "po", "part", "release_status", "quantity", "ship_date"):
+                observed_fields = (
+                    "customer", "po", "part", "release_status", "quantity", "ship_date",
+                    "due_date", "shipped", "po_status", "customer_part", "ship_to_carrier",
+                )
+                for field in observed_fields:
                     setattr(snapshot, field, current[field])
+                snapshot.extended_baseline_ready = True
                 snapshot.save(update_fields=[
-                    "customer", "po", "part", "release_status", "quantity", "ship_date", "last_observed_at"
+                    *observed_fields, "extended_baseline_ready", "last_observed_at"
                 ])
         return {"status": "checked", "seeded": created, "changed": changed, "scanned": len(parsed)}
     finally:
