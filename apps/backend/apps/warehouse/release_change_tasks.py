@@ -218,8 +218,11 @@ def monitor_demand_release_changes():
                 if diffs:
                     old_data = serializable_release(previous)
                     new_data = serializable_release(current)
+                    # Repeated transitions after a reversal are distinct events.
+                    snapshot.change_sequence += 1
                     digest = hashlib.sha256(json.dumps(
-                        {"old": old_data, "new": new_data},
+                        {"release_key": key, "sequence": snapshot.change_sequence,
+                         "old": old_data, "new": new_data},
                         sort_keys=True,
                     ).encode()).hexdigest()
                     _, event_created = DemandReleaseChangeAlert.objects.get_or_create(
@@ -239,7 +242,7 @@ def monitor_demand_release_changes():
                     setattr(snapshot, field, current[field])
                 snapshot.extended_baseline_ready = True
                 snapshot.save(update_fields=[
-                    *observed_fields, "extended_baseline_ready", "last_observed_at"
+                    *observed_fields, "extended_baseline_ready", "change_sequence", "last_observed_at"
                 ])
         return {"status": "checked", "seeded": created, "changed": changed, "scanned": len(parsed)}
     finally:
