@@ -141,6 +141,21 @@ class DemandChangeMonitorTests(TestCase):
 
     @patch("apps.warehouse.release_change_tasks.cache")
     @patch("apps.warehouse.release_change_tasks.PlexClient")
+    def test_repeated_closed_transition_after_reopen_queues_new_event(self, client, cache):
+        cache.add.return_value = True
+        client.return_value.get_demand_status_snapshot.return_value = [sample_row("Open")]
+        monitor_demand_release_changes()
+        client.return_value.get_demand_status_snapshot.return_value = [sample_row("Closed")]
+        monitor_demand_release_changes()
+        client.return_value.get_demand_status_snapshot.return_value = [sample_row("Open")]
+        monitor_demand_release_changes()
+        client.return_value.get_demand_status_snapshot.return_value = [sample_row("Closed")]
+        result = monitor_demand_release_changes()
+        self.assertEqual(result["changed"], 1)
+        self.assertEqual(DemandReleaseChangeAlert.objects.filter(event_type="RELEASE_CLOSED").count(), 2)
+
+    @patch("apps.warehouse.release_change_tasks.cache")
+    @patch("apps.warehouse.release_change_tasks.PlexClient")
     def test_zero_rows_does_not_delete_snapshots(self, client, cache):
         cache.add.return_value = True
         client.return_value.get_demand_status_snapshot.return_value = [sample_row()]
