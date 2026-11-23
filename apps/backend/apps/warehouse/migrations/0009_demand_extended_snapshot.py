@@ -22,6 +22,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="demandreleasesnapshot",
+            name="release_type",
+            field=models.CharField(blank=True, default="", max_length=80),
+        ),
+        migrations.AddField(
+            model_name="demandreleasesnapshot",
             name="customer_part",
             field=models.CharField(blank=True, default="", max_length=160),
         ),
