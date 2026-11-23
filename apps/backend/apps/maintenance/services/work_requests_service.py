@@ -84,9 +84,13 @@ def aggregate_unplanned_equipment(rows: list[dict]) -> list[dict]:
             "department": str(row.get("department") or "").strip(),
             "hours": 0.0,
             "count": 0,
+            "work_request_nos": [],
         })
         item["hours"] += hours
         item["count"] += 1
+        # Keep the exact Plex WR identifiers behind every bar. The dashboard
+        # already returns the deduplicated row details under "rows".
+        item["work_request_nos"].append(str(row["work_request_no"]))
     return sorted(equipment.values(), key=lambda item: (-item["hours"], item["label"].casefold()))
 
 
@@ -136,7 +140,7 @@ class WorkRequestsService:
 
     @staticmethod
     def get_dashboard(filter_ctx: FilterContext) -> dict:
-        cache_key = filter_ctx.cache_key("maint:wr_dashboard:v5:monthly_snapshots")
+        cache_key = filter_ctx.cache_key("maint:wr_dashboard:v6:pareto_wr_membership")
         cached = cache.get(cache_key)
         if cached:
             return WorkRequestsService._with_action_refs(cached, filter_ctx)
